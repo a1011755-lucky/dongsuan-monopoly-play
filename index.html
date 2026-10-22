@@ -164,6 +164,7 @@ button.hot{background:var(--hot);color:#fff}
 .netrow input{font:inherit;font-weight:700;padding:8px 10px;border:3px solid var(--ink);border-radius:12px;width:8.5em;min-width:0;background:#fff;color:var(--ink)}
 #code-in{text-transform:uppercase;letter-spacing:.2em;width:6.5em}
 #room-info{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:13px}
+#room-info input{flex:1 1 100%;font-size:13px;padding:6px}
 #room-info .code{font-family:var(--display);font-weight:900;font-size:30px;letter-spacing:.18em;background:var(--sun);border:3px solid var(--ink);border-radius:12px;padding:2px 14px}
 .ch.taken{opacity:.5}
 .ch.mine{box-shadow:4px 4px 0 var(--c),0 0 0 4px var(--hot) inset}
@@ -338,6 +339,7 @@ button.hot{background:var(--hot);color:#fff}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
 <script>
 (() => {
 'use strict';
@@ -1688,7 +1690,7 @@ $('#btn-restart').onclick = async () => {
     : NET.mode === 'host' ? '<h2>重新開始？</h2><p>你是房主，重新開始會讓這一局對所有連線的朋友都結束。</p>'
     : '<h2>重新開始？</h2><p>這一局的進度會全部清掉，回到選角畫面。</p>';
   const ok = await ask(msg, [{ label: NET.mode === 'client' ? '離開' : '重新開始', value: true, cls: 'hot' }, { label: '繼續玩', value: false }]);
-  if (ok) location.reload();
+  if (ok) { try { sessionStorage.removeItem('ds-room'); } catch (e) { } location.replace(location.pathname); }
 };
 
 /* ---------- 回合流程 ---------- */
@@ -3541,26 +3543,113 @@ function applyState(s) {
 
 // ---- 開房間／加入房間 ----
 const fromHost = m => { const h = NET.named && NET.named.peers().find(x => x.presence && x.presence.role === 'host'); return !!h && h.peer === m.peer; };
+try { const n = localStorage.getItem('ds-nick'); if (n) $('#nick').value = n; } catch (e) { }
 function myNick() { const v = $('#nick').value.trim().slice(0, 10); return v || '選民' + (10 + rnd(90)); }
 function genCode() { const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; return Array.from({ length: 4 }, () => A[rnd(A.length)]).join(''); }
 function renderOnline() {
   const st = $('#net-status'), info = $('#room-info'), off = NET.mode === 'off';
   ['#btn-host', '#btn-join', '#code-in', '#nick'].forEach(s => $(s).disabled = !roomApi || !off);
+  const peerMode = roomApi && roomApi.isPeer;
   if (roomApi === undefined) st.textContent = '連線功能準備中…';
-  else if (!roomApi) st.textContent = '這個網址不能線上連線（線上連線要用房主分享的 Claude 版連結並登入）。同一台電腦輪流玩、跟電腦對打都可以：上面選好角色，「玩家」可以設好幾個。';
-  else if (off) st.textContent = '每個人用自己的手機或電腦進到同一局：一個人按「開新房間」，把 4 個字的代碼告訴朋友，朋友輸入代碼按「加入房間」。';
-  else if (NET.mode === 'host') st.textContent = NET.started ? `房間 ${NET.code} 對戰中。` : `房間開好了！把代碼 ${NET.code} 告訴朋友。朋友加入後點一個角色，就會出現在參選名單；人到齊了按「開始競選」。`;
+  else if (!roomApi) st.textContent = '這個畫面不能線上連線。同一台電腦輪流玩、跟電腦對打都可以：上面選好角色，「玩家」可以設好幾個。';
+  else if (off) st.textContent = peerMode
+    ? '不用帳號！一個人按「開新房間」，把「邀請連結」傳到 LINE 給朋友；朋友點開連結、輸入暱稱、按「加入房間」就好。'
+    : '每個人用自己的手機或電腦進到同一局：一個人按「開新房間」，把 4 個字的代碼告訴朋友，朋友輸入代碼按「加入房間」。';
+  else if (NET.mode === 'host') st.textContent = NET.started ? `房間 ${NET.code} 對戰中。房主的網頁請保持開著。` : `房間開好了！${peerMode ? '按下面的「複製邀請連結」傳給朋友，' : `把代碼 ${NET.code} 告訴朋友，`}朋友加入後點一個角色，就會出現在參選名單；人到齊了按「開始競選」。`;
   else st.textContent = NET.started ? `已加入房間 ${NET.code}。` : `已加入房間 ${NET.code}。在上面點一個角色，然後等房主按「開始競選」。`;
   info.hidden = off;
   if (!off && NET.named) {
     const ps = NET.named.peers().filter(x => x.presence && x.presence.role);
-    info.innerHTML = `<span class="code">${esc(NET.code)}</span><span>在線：${ps.map(x => esc(String(x.presence.nick || '某人')) + (x.presence.role === 'host' ? '（房主）' : '') + (x.sameTab ? '（你）' : '')).join('、') || '只有你'}</span>`;
+    info.innerHTML = `<span class="code">${esc(NET.code)}</span><span>在線：${ps.map(x => esc(String(x.presence.nick || '某人')) + (x.presence.role === 'host' ? '（房主）' : '') + (x.sameTab ? '（你）' : '')).join('、') || '只有你'}</span>`
+      + (peerMode && NET.mode === 'host' && !NET.started ? `<button id="btn-invite" class="hot">📨 複製邀請連結</button><input id="invite-text" readonly hidden aria-label="邀請連結">` : '');
+    const bi = $('#btn-invite'); if (bi) bi.onclick = copyInvite;
   }
+}
+/* ---------- 不用帳號的連線：PeerJS（手機、電腦直接互連，房主的瀏覽器當中繼站） ---------- */
+// 介面跟 Claude 的 room 一樣（emit／on／presence／peers／onPeers），上面的遊戲程式不用改
+function peerRoomApi() {
+  return {
+    isPeer: true,
+    join: (name, role) => new Promise((resolve, reject) => {
+      const hostId = 'dongsuan-' + name, handlers = {}, peerFns = [];
+      let me = null, myPres = {}, list = [], lastIds = new Set();
+      const conns = new Map();   // 房主：對方 id → { conn, presence }
+      const fire = (topic, data, from) => (handlers[topic] || []).forEach(h => { try { h({ topic, data, peer: from, sameTab: from === me, isMe: from === me }); } catch (e) { } });
+      const snap = () => role === 'host'
+        ? [{ peer: me, sameTab: true, presence: myPres }, ...[...conns].map(([id, c]) => ({ peer: id, sameTab: false, presence: c.presence }))]
+        : list.map(x => ({ peer: x.peer, sameTab: x.peer === me, presence: x.peer === me ? myPres : x.presence }));
+      const notify = () => {
+        const ps = snap(), ids = new Set(ps.map(x => x.peer));
+        const joined = ps.filter(x => !lastIds.has(x.peer)), left = [...lastIds].filter(id => !ids.has(id)).map(id => ({ peer: id }));
+        lastIds = ids; peerFns.forEach(f => { try { f({ peers: ps, joined, left, updated: [] }); } catch (e) { } });
+      };
+      const shareList = () => { const msg = { t: 'peers', list: snap().map(x => ({ peer: x.peer, presence: x.presence })) }; conns.forEach(c => { try { c.conn.send(msg); } catch (e) { } }); };
+      const api = {
+        name, conn: null,
+        emit: async (topic, data) => {
+          const d = data === undefined ? null : JSON.parse(JSON.stringify(data));
+          if (role === 'host') conns.forEach(c => { try { c.conn.send({ t: 'emit', topic, data: d, from: me }); } catch (e) { } });
+          else if (api.conn && api.conn.open) api.conn.send({ t: 'emit', topic, data: d });
+          fire(topic, d, me);
+        },
+        on: (topic, h) => { (handlers[topic] = handlers[topic] || []).push(h); return () => { }; },
+        presence: async patch => {
+          myPres = { ...myPres, ...patch };
+          if (role === 'host') { shareList(); notify(); } else if (api.conn && api.conn.open) api.conn.send({ t: 'pres', p: myPres });
+        },
+        peers: snap,
+        onPeers: f => { peerFns.push(f); setTimeout(() => f({ peers: snap(), joined: snap(), left: [], updated: [] }), 0); return () => { }; },
+        connected: () => role === 'host' ? !peer.disconnected : !!(api.conn && api.conn.open),
+        leave: async () => { try { peer.destroy(); } catch (e) { } },
+      };
+      const peer = role === 'host' ? new Peer(hostId) : new Peer();
+      const timer = setTimeout(() => { reject(new Error('timeout')); try { peer.destroy(); } catch (e) { } }, 15000);
+      peer.on('error', e => { if (!me || role !== 'host') { clearTimeout(timer); reject(e); } });
+      peer.on('open', id => {
+        me = id;
+        if (role === 'host') {
+          peer.on('connection', conn => {
+            conn.on('open', () => { conns.set(conn.peer, { conn, presence: {} }); shareList(); notify(); });
+            conn.on('data', msg => {
+              const c = conns.get(conn.peer); if (!c || !msg || typeof msg !== 'object') return;
+              if (msg.t === 'pres' && msg.p && typeof msg.p === 'object') { c.presence = msg.p; shareList(); notify(); }
+              else if (msg.t === 'emit' && typeof msg.topic === 'string') {
+                fire(msg.topic, msg.data, conn.peer);
+                conns.forEach((o, oid) => { if (oid !== conn.peer) try { o.conn.send({ t: 'emit', topic: msg.topic, data: msg.data, from: conn.peer }); } catch (e) { } });
+              }
+            });
+            const drop = () => { if (conns.delete(conn.peer)) { shareList(); notify(); } };
+            conn.on('close', drop); conn.on('error', drop);
+          });
+          peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) { } });
+          clearTimeout(timer); resolve(api);
+        } else {
+          const conn = peer.connect(hostId, { reliable: true });
+          api.conn = conn;
+          conn.on('open', () => { clearTimeout(timer); conn.send({ t: 'pres', p: myPres }); resolve(api); });
+          conn.on('data', msg => {
+            if (!msg || typeof msg !== 'object') return;
+            if (msg.t === 'peers' && Array.isArray(msg.list)) { list = msg.list.filter(x => x && typeof x.peer === 'string').map(x => ({ peer: x.peer, presence: x.presence && typeof x.presence === 'object' ? x.presence : {} })); notify(); }
+            else if (msg.t === 'emit' && typeof msg.topic === 'string') fire(msg.topic, msg.data, String(msg.from || ''));
+          });
+          conn.on('close', () => { list = list.filter(x => x.peer === me); notify(); });
+        }
+      });
+    }),
+  };
+}
+// 邀請連結：公開網站的網址後面加 ?room=代碼，朋友點開就自動帶入代碼
+function inviteLink() { return location.origin + location.pathname + '?room=' + NET.code; }
+async function copyInvite() {
+  const link = inviteLink();
+  try { await navigator.clipboard.writeText(link); $('#btn-invite').textContent = '✅ 已複製，貼到 LINE 給朋友'; }
+  catch (e) { $('#invite-text').hidden = false; $('#invite-text').value = link; $('#invite-text').select(); }
 }
 async function hostRoom() {
   if (!roomApi || NET.mode !== 'off') return;
   const code = genCode();
-  try { NET.named = await roomApi.join(ROOM_PREFIX + code.toLowerCase()); } catch (e) { $('#net-status').textContent = '開房間失敗了，請稍後再試一次。'; return; }
+  $('#net-status').textContent = '開房間中…';
+  try { NET.named = await roomApi.join(ROOM_PREFIX + code.toLowerCase(), 'host'); } catch (e) { $('#net-status').textContent = '開房間失敗了，請稍後再試一次（或換個網路）。'; return; }
   NET.mode = 'host'; NET.code = code; NET.nick = myNick();
   NET.named.presence({ cid: NET.cid, nick: NET.nick, role: 'host' }).catch(() => { });
   NET.named.on('res', onRes);
@@ -3608,8 +3697,12 @@ async function joinRoom() {
   if (!roomApi || NET.mode !== 'off') return;
   const code = $('#code-in').value.trim().toUpperCase();
   if (!/^[A-Z0-9]{4}$/.test(code)) { $('#net-status').textContent = '房間代碼是 4 個英文字母或數字，請再確認一次。'; return; }
-  try { NET.named = await roomApi.join(ROOM_PREFIX + code.toLowerCase()); } catch (e) { $('#net-status').textContent = '加入失敗了，請確認代碼後再試一次。'; return; }
+  $('#net-status').textContent = '連線中…';
+  try { NET.named = await roomApi.join(ROOM_PREFIX + code.toLowerCase(), 'guest'); } catch (e) { $('#net-status').textContent = '加入失敗：找不到這個房間，請確認代碼、確認房主的網頁還開著；手機網路連不上的話，換成 Wi-Fi 試試。'; return; }
   NET.mode = 'client'; NET.code = code; NET.nick = myNick();
+  // 記住這個房間：手機切到 LINE 再回來、網頁被重新整理時，會自動回到同一局
+  try { sessionStorage.setItem('ds-room', code); localStorage.setItem('ds-nick', NET.nick); } catch (e) { }
+  try { history.replaceState(null, '', location.pathname + '?room=' + code); } catch (e) { }
   NET.named.presence({ cid: NET.cid, nick: NET.nick, role: 'guest', pick: -1 }).catch(() => { });
   NET.named.on('lobby', m => { if (fromHost(m) && m.data && Array.isArray(m.data.slots)) { NET.lobby = { slots: m.data.slots.slice(0, 4).filter(x => CHARS[x.ci]), rounds: +m.data.rounds || 25, map: MAPS[m.data.map] ? m.data.map : 'tpe' }; if (NET.lobby.map !== MAP) buildBoard(NET.lobby.map); renderSetup(); } });
   NET.named.on('start', m => { if (!fromHost(m) || NET.started || !m.data || !Array.isArray(m.data.players)) return; const cfg = { ...m.data, players: m.data.players.filter(x => CHARS[x.ci]).slice(0, 4) }; startGame(cfg); renderOnline(); });
@@ -3631,7 +3724,18 @@ $('#code-in').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom
 renderOnline();
 (async () => {
   try { roomApi = window.claude && typeof window.claude.use === 'function' ? await window.claude.use('room') : null; } catch (e) { roomApi = null; }
+  // 不在 Claude 裡（公開網站）就改用 PeerJS 直接連線
+  if (!roomApi && window.Peer) roomApi = peerRoomApi();
   renderOnline();
+  // 從邀請連結進來：自動帶入房間代碼，捲到連線區
+  const m = /[?&]room=([A-Za-z0-9]{4})/.exec(location.search);
+  if (m && roomApi && NET.mode === 'off') {
+    $('#code-in').value = m[1].toUpperCase();
+    $('#net-status').textContent = `朋友邀請你加入房間 ${m[1].toUpperCase()}！輸入暱稱，按「加入房間」。`;
+    $('#nick').focus(); $('.online').scrollIntoView({ block: 'center' });
+    let back = ''; try { back = sessionStorage.getItem('ds-room') || ''; } catch (e) { }
+    if (back === m[1].toUpperCase()) { $('#net-status').textContent = '正在回到房間 ' + back + '…'; joinRoom(); }
+  }
 })();
 })();
 </script>
