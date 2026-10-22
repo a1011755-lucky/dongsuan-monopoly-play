@@ -175,6 +175,18 @@ button.hot{background:var(--hot);color:#fff}
 .rounds button{font-size:14px;line-height:1.35;padding:8px}
 .rounds button small{display:block;font-family:var(--body);font-weight:700;font-size:11px;color:var(--muted)}
 .rounds button[aria-pressed="true"]{background:var(--sun)}
+.rounds.seats{grid-template-columns:repeat(7,1fr)}
+.rounds.seats button{font-size:18px;padding:8px 0}
+.opts h4 small{font-family:var(--body);font-weight:700;font-size:11px;color:var(--muted)}
+/* 5 人以上：左邊的玩家卡縮小 */
+#players.many{gap:4px;width:210px}
+#players.many .pc{padding:4px 8px;gap:7px;border-width:2px;box-shadow:2px 2px 0 var(--ink)}
+#players.many .av{width:30px;height:30px;font-size:12px;border-width:2px}
+#players.many .pi .nm{font-size:13px}
+#players.many .pi .cash{font-size:13px}
+#players.many .pi .poll{height:10px}
+#players.many .pi .poll em{font-size:8px;line-height:7px}
+#players.many .pi .st{font-size:10px;min-height:0}
 .maps{grid-template-columns:repeat(4,1fr)}
 @media (max-width:700px){.maps{grid-template-columns:1fr 1fr}}
 .rules{font-size:13px;line-height:1.7;margin:0;padding-left:20px}
@@ -232,6 +244,14 @@ button.hot{background:var(--hot);color:#fff}
   .chargrid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .slots{grid-template-columns:1fr 1fr}
   .rounds{grid-template-columns:1fr}
+  .rounds.seats{grid-template-columns:repeat(7,1fr)}
+  #players.many{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  #players.many .pc{flex-direction:column;align-items:center;text-align:center;padding:3px 2px;gap:1px}
+  #players.many .pi{width:100%}
+  #players.many .pi .nm{justify-content:center;font-size:11px}
+  #players.many .pi .nm small,#players.many .pi .poll em{display:none}
+  #players.many .pi .cash{font-size:11px}
+  #players.many .av{width:24px;height:24px}
 }
 @media (prefers-reduced-motion:reduce){
   #caption.show,#modal .box,#btn-roll.go,#btn-roll.stop{animation:none}
@@ -274,7 +294,7 @@ button.hot{background:var(--hot);color:#fff}
         <h1>凍蒜大富翁</h1>
         <p>政壇大亂鬥・地雷火箭滿天飛</p>
       </div>
-      <div class="pickhead"><h2>選 2～4 位參選人</h2><span>點卡片加入／移除</span></div>
+      <div class="pickhead"><h2>選 2～8 位參選人</h2><span>點卡片加入／移除；空位開局時由電腦補上</span></div>
       <div class="chargrid" id="chargrid"></div>
       <div class="roster panel">
         <h4>本屆參選名單（點「玩家／電腦」切換誰來操作）</h4>
@@ -294,6 +314,8 @@ button.hot{background:var(--hot);color:#fff}
       <div class="opts panel">
         <h4>選地圖</h4>
         <div class="rounds maps" id="maps"></div>
+        <h4>幾個人參選？<small>（房主決定，2～8 人）</small></h4>
+        <div class="rounds seats" id="seats"></div>
         <h4>這局要玩多久？</h4>
         <div class="rounds" id="rounds">
           <button data-r="15">閃電局 15 回合<small>約 20 分鐘</small></button>
@@ -992,9 +1014,10 @@ function loadGLB(url) {
 /* ---------- Q 版大頭照：從 models/portraits.jpg 切出每個人的臉（圓心 x、y、半徑） ---------- */
 const PORTRAIT = {
   ko: [290, 215, 125], lien: [645, 205, 120], ma: [985, 195, 120], tsai: [1330, 235, 125], gz: [1705, 205, 120],
-  kc: [235, 715, 120], '3q': [565, 695, 120], su: [890, 695, 115], chiang: [1210, 640, 120], puma: [1520, 695, 120], soong: [1805, 725, 115],
+  kc: [235, 715, 120], '3q': [565, 695, 120], su: [890, 695, 115], chiang: [1210, 668, 118], puma: [1520, 695, 120], soong: [1805, 725, 115],
 };
-const faceURL = {};
+const faceURL = {}, faceRaw = {}, hairColor = {};
+const HAIR_FIX = { soong: '#3a3a46' };   // 自動抓到的頭髮色不對時，在這裡指定
 let portraitImg = null;
 function loadPortraits() {
   return portraitImg || (portraitImg = new Promise(res => {
@@ -1008,6 +1031,24 @@ function loadPortraits() {
         x.save(); x.beginPath(); x.arc(128, 128, 108, 0, 7); x.clip();
         x.drawImage(img, cx - r, cy - r, r * 2, r * 2, 20, 20, 216, 216); x.restore();
         faceURL[id] = cv.toDataURL('image/png');
+        // 3D 大頭用：先抓頭頂的頭髮顏色（跳過白邊和亮的背景），再做「中間是臉、外圈漸漸變成頭髮色」的貼圖
+        const tc = document.createElement('canvas'); tc.width = tc.height = 256; const tx = tc.getContext('2d');
+        tx.drawImage(img, cx - r, cy - r, r * 2, r * 2, 0, 0, 256, 256);
+        let hc = '#2b2d42';
+        try {
+          // 取頭頂一塊，依亮度排序，用偏暗的那一段（去掉黑線和反光）當頭髮色
+          const px = tx.getImageData(78, 6, 100, 44).data, list = [];
+          for (let k = 0; k < px.length; k += 4) list.push([px[k], px[k + 1], px[k + 2], px[k] + px[k + 1] + px[k + 2]]);
+          list.sort((u, v) => u[3] - v[3]);
+          const part = list.slice(Math.floor(list.length * .12), Math.floor(list.length * .45));
+          if (part.length > 30) { const avg = j => part.reduce((t, q) => t + q[j], 0) / part.length | 0; hc = `rgb(${avg(0)},${avg(1)},${avg(2)})`; }
+        } catch (e) { }
+        hairColor[id] = HAIR_FIX[id] || hc;
+        tx.globalCompositeOperation = 'destination-in';
+        const gr = tx.createRadialGradient(128, 128, 82, 128, 128, 118); gr.addColorStop(0, '#000'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        tx.fillStyle = gr; tx.fillRect(0, 0, 256, 256);
+        const fc = document.createElement('canvas'); fc.width = fc.height = 256; const fx = fc.getContext('2d');
+        fx.fillStyle = hairColor[id]; fx.fillRect(0, 0, 256, 256); fx.drawImage(tc, 0, 0); faceRaw[id] = fc;
       });
       res(img); if (G.players.length) updateHUD(); renderSetup();
     };
@@ -1015,13 +1056,38 @@ function loadPortraits() {
     img.src = 'models/portraits.jpg';
   }));
 }
-const faceTexCache = {};
-async function faceTexture(id) {
+// 3D 大頭：前半球貼 Q 版臉（從正面平面投影），後半球是頭髮色，外面一圈黑色描邊，有光影、會跟著身體轉
+const face3DCache = {};
+async function bobbleHead(id) {
   if (!PORTRAIT[id]) return null;
   await loadPortraits();
-  if (!faceURL[id]) return null;
-  if (!faceTexCache[id]) { const t = new THREE.TextureLoader().load(faceURL[id]); t.encoding = THREE.sRGBEncoding; faceTexCache[id] = t; }
-  return faceTexCache[id];
+  if (!faceRaw[id]) return null;
+  if (!face3DCache[id]) {
+    const tex = new THREE.CanvasTexture(faceRaw[id]); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
+    const front = new THREE.SphereGeometry(1, 40, 28, 0, Math.PI), pos = front.attributes.position, uv = front.attributes.uv;
+    for (let k = 0; k < pos.count; k++) uv.setXY(k, .5 + pos.getX(k) * .5, .5 + pos.getY(k) * .5);
+    uv.needsUpdate = true;
+    // 後腦勺的髮絲：沿經線（從頭頂往下）畫深淺不一的線
+    const hcv = document.createElement('canvas'); hcv.width = 256; hcv.height = 128; const hx = hcv.getContext('2d');
+    hx.fillStyle = hairColor[id] || '#2b2d42'; hx.fillRect(0, 0, 256, 128);
+    for (let k = 0; k < 140; k++) {
+      const x = Math.random() * 256, w = 1 + Math.random() * 2.5;
+      hx.strokeStyle = Math.random() < .55 ? `rgba(0,0,0,${.12 + Math.random() * .2})` : `rgba(255,255,255,${.05 + Math.random() * .1})`;
+      hx.lineWidth = w; hx.beginPath(); hx.moveTo(x, 0); hx.quadraticCurveTo(x + (Math.random() - .5) * 20, 64, x + (Math.random() - .5) * 14, 128); hx.stroke();
+    }
+    const hairTex = new THREE.CanvasTexture(hcv); hairTex.encoding = THREE.sRGBEncoding;
+    face3DCache[id] = {
+      front, back: new THREE.SphereGeometry(1, 40, 28, Math.PI, Math.PI), outline: new THREE.SphereGeometry(1, 32, 20),
+      faceMat: new THREE.MeshStandardMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: .3, roughness: .55, metalness: 0 }),
+      hairMat: new THREE.MeshStandardMaterial({ map: hairTex, roughness: .4, metalness: .05 }),
+      lineMat: new THREE.MeshBasicMaterial({ color: '#1d1633', side: THREE.BackSide }),
+    };
+  }
+  const c = face3DCache[id], g = new THREE.Group();
+  const f = new THREE.Mesh(c.front, c.faceMat), b = new THREE.Mesh(c.back, c.hairMat), o = new THREE.Mesh(c.outline, c.lineMat);
+  f.castShadow = b.castShadow = true; o.scale.setScalar(1.045);
+  g.add(f, b, o); g.scale.set(1, 1.04, .9);   // 稍微扁一點，比較像 Q 版大頭
+  return g;
 }
 // 頭像 HTML：有大頭照就用照片，沒有就用字
 const avatar = c => faceURL[c.id] ? `<div class="av face" style="background-image:url(${faceURL[c.id]})">${c.glyph}</div>` : `<div class="av">${c.glyph}</div>`;
@@ -1037,11 +1103,13 @@ async function upgradeToken(p) {
   m.traverse(o => { if (o.isMesh) { o.castShadow = true; if (o.name === 'body-mesh') { o.material = o.material.clone(); o.material.color = shirt; } } });
   const head = m.getObjectByName('head');
   // 有 Q 版大頭照的角色：把模型原本的頭換成大頭貼（永遠面向鏡頭，跟著頭的骨架一起動）
-  const face = await faceTexture(p.char.id);
+  const face = head ? await bobbleHead(p.char.id) : null;
   if (face && head) {
     const hm = m.getObjectByName('head-mesh'); if (hm) hm.visible = false;
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: face, transparent: true }));
-    sp.scale.set(2.05 / m.scale.x, 2.05 / m.scale.y, 1); sp.position.set(0, .24, .02); head.add(sp);
+    // holder 會在站著的時候把頭轉向鏡頭（見主迴圈），face 是 3D 大頭本體
+    const holder = new THREE.Group(), R = .88;
+    holder.position.set(0, .24, 0); holder.rotation.order = 'YXZ'; holder.scale.set(1 / m.scale.x, 1 / m.scale.y, 1 / m.scale.z);
+    face.scale.multiplyScalar(R); holder.add(face); head.add(holder); p.faceHolder = holder;
   }
   if (!face && head && acc.includes('glasses')) loadGLB('models/aid-glasses.glb').then(x => { x.scene.position.set(0, .1, .1); head.add(x.scene); }).catch(() => { });
   if (acc.includes('cane')) loadGLB('models/aid-cane.glb').then(x => { x.scene.position.set(.3, 0, .12); m.add(x.scene); }).catch(() => { });
@@ -1394,9 +1462,19 @@ function frame(now) {
   for (const i in trapMeshes) trapMeshes[i].visible = trapVisible(G.traps[i]);
   if (gauge.on) $('#gptr').style.left = gaugePos() * 100 + '%';
   if (G.bomb) { const h = G.players[G.bomb.holder]; bombObj.visible = !!h.mesh && !h.out; if (h.mesh) { bombObj.position.copy(h.mesh.position); bombObj.position.y += 3; } }
-  G.players.forEach(p => {
+  G.players.forEach((p, pi) => {
     if (p.mixer) {
       p.mixer.update(dt);
+      if (p.faceHolder) {
+        // 站著的時候大頭轉向鏡頭（最多轉 65 度），走路時看前面；還會隨音樂般輕輕晃
+        let want = 0, up = 0;
+        if (!p.moving && !p.animating) {
+          let a = Math.atan2(camera.position.x - p.mesh.position.x, camera.position.z - p.mesh.position.z) - p.mesh.rotation.y;
+          a = Math.atan2(Math.sin(a), Math.cos(a)); want = Math.max(-1.15, Math.min(1.15, a)); up = -.38;
+        }
+        const h = p.faceHolder, k = Math.min(1, dt * 5); h.rotation.y += (want - h.rotation.y) * k; h.rotation.x += (up - h.rotation.x) * k;
+        h.rotation.z = Math.sin(t * 2.2 + pi * 1.7) * .05;
+      }
       if (!p.oneShot || now > p.oneShot) { p.oneShot = 0; if (!p.out) play(p, baseAnim(p)); }
     } else if (p.mesh && !p.out && G.players[G.turn] === p && !p.moving) p.mesh.children[1].scale.y = 1 + Math.sin(t * 6) * .04;
   });
@@ -1466,6 +1544,7 @@ function takeItem(p, id) { const k = p.items.indexOf(id); if (k >= 0) p.items.sp
 
 /* ---------- 介面 ---------- */
 function updateHUD() {
+  $('#players').classList.toggle('many', G.players.length > 4);
   $('#players').innerHTML = G.players.map((p, k) => `
     <div class="pc ${G.turn === k ? 'active' : ''} ${p.out ? 'out' : ''}" style="--c:${p.char.color}">
       ${avatar(p.char)}
@@ -1587,7 +1666,14 @@ const info = (p, title, body) => p.isAI ? caption(title, body) : ask(`<h2>${titl
 
 /* ---------- 開場：選角 ---------- */
 let roster = [{ ci: 8, mode: 'human' }, { ci: 1, mode: 'ai' }, { ci: 2, mode: 'ai' }, { ci: 11, mode: 'ai' }];
-let maxRounds = 25;
+let maxRounds = 25, seats = 4;
+const MAX_SEATS = 8;
+// 依「參選人數」補電腦或刪掉多的電腦（連線朋友不會被刪）
+function fitRoster(fill) {
+  while (roster.length > seats) { const ai = roster.map(x => x.mode).lastIndexOf('ai'); if (ai < 0) break; roster.splice(ai, 1); }
+  if (roster.length > seats) seats = Math.min(MAX_SEATS, roster.length);
+  if (fill) { const free = shuffle(CHARS.map((c, k) => k).filter(k => !roster.some(r => r.ci === k))); while (roster.length < seats && free.length) roster.push({ ci: free.pop(), mode: 'ai' }); }
+}
 const modeLabel = r => r.mode === 'remote' ? `${r.nick || '朋友'}（連線）` : r.mode === 'human' ? '玩家' : '電腦';
 function renderSetup() {
   const client = NET.mode === 'client';
@@ -1609,11 +1695,14 @@ function renderSetup() {
       beep(700, .04); renderSetup(); return;
     }
     if (r >= 0) { if (roster[r].mode === 'remote') return; roster.splice(r, 1); }
-    else if (roster.length < 4) roster.push({ ci, mode: roster.some(x => x.mode === 'human') ? 'ai' : 'human' });
+    else if (roster.length < seats) roster.push({ ci, mode: roster.some(x => x.mode === 'human') ? 'ai' : 'human' });
     else { const ai = roster.map(x => x.mode).lastIndexOf('ai'); if (ai < 0) return; roster.splice(ai, 1); roster.push({ ci, mode: 'ai' }); }
     beep(700, .04); renderSetup(); sendLobby();
   });
-  $('#slots').innerHTML = [0, 1, 2, 3].map(k => {
+  const nSeats = client ? (NET.lobby ? NET.lobby.seats : 4) : seats;
+  $('#seats').innerHTML = [2, 3, 4, 5, 6, 7, 8].map(n => `<button data-n="${n}" aria-pressed="${n === nSeats}" ${client ? 'disabled' : ''}>${n}</button>`).join('');
+  $('#seats').querySelectorAll('[data-n]').forEach(b => b.onclick = () => { seats = +b.dataset.n; fitRoster(true); beep(700, .04); renderSetup(); sendLobby(); });
+  $('#slots').innerHTML = Array.from({ length: Math.max(nSeats, slots.length) }, (_, k) => k).map(k => {
     const r = slots[k];
     if (!r) return `<div class="slot"><span class="empty">${k + 1} 號：空位</span></div>`;
     const c = CHARS[r.ci];
@@ -1622,10 +1711,11 @@ function renderSetup() {
   }).join('');
   $('#slots').querySelectorAll('[data-slot]').forEach(b => b.onclick = () => { const r = roster[+b.dataset.slot]; r.mode = r.mode === 'human' ? 'ai' : 'human'; renderSetup(); sendLobby(); });
   $('#btn-start').hidden = client; $('#guest-wait').hidden = !client;
-  $('#btn-start').disabled = roster.length < 2;
-  $('#btn-start').textContent = roster.length < 2 ? '至少選 2 位' : '開始競選！';
+  $('#btn-start').disabled = seats < 2;
+  $('#btn-start').textContent = roster.length < seats ? `開始競選！（空位由電腦補）` : '開始競選！';
   const rounds = client && NET.lobby ? NET.lobby.rounds : maxRounds;
-  $('#rounds').querySelectorAll('button').forEach(x => { x.setAttribute('aria-pressed', +x.dataset.r === rounds); x.disabled = client; });
+  // 預估時間：4 人 25 回合約 30 分鐘，人越多越久
+  $('#rounds').querySelectorAll('button').forEach(x => { x.setAttribute('aria-pressed', +x.dataset.r === rounds); x.disabled = client; const sm = x.querySelector('small'); if (sm) sm.textContent = `約 ${Math.max(10, Math.round(+x.dataset.r * Math.max(2, nSeats) * .3 / 5) * 5)} 分鐘`; });
   const mp = client && NET.lobby && MAPS[NET.lobby.map] ? NET.lobby.map : MAP;
   $('#maps').innerHTML = MAP_KEYS.map(k => `<button data-map="${k}" aria-pressed="${k === mp}" ${client ? 'disabled' : ''}>${MAPS[k].name}<small>${MAPS[k].blurb}</small></button>`).join('');
   $('#maps').querySelectorAll('[data-map]').forEach(b => b.onclick = () => { if (b.dataset.map !== MAP) { buildBoard(b.dataset.map); beep(700, .04); } renderSetup(); sendLobby(); });
@@ -1633,11 +1723,16 @@ function renderSetup() {
 renderSetup();
 $('#rounds').querySelectorAll('button').forEach(b => b.onclick = () => { maxRounds = +b.dataset.r; renderSetup(); sendLobby(); });
 
+// 同一格的站位：4 人以內站四個角，5～8 人排成 3×3 去掉中間
 const OFFS = [[-.8, -.8], [.8, -.8], [-.8, .8], [.8, .8]];
-function spot(p, i) { const [x, z] = tilePos(i); return [x + OFFS[p.seat][0], z + OFFS[p.seat][1]]; }
+const OFFS8 = [[-.95, -.95], [.95, -.95], [-.95, .95], [.95, .95], [0, -1.05], [0, 1.05], [-1.05, 0], [1.05, 0]];
+function spot(p, i) { const [x, z] = tilePos(i), o = (G.players.length > 4 ? OFFS8 : OFFS)[p.seat]; return [x + o[0], z + o[1]]; }
 
 $('#btn-start').onclick = () => {
-  if (NET.mode === 'client' || roster.length < 2) return;
+  if (NET.mode === 'client') return;
+  fitRoster(true);
+  if (roster.length < 2) return;
+  renderSetup(); sendLobby();
   beep(660, .05);
   const cfg = { players: roster.map(r => ({ ci: r.ci, ctl: r.mode === 'ai' ? 'ai' : r.mode === 'remote' ? 'r:' + r.cid : 'local', nick: r.nick || '' })), rounds: maxRounds, map: MAP, t0: Date.now() };
   if (NET.mode === 'host') { NET.cfg = cfg; NET.started = true; NET.named.emit('start', cfg).catch(() => { }); }
@@ -1656,6 +1751,7 @@ function startGame(cfg) {
   NET.started = true;
   players.forEach(p => {
     p.mesh = makeToken(p.char); scene.add(p.mesh);
+    if (players.length > 4) p.mesh.scale.setScalar(.8);   // 人多時棋子小一點，才站得下
     const [x, z] = spot(p, 0); p.mesh.position.set(x, 0, z);
     p.bubble = document.createElement('div'); p.bubble.className = 'bubble'; p.bubble.style.setProperty('--bc', p.char.color); $('#bubbles').append(p.bubble);
     if (NET.mode !== 'client') shuffle(ATTACK_KEYS).slice(0, 3).forEach(id => p.items.push(id));
@@ -3326,7 +3422,7 @@ function scheduleState() { if (stTimer) return; stTimer = setTimeout(() => { stT
 function sendState() { if (NET.mode === 'host' && NET.named && NET.started) NET.named.emit('state', encodeState()).catch(() => { }); }
 function sendLobby() {
   if (NET.mode !== 'host' || !NET.named || NET.started) return;
-  NET.named.emit('lobby', { slots: roster.map(r => ({ ci: r.ci, mode: r.mode, nick: r.nick || '', cid: r.cid || '' })), rounds: maxRounds, map: MAP }).catch(() => { });
+  NET.named.emit('lobby', { slots: roster.map(r => ({ ci: r.ci, mode: r.mode, nick: r.nick || '', cid: r.cid || '' })), rounds: maxRounds, map: MAP, seats }).catch(() => { });
 }
 
 // ---- 房主：請某位連線玩家做決定 ----
@@ -3672,7 +3768,7 @@ function hostPeers() {
     if (roster.some(r => r.mode === 'remote' && r.cid === x.presence.cid)) continue;
     const t = roster.findIndex(r => r.ci === ci);
     if (t >= 0) { if (roster[t].mode !== 'ai') continue; roster.splice(t, 1); }
-    if (roster.length >= 4) { const ai = roster.map(r => r.mode).lastIndexOf('ai'); if (ai < 0) continue; roster.splice(ai, 1); }
+    if (roster.length >= seats) { const ai = roster.map(r => r.mode).lastIndexOf('ai'); if (ai >= 0) roster.splice(ai, 1); else if (seats < MAX_SEATS) seats++; else continue; }
     roster.push({ ci, mode: 'remote', cid: x.presence.cid, nick: String(x.presence.nick || '朋友').slice(0, 10) });
   }
   renderSetup(); sendLobby();
@@ -3704,8 +3800,8 @@ async function joinRoom() {
   try { sessionStorage.setItem('ds-room', code); localStorage.setItem('ds-nick', NET.nick); } catch (e) { }
   try { history.replaceState(null, '', location.pathname + '?room=' + code); } catch (e) { }
   NET.named.presence({ cid: NET.cid, nick: NET.nick, role: 'guest', pick: -1 }).catch(() => { });
-  NET.named.on('lobby', m => { if (fromHost(m) && m.data && Array.isArray(m.data.slots)) { NET.lobby = { slots: m.data.slots.slice(0, 4).filter(x => CHARS[x.ci]), rounds: +m.data.rounds || 25, map: MAPS[m.data.map] ? m.data.map : 'tpe' }; if (NET.lobby.map !== MAP) buildBoard(NET.lobby.map); renderSetup(); } });
-  NET.named.on('start', m => { if (!fromHost(m) || NET.started || !m.data || !Array.isArray(m.data.players)) return; const cfg = { ...m.data, players: m.data.players.filter(x => CHARS[x.ci]).slice(0, 4) }; startGame(cfg); renderOnline(); });
+  NET.named.on('lobby', m => { if (fromHost(m) && m.data && Array.isArray(m.data.slots)) { NET.lobby = { slots: m.data.slots.slice(0, MAX_SEATS).filter(x => CHARS[x.ci]), seats: clamp(+m.data.seats || 4, 2, MAX_SEATS), rounds: +m.data.rounds || 25, map: MAPS[m.data.map] ? m.data.map : 'tpe' }; if (NET.lobby.map !== MAP) buildBoard(NET.lobby.map); renderSetup(); } });
+  NET.named.on('start', m => { if (!fromHost(m) || NET.started || !m.data || !Array.isArray(m.data.players)) return; const cfg = { ...m.data, players: m.data.players.filter(x => CHARS[x.ci]).slice(0, MAX_SEATS) }; startGame(cfg); renderOnline(); });
   NET.named.on('state', m => { if (fromHost(m)) applyState(m.data); });
   NET.named.on('fx', m => { if (fromHost(m) && NET.started) playFx(m.data); });
   NET.named.on('req', m => { if (fromHost(m) && m.data && m.data.to === NET.cid && NET.started) handleReq(m.data); });
