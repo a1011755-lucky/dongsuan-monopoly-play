@@ -361,7 +361,7 @@ button.hot{background:var(--hot);color:#fff}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.10.1/mqtt.min.js"></script>
 <script>
 (() => {
 'use strict';
@@ -3645,7 +3645,7 @@ function genCode() { const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; return Array.f
 function renderOnline() {
   const st = $('#net-status'), info = $('#room-info'), off = NET.mode === 'off';
   ['#btn-host', '#btn-join', '#code-in', '#nick'].forEach(s => $(s).disabled = !roomApi || !off);
-  const peerMode = roomApi && roomApi.isPeer;
+  const peerMode = roomApi && roomApi.isRelay;
   if (roomApi === undefined) st.textContent = '連線功能準備中…';
   else if (!roomApi) st.textContent = '這個畫面不能線上連線。同一台電腦輪流玩、跟電腦對打都可以：上面選好角色，「玩家」可以設好幾個。';
   else if (off) st.textContent = peerMode
@@ -3661,81 +3661,89 @@ function renderOnline() {
     const bi = $('#btn-invite'); if (bi) bi.onclick = copyInvite;
   }
 }
-/* ---------- 不用帳號的連線：PeerJS（手機、電腦直接互連，房主的瀏覽器當中繼站） ---------- */
-// 介面跟 Claude 的 room 一樣（emit／on／presence／peers／onPeers），上面的遊戲程式不用改
-function peerRoomApi() {
-  return {
-    isPeer: true,
-    join: (name, role) => new Promise((resolve, reject) => {
-      const hostId = 'dongsuan-' + name, handlers = {}, peerFns = [];
-      let me = null, myPres = {}, list = [], lastIds = new Set();
-      const conns = new Map();   // 房主：對方 id → { conn, presence }
+/* ---------- 不用帳號的連線：經過免費公用轉發伺服器（MQTT over WebSocket） ----------
+   每個人都連到同一台轉發伺服器、訂閱同一個房間頻道，任何能上網的網路都連得到（不像點對點會被手機網路擋）。
+   介面跟 Claude 的 room 一樣（emit／on／presence／peers／onPeers），上面的遊戲程式不用改。
+   伺服器有三台備援：房主用第一台連得上的，邀請連結帶 b=第幾台；朋友找不到房主會自動換下一台找。 */
+const RELAYS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt', 'wss://test.mosquitto.org:8081/mqtt'];
+function relayRoomApi() {
+  const api = {
+    isRelay: true, broker: 0,
+    join: async (name, role) => {
+      const me = 'ds' + Math.random().toString(36).slice(2, 10), base = 'dongsuan-monopoly/v1/' + name;
+      const handlers = {}, peerFns = [], others = new Map();   // 別人的 id → { presence, last }
+      let myPres = {}, lastIds = new Set([me]), client = null, hostSeen = null;
+      const send = (o, qos = 1) => { if (client && client.connected) client.publish(base, JSON.stringify({ ...o, f: me }), { qos }); };
       const fire = (topic, data, from) => (handlers[topic] || []).forEach(h => { try { h({ topic, data, peer: from, sameTab: from === me, isMe: from === me }); } catch (e) { } });
-      const snap = () => role === 'host'
-        ? [{ peer: me, sameTab: true, presence: myPres }, ...[...conns].map(([id, c]) => ({ peer: id, sameTab: false, presence: c.presence }))]
-        : list.map(x => ({ peer: x.peer, sameTab: x.peer === me, presence: x.peer === me ? myPres : x.presence }));
+      const snap = () => [{ peer: me, sameTab: true, presence: myPres }, ...[...others].map(([id, o]) => ({ peer: id, sameTab: false, presence: o.presence }))];
       const notify = () => {
         const ps = snap(), ids = new Set(ps.map(x => x.peer));
         const joined = ps.filter(x => !lastIds.has(x.peer)), left = [...lastIds].filter(id => !ids.has(id)).map(id => ({ peer: id }));
         lastIds = ids; peerFns.forEach(f => { try { f({ peers: ps, joined, left, updated: [] }); } catch (e) { } });
       };
-      const shareList = () => { const msg = { t: 'peers', list: snap().map(x => ({ peer: x.peer, presence: x.presence })) }; conns.forEach(c => { try { c.conn.send(msg); } catch (e) { } }); };
-      const api = {
-        name, conn: null,
-        emit: async (topic, data) => {
-          const d = data === undefined ? null : JSON.parse(JSON.stringify(data));
-          if (role === 'host') conns.forEach(c => { try { c.conn.send({ t: 'emit', topic, data: d, from: me }); } catch (e) { } });
-          else if (api.conn && api.conn.open) api.conn.send({ t: 'emit', topic, data: d });
-          fire(topic, d, me);
-        },
+      const onMsg = (t, buf) => {
+        let m; try { m = JSON.parse(String(buf)); } catch (e) { return; }
+        if (!m || typeof m !== 'object' || typeof m.f !== 'string' || m.f === me) return;
+        if (m.t === 'bye') { if (others.delete(m.f)) notify(); return; }
+        if (m.t === 'hello') send({ t: 'pres', p: myPres }, 0);   // 新來的人打招呼，大家回報自己是誰
+        if (m.t === 'pres' || m.t === 'hello') {
+          if (!m.p || typeof m.p !== 'object') return;
+          const o = others.get(m.f), changed = !o || JSON.stringify(o.presence) !== JSON.stringify(m.p);
+          others.set(m.f, { presence: m.p, last: Date.now() });
+          if (m.p.role === 'host' && hostSeen) hostSeen();
+          if (changed) notify();
+          return;
+        }
+        if (m.t === 'emit' && typeof m.topic === 'string') { const o = others.get(m.f); if (o) o.last = Date.now(); fire(m.topic, m.data, m.f); }
+      };
+      const connectTo = url => new Promise((res, rej) => {
+        let settled = false;
+        const c = mqtt.connect(url, { clientId: me, clean: true, keepalive: 20, connectTimeout: 7000, reconnectPeriod: 0, will: { topic: base, payload: JSON.stringify({ t: 'bye', f: me }), qos: 0, retain: false } });
+        const fail = e => { if (settled) return; settled = true; try { c.end(true); } catch (x) { } rej(e); };
+        c.once('connect', () => c.subscribe(base, { qos: 1 }, err => { if (err) return fail(err); if (!settled) { settled = true; res(c); } }));
+        c.on('error', fail);
+        setTimeout(() => fail(new Error('timeout')), 9000);
+      });
+      // 房主照順序找第一台連得上的；朋友先試邀請連結指定的那台
+      const first = clamp(api.broker | 0, 0, RELAYS.length - 1);
+      const order = [first, ...RELAYS.map((u, k) => k).filter(k => k !== first)];
+      for (const k of order) {
+        try { client = await connectTo(RELAYS[k]); } catch (e) { client = null; continue; }
+        client.on('message', onMsg);
+        if (role === 'host') { api.broker = k; break; }
+        send({ t: 'hello', p: myPres }, 0);
+        const found = await new Promise(r => { hostSeen = () => r(true); setTimeout(() => r(false), 6000); });
+        hostSeen = null;
+        if (found) { api.broker = k; break; }
+        try { client.end(true); } catch (e) { } client = null; others.clear();
+      }
+      if (!client) throw new Error(role === 'host' ? 'no relay' : 'no host');
+      // 斷線自動重連，重連後重新打招呼
+      client.options.reconnectPeriod = 2000;
+      client.on('connect', () => send({ t: 'hello', p: myPres }, 0));
+      setInterval(() => {
+        send({ t: 'pres', p: myPres }, 0);
+        const now = Date.now(); let gone = false;
+        others.forEach((o, id) => { if (now - o.last > 12000) { others.delete(id); gone = true; } });
+        if (gone) notify();
+      }, 3000);
+      addEventListener('pagehide', () => send({ t: 'bye' }, 0));
+      return {
+        name,
+        emit: async (topic, data) => { const d = data === undefined ? null : JSON.parse(JSON.stringify(data)); send({ t: 'emit', topic, data: d }); fire(topic, d, me); },
         on: (topic, h) => { (handlers[topic] = handlers[topic] || []).push(h); return () => { }; },
-        presence: async patch => {
-          myPres = { ...myPres, ...patch };
-          if (role === 'host') { shareList(); notify(); } else if (api.conn && api.conn.open) api.conn.send({ t: 'pres', p: myPres });
-        },
+        presence: async patch => { myPres = { ...myPres, ...patch }; send({ t: 'pres', p: myPres }); notify(); },
         peers: snap,
         onPeers: f => { peerFns.push(f); setTimeout(() => f({ peers: snap(), joined: snap(), left: [], updated: [] }), 0); return () => { }; },
-        connected: () => role === 'host' ? !peer.disconnected : !!(api.conn && api.conn.open),
-        leave: async () => { try { peer.destroy(); } catch (e) { } },
+        connected: () => !!(client && client.connected),
+        leave: async () => { send({ t: 'bye' }, 0); try { client.end(); } catch (e) { } },
       };
-      const peer = role === 'host' ? new Peer(hostId) : new Peer();
-      const timer = setTimeout(() => { reject(new Error('timeout')); try { peer.destroy(); } catch (e) { } }, 15000);
-      peer.on('error', e => { if (!me || role !== 'host') { clearTimeout(timer); reject(e); } });
-      peer.on('open', id => {
-        me = id;
-        if (role === 'host') {
-          peer.on('connection', conn => {
-            conn.on('open', () => { conns.set(conn.peer, { conn, presence: {} }); shareList(); notify(); });
-            conn.on('data', msg => {
-              const c = conns.get(conn.peer); if (!c || !msg || typeof msg !== 'object') return;
-              if (msg.t === 'pres' && msg.p && typeof msg.p === 'object') { c.presence = msg.p; shareList(); notify(); }
-              else if (msg.t === 'emit' && typeof msg.topic === 'string') {
-                fire(msg.topic, msg.data, conn.peer);
-                conns.forEach((o, oid) => { if (oid !== conn.peer) try { o.conn.send({ t: 'emit', topic: msg.topic, data: msg.data, from: conn.peer }); } catch (e) { } });
-              }
-            });
-            const drop = () => { if (conns.delete(conn.peer)) { shareList(); notify(); } };
-            conn.on('close', drop); conn.on('error', drop);
-          });
-          peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) { } });
-          clearTimeout(timer); resolve(api);
-        } else {
-          const conn = peer.connect(hostId, { reliable: true });
-          api.conn = conn;
-          conn.on('open', () => { clearTimeout(timer); conn.send({ t: 'pres', p: myPres }); resolve(api); });
-          conn.on('data', msg => {
-            if (!msg || typeof msg !== 'object') return;
-            if (msg.t === 'peers' && Array.isArray(msg.list)) { list = msg.list.filter(x => x && typeof x.peer === 'string').map(x => ({ peer: x.peer, presence: x.presence && typeof x.presence === 'object' ? x.presence : {} })); notify(); }
-            else if (msg.t === 'emit' && typeof msg.topic === 'string') fire(msg.topic, msg.data, String(msg.from || ''));
-          });
-          conn.on('close', () => { list = list.filter(x => x.peer === me); notify(); });
-        }
-      });
-    }),
+    },
   };
+  return api;
 }
 // 邀請連結：公開網站的網址後面加 ?room=代碼，朋友點開就自動帶入代碼
-function inviteLink() { return location.origin + location.pathname + '?room=' + NET.code; }
+function inviteLink() { return location.origin + location.pathname + '?room=' + NET.code + (roomApi && roomApi.isRelay && roomApi.broker ? '&b=' + roomApi.broker : ''); }
 async function copyInvite() {
   const link = inviteLink();
   try { await navigator.clipboard.writeText(link); $('#btn-invite').textContent = '✅ 已複製，貼到 LINE 給朋友'; }
@@ -3793,12 +3801,12 @@ async function joinRoom() {
   if (!roomApi || NET.mode !== 'off') return;
   const code = $('#code-in').value.trim().toUpperCase();
   if (!/^[A-Z0-9]{4}$/.test(code)) { $('#net-status').textContent = '房間代碼是 4 個英文字母或數字，請再確認一次。'; return; }
-  $('#net-status').textContent = '連線中…';
-  try { NET.named = await roomApi.join(ROOM_PREFIX + code.toLowerCase(), 'guest'); } catch (e) { $('#net-status').textContent = '加入失敗：找不到這個房間，請確認代碼、確認房主的網頁還開著；手機網路連不上的話，換成 Wi-Fi 試試。'; return; }
+  $('#net-status').textContent = '連線中…（最多約 20 秒）';
+  try { NET.named = await roomApi.join(ROOM_PREFIX + code.toLowerCase(), 'guest'); } catch (e) { $('#net-status').textContent = '加入失敗：找不到這個房間。請確認代碼正確、房主的網頁還開著，再按一次「加入房間」。'; return; }
   NET.mode = 'client'; NET.code = code; NET.nick = myNick();
   // 記住這個房間：手機切到 LINE 再回來、網頁被重新整理時，會自動回到同一局
   try { sessionStorage.setItem('ds-room', code); localStorage.setItem('ds-nick', NET.nick); } catch (e) { }
-  try { history.replaceState(null, '', location.pathname + '?room=' + code); } catch (e) { }
+  try { history.replaceState(null, '', location.pathname + '?room=' + code + (roomApi.isRelay && roomApi.broker ? '&b=' + roomApi.broker : '')); } catch (e) { }
   NET.named.presence({ cid: NET.cid, nick: NET.nick, role: 'guest', pick: -1 }).catch(() => { });
   NET.named.on('lobby', m => { if (fromHost(m) && m.data && Array.isArray(m.data.slots)) { NET.lobby = { slots: m.data.slots.slice(0, MAX_SEATS).filter(x => CHARS[x.ci]), seats: clamp(+m.data.seats || 4, 2, MAX_SEATS), rounds: +m.data.rounds || 25, map: MAPS[m.data.map] ? m.data.map : 'tpe' }; if (NET.lobby.map !== MAP) buildBoard(NET.lobby.map); renderSetup(); } });
   NET.named.on('start', m => { if (!fromHost(m) || NET.started || !m.data || !Array.isArray(m.data.players)) return; const cfg = { ...m.data, players: m.data.players.filter(x => CHARS[x.ci]).slice(0, MAX_SEATS) }; startGame(cfg); renderOnline(); });
@@ -3820,11 +3828,13 @@ $('#code-in').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom
 renderOnline();
 (async () => {
   try { roomApi = window.claude && typeof window.claude.use === 'function' ? await window.claude.use('room') : null; } catch (e) { roomApi = null; }
-  // 不在 Claude 裡（公開網站）就改用 PeerJS 直接連線
-  if (!roomApi && window.Peer) roomApi = peerRoomApi();
+  // 不在 Claude 裡（公開網站）就改用公用轉發伺服器連線
+  if (!roomApi && window.mqtt) roomApi = relayRoomApi();
   renderOnline();
   // 從邀請連結進來：自動帶入房間代碼，捲到連線區
   const m = /[?&]room=([A-Za-z0-9]{4})/.exec(location.search);
+  const bm = /[?&]b=(d)/.exec(location.search);
+  if (bm && roomApi && roomApi.isRelay) roomApi.broker = +bm[1];
   if (m && roomApi && NET.mode === 'off') {
     $('#code-in').value = m[1].toUpperCase();
     $('#net-status').textContent = `朋友邀請你加入房間 ${m[1].toUpperCase()}！輸入暱稱，按「加入房間」。`;
