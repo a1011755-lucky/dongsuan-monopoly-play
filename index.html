@@ -375,6 +375,21 @@ const FONT = '"Chiron GoRound TC","Noto Sans TC","Microsoft JhengHei",sans-serif
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+/* ---------- 背景計時器 ----------
+   分頁在背景（縮小視窗、切到別的分頁）時，瀏覽器會把 setTimeout 拖慢到每秒、甚至每分鐘一次，房主的遊戲就會卡住、朋友以為房主斷線。
+   改用 Worker 計時就不受影響；Worker 不能用（被瀏覽器擋）就退回一般計時器。 */
+const BGT = (() => {
+  let w = null, ok = false, seq = 0; const cbs = new Map();
+  try {
+    w = new Worker(URL.createObjectURL(new Blob(['const t={};onmessage=e=>{const[d,id,ms]=e.data;if(d==="s")t[id]=setTimeout(()=>{delete t[id];postMessage(id)},ms);else if(d==="p")postMessage(0)}'], { type: 'text/javascript' })));
+    w.onmessage = e => { if (e.data === 0) { ok = true; return; } const f = cbs.get(e.data); cbs.delete(e.data); if (f) f(); };
+    w.postMessage(['p']);
+  } catch (e) { w = null; }
+  const timeout = (fn, ms) => { if (!ok) return setTimeout(fn, ms); const id = ++seq; cbs.set(id, fn); w.postMessage(['s', id, Math.max(0, ms)]); };
+  const interval = (fn, ms) => { const loop = () => { try { fn(); } catch (e) { } timeout(loop, ms); }; timeout(loop, ms); };
+  return { timeout, interval };
+})();
+
 /* ---------- 線上連線狀態 ---------- */
 // 房主的瀏覽器跑整局遊戲；其他人只看同步畫面，輪到自己時才出現按鈕。
 const NET = { mode: 'off', named: null, code: '', cid: '', nick: '', pick: -1, lobby: null, started: false, cfg: null,
@@ -1350,7 +1365,7 @@ const BUILD = [
 const tweens = [];
 const speed = () => (G && G.fast ? .4 : 1);
 function tween(ms, fn) { return new Promise(res => tweens.push({ t0: performance.now(), dur: Math.max(1, ms * speed()), fn, res })); }
-const wait = ms => new Promise(r => setTimeout(r, ms * speed()));
+const wait = ms => new Promise(r => BGT.timeout(r, ms * speed()));
 
 /* ---------- 鏡頭與點選 ---------- */
 const cam = { target: new THREE.Vector3(), az: .6, userAz: 0, zoom: 1, overview: true, follow: null, spin: true, shake: 0, look: null };
@@ -1448,7 +1463,7 @@ function stepTweens(now) {
   }
 }
 // 視窗被縮小或切到別的 App 時瀏覽器會停掉動畫；改用計時器繼續推進，遊戲才不會整局卡住
-setInterval(() => { const now = performance.now(); if (now - last > 300) stepTweens(now); }, 200);
+BGT.interval(() => { const now = performance.now(); if (now - last > 300) stepTweens(now); }, 200);
 function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now; const t = now / 1000;
   stepTweens(now);
@@ -3638,7 +3653,11 @@ function applyState(s) {
 }
 
 // ---- 開房間／加入房間 ----
-const fromHost = m => { const h = NET.named && NET.named.peers().find(x => x.presence && x.presence.role === 'host'); return !!h && h.peer === m.peer; };
+const fromHost = m => {
+  const h = NET.named && NET.named.peers().find(x => x.presence && x.presence.role === 'host');
+  if (h) NET.hostPeer = h.peer;   // 記住房主；房主網路閃斷、暫時不在名單上，也照收他的訊息
+  return !!NET.hostPeer && m.peer === NET.hostPeer;
+};
 try { const n = localStorage.getItem('ds-nick'); if (n) $('#nick').value = n; } catch (e) { }
 function myNick() { const v = $('#nick').value.trim().slice(0, 10); return v || '選民' + (10 + rnd(90)); }
 function genCode() { const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; return Array.from({ length: 4 }, () => A[rnd(A.length)]).join(''); }
@@ -3672,8 +3691,10 @@ function relayRoomApi() {
     join: async (name, role) => {
       const me = 'ds' + Math.random().toString(36).slice(2, 10), base = 'dongsuan-monopoly/v1/' + name;
       const handlers = {}, peerFns = [], others = new Map();   // 別人的 id → { presence, last }
-      let myPres = {}, lastIds = new Set([me]), client = null, hostSeen = null;
-      const send = (o, qos = 1) => { if (client && client.connected) client.publish(base, JSON.stringify({ ...o, f: me }), { qos }); };
+      let myPres = {}, lastIds = new Set([me]), client = null, hostSeen = null, mySeq = 0;
+      const PRUNE = 30000;                 // 30 秒完全沒消息才算離線
+      const seenMsg = new Set();           // 轉發伺服器偶爾會重送同一則，用編號去掉重複的
+      const send = (o, qos = 1) => { if (client && client.connected) client.publish(base, JSON.stringify({ ...o, f: me, i: ++mySeq }), { qos }); };
       const fire = (topic, data, from) => (handlers[topic] || []).forEach(h => { try { h({ topic, data, peer: from, sameTab: from === me, isMe: from === me }); } catch (e) { } });
       const snap = () => [{ peer: me, sameTab: true, presence: myPres }, ...[...others].map(([id, o]) => ({ peer: id, sameTab: false, presence: o.presence }))];
       const notify = () => {
@@ -3684,7 +3705,9 @@ function relayRoomApi() {
       const onMsg = (t, buf) => {
         let m; try { m = JSON.parse(String(buf)); } catch (e) { return; }
         if (!m || typeof m !== 'object' || typeof m.f !== 'string' || m.f === me) return;
-        if (m.t === 'bye') { if (others.delete(m.f)) notify(); return; }
+        if (m.i) { const key = m.f + ':' + m.i; if (seenMsg.has(key)) return; seenMsg.add(key); if (seenMsg.size > 3000) seenMsg.delete(seenMsg.values().next().value); }
+        // 斷線通知：可能只是網路閃一下，5 秒內沒回來才真的移出名單
+        if (m.t === 'bye') { const o = others.get(m.f); if (o) o.last = Math.min(o.last, Date.now() - PRUNE + 5000); return; }
         if (m.t === 'hello') send({ t: 'pres', p: myPres }, 0);   // 新來的人打招呼，大家回報自己是誰
         if (m.t === 'pres' || m.t === 'hello') {
           if (!m.p || typeof m.p !== 'object') return;
@@ -3711,22 +3734,31 @@ function relayRoomApi() {
         try { client = await connectTo(RELAYS[k]); } catch (e) { client = null; continue; }
         client.on('message', onMsg);
         if (role === 'host') { api.broker = k; break; }
-        send({ t: 'hello', p: myPres }, 0);
-        const found = await new Promise(r => { hostSeen = () => r(true); setTimeout(() => r(false), 6000); });
-        hostSeen = null;
+        // 每 1.5 秒打一次招呼，最多等 7 秒房主回應（招呼可能在路上掉了）
+        const found = await new Promise(r => {
+          let n = 0; const hi = () => { if (!hostSeen) return; send({ t: 'hello', p: myPres }, 0); if (++n < 5) setTimeout(hi, 1500); };
+          hostSeen = () => { hostSeen = null; r(true); }; hi();
+          setTimeout(() => { if (hostSeen) { hostSeen = null; r(false); } }, 7000);
+        });
         if (found) { api.broker = k; break; }
         try { client.end(true); } catch (e) { } client = null; others.clear();
       }
       if (!client) throw new Error(role === 'host' ? 'no relay' : 'no host');
       // 斷線自動重連，重連後重新打招呼
       client.options.reconnectPeriod = 2000;
-      client.on('connect', () => send({ t: 'hello', p: myPres }, 0));
-      setInterval(() => {
+      // 重連後一定要重新訂閱房間頻道（不然只能送、收不到別人的訊息），再跟大家打招呼
+      client.on('connect', () => client.subscribe(base, { qos: 1 }, () => send({ t: 'hello', p: myPres }, 0)));
+      BGT.interval(() => {
         send({ t: 'pres', p: myPres }, 0);
         const now = Date.now(); let gone = false;
-        others.forEach((o, id) => { if (now - o.last > 12000) { others.delete(id); gone = true; } });
+        others.forEach((o, id) => { if (now - o.last > PRUNE) { others.delete(id); gone = true; } });
         if (gone) notify();
       }, 3000);
+      // 手機切回來：連線斷了就馬上重連，並跟大家打招呼
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) return;
+        if (!client.connected) { try { client.reconnect(); } catch (e) { } } else send({ t: 'hello', p: myPres }, 0);
+      });
       addEventListener('pagehide', () => send({ t: 'bye' }, 0));
       return {
         name,
@@ -3762,7 +3794,7 @@ async function hostRoom() {
     if (NET.started && ch.joined.some(x => !x.sameTab)) { NET.named.emit('start', NET.cfg).catch(() => { }); sendState(); NET.reqs.forEach(e => sendReq(e.r)); }
     renderOnline();
   });
-  setInterval(hostBeat, 3000);
+  BGT.interval(hostBeat, 3000);
   renderOnline(); renderSetup(); sendLobby();
 }
 // 選角階段：把朋友選的角色放進名單
@@ -3785,14 +3817,25 @@ function hostPeers() {
 function hostBeat() {
   if (!NET.started) { sendLobby(); return; }
   if (G.over) return;
+  // 每次都補送開局設定：漏收「開始」的朋友也能進到遊戲（已經在玩的會忽略）
+  NET.named.emit('start', NET.cfg).catch(() => { });
   sendState();
   const now = Date.now(), here = new Set(NET.named.peers().map(x => x.presence && x.presence.cid));
-  G.players.forEach(p => { if (isRemote(p) && here.has(p.ctl.slice(2))) NET.lastSeen[p.ctl] = now; });
+  G.players.forEach(p => {
+    const cid = p.awayCid || (isRemote(p) ? p.ctl.slice(2) : ''); if (!cid) return;
+    if (!NET.lastSeen[cid]) NET.lastSeen[cid] = now;
+    if (!here.has(cid)) return;
+    NET.lastSeen[cid] = now;
+    // 斷線被電腦代打的朋友回來了：換回他自己操作
+    if (p.awayCid && !p.out) { p.ctl = 'r:' + cid; p.isAI = false; delete p.awayCid; caption(`${p.char.name} 回來了！`, `換回 ${p.nick || '朋友'} 自己操作`, 1500); }
+  });
   NET.reqs.forEach(e => {
-    if (now - (NET.lastSeen[e.p.ctl] || now) > 45000) {
+    const cid = e.r.to;
+    if (now - (NET.lastSeen[cid] || now) > 60000) {
+      // 輪到他卻離線超過 1 分鐘：先由電腦代打，回來後自動換回
       NET.reqs.delete(e.r.id);
-      e.p.isAI = true; e.p.ctl = 'ai';
-      caption(`${e.p.char.name} 斷線了`, '改由電腦代打', 1500);
+      e.p.isAI = true; e.p.awayCid = cid; e.p.ctl = 'ai';
+      caption(`${e.p.char.name} 斷線了`, '先由電腦代打，回來後自動換回', 1600);
       e.resolve(DEFAULT_ANSWER[e.r.kind]);
     } else sendReq(e.r);
   });
