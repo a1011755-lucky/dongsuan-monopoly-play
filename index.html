@@ -49,6 +49,7 @@ button.hot{background:var(--hot);color:#fff}
 .pc{display:flex;gap:10px;align-items:center;padding:8px 10px;background:var(--paper);border:3px solid var(--ink);border-radius:14px;box-shadow:3px 3px 0 var(--ink);transition:transform .2s}
 .pc.active{transform:translateX(6px);box-shadow:5px 5px 0 var(--c);background:#fff}
 .pc.out{opacity:.4;filter:grayscale(1)}
+.av.face{background-size:cover;background-position:center;color:transparent;background-color:#fff}
 .av{flex:none;width:40px;height:40px;border-radius:50%;background:var(--c);color:#fff;border:3px solid var(--ink);display:grid;place-items:center;font-family:var(--display);font-weight:900;font-size:18px;letter-spacing:-.04em}
 .pi{min-width:0;flex:1}
 .pi .nm{display:flex;gap:6px;align-items:baseline;font-family:var(--display);font-weight:900;font-size:15px}
@@ -986,6 +987,42 @@ function loadGLB(url) {
     .then(j => { const s = atob(j.glb), b = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i); return b.buffer; });
   return glbCache[src].then(buf => new Promise((res, rej) => gltf.parse(buf, 'models/', res, rej)));
 }
+/* ---------- Q 版大頭照：從 models/portraits.jpg 切出每個人的臉（圓心 x、y、半徑） ---------- */
+const PORTRAIT = {
+  ko: [290, 215, 125], lien: [645, 205, 120], ma: [985, 195, 120], tsai: [1330, 235, 125], gz: [1705, 205, 120],
+  kc: [235, 715, 120], '3q': [565, 695, 120], su: [890, 695, 115], chiang: [1210, 640, 120], puma: [1520, 695, 120], soong: [1805, 725, 115],
+};
+const faceURL = {};
+let portraitImg = null;
+function loadPortraits() {
+  return portraitImg || (portraitImg = new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      // 先做好每個人的圓形頭像（白邊＋黑框），給 3D 大頭和玩家卡共用
+      Object.entries(PORTRAIT).forEach(([id, [cx, cy, r]]) => {
+        const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
+        x.beginPath(); x.arc(128, 128, 122, 0, 7); x.fillStyle = '#1d1633'; x.fill();
+        x.beginPath(); x.arc(128, 128, 116, 0, 7); x.fillStyle = '#ffffff'; x.fill();
+        x.save(); x.beginPath(); x.arc(128, 128, 108, 0, 7); x.clip();
+        x.drawImage(img, cx - r, cy - r, r * 2, r * 2, 20, 20, 216, 216); x.restore();
+        faceURL[id] = cv.toDataURL('image/png');
+      });
+      res(img); if (G.players.length) updateHUD(); renderSetup();
+    };
+    img.onerror = () => res(null);
+    img.src = 'models/portraits.jpg';
+  }));
+}
+const faceTexCache = {};
+async function faceTexture(id) {
+  if (!PORTRAIT[id]) return null;
+  await loadPortraits();
+  if (!faceURL[id]) return null;
+  if (!faceTexCache[id]) { const t = new THREE.TextureLoader().load(faceURL[id]); t.encoding = THREE.sRGBEncoding; faceTexCache[id] = t; }
+  return faceTexCache[id];
+}
+// 頭像 HTML：有大頭照就用照片，沒有就用字
+const avatar = c => faceURL[c.id] ? `<div class="av face" style="background-image:url(${faceURL[c.id]})">${c.glyph}</div>` : `<div class="av">${c.glyph}</div>`;
 async function upgradeToken(p) {
   if (!gltf || p.model || !p.mesh) return;
   const [name, acc] = MODEL[p.char.id] || ['male-a', []];
@@ -997,12 +1034,19 @@ async function upgradeToken(p) {
   const shirt = new THREE.Color('#ffffff').lerp(new THREE.Color(p.char.color), .45);
   m.traverse(o => { if (o.isMesh) { o.castShadow = true; if (o.name === 'body-mesh') { o.material = o.material.clone(); o.material.color = shirt; } } });
   const head = m.getObjectByName('head');
-  if (head && acc.includes('glasses')) loadGLB('models/aid-glasses.glb').then(x => { x.scene.position.set(0, .1, .1); head.add(x.scene); }).catch(() => { });
+  // 有 Q 版大頭照的角色：把模型原本的頭換成大頭貼（永遠面向鏡頭，跟著頭的骨架一起動）
+  const face = await faceTexture(p.char.id);
+  if (face && head) {
+    const hm = m.getObjectByName('head-mesh'); if (hm) hm.visible = false;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: face, transparent: true }));
+    sp.scale.set(2.05 / m.scale.x, 2.05 / m.scale.y, 1); sp.position.set(0, .24, .02); head.add(sp);
+  }
+  if (!face && head && acc.includes('glasses')) loadGLB('models/aid-glasses.glb').then(x => { x.scene.position.set(0, .1, .1); head.add(x.scene); }).catch(() => { });
   if (acc.includes('cane')) loadGLB('models/aid-cane.glb').then(x => { x.scene.position.set(.3, 0, .12); m.add(x.scene); }).catch(() => { });
-  if (head && acc.includes('headband')) { const b = new THREE.Mesh(new THREE.TorusGeometry(.19, .025, 8, 24), M('#ffffff')); b.rotation.x = Math.PI / 2; b.position.set(0, .24, 0); head.add(b); }
+  if (!face && head && acc.includes('headband')) { const b = new THREE.Mesh(new THREE.TorusGeometry(.19, .025, 8, 24), M('#ffffff')); b.rotation.x = Math.PI / 2; b.position.set(0, .24, 0); head.add(b); }
   if (head && acc.includes('shine')) {
     const s = new THREE.Mesh(new THREE.OctahedronGeometry(.05), new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#fff59d', emissiveIntensity: 1 }));
-    s.position.set(.1, .36, .05); head.add(s); anim.push(t => { s.rotation.y = t * 4; s.scale.setScalar(.7 + Math.abs(Math.sin(t * 3)) * .6); });
+    s.position.set(.12, face ? .5 : .36, .05); head.add(s); anim.push(t => { s.rotation.y = t * 4; s.scale.setScalar(.7 + Math.abs(Math.sin(t * 3)) * .6); });
   }
   // 方塊人的身體藏起來；底座改成角色色，貓咪、小熊這類配件移到新模型的肩膀
   p.mesh.children.forEach((c, k) => {
@@ -1326,12 +1370,18 @@ addEventListener('resize', resize); resize();
 
 let last = performance.now();
 const tmpV = new THREE.Vector3();
-function frame(now) {
-  const dt = Math.min(.05, (now - last) / 1000); last = now; const t = now / 1000;
+function stepTweens(now) {
   for (let k = tweens.length - 1; k >= 0; k--) {
-    const tw = tweens[k], p = Math.min(1, (now - tw.t0) / tw.dur);
+    const tw = tweens[k]; if (!tw) continue;
+    const p = Math.min(1, (now - tw.t0) / tw.dur);
     tw.fn(p); if (p >= 1) { tweens.splice(k, 1); tw.res(); }
   }
+}
+// 視窗被縮小或切到別的 App 時瀏覽器會停掉動畫；改用計時器繼續推進，遊戲才不會整局卡住
+setInterval(() => { const now = performance.now(); if (now - last > 300) stepTweens(now); }, 200);
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now; const t = now / 1000;
+  stepTweens(now);
   anim.forEach(f => f(t)); boardAnims.forEach(f => f(t)); buildingAnims.forEach(l => l && l.forEach(f => f(t)));
   for (let k = particles.length - 1; k >= 0; k--) {
     const pt = particles[k]; pt.v.y -= 20 * dt; pt.m.position.addScaledVector(pt.v, dt); pt.m.rotation.x += dt * 8; pt.life -= dt;
@@ -1365,6 +1415,7 @@ const blankTiles = () => LAYOUT.map(() => ({ owner: -1, level: 0, kind: null }))
 let G = { tiles: blankTiles(), players: [], fast: false, traps: {}, mods: [], npcs: [], bomb: null };
 let spinning = false;
 buildBoard('tpe');
+loadPortraits();
 requestAnimationFrame(frame);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => TILES.forEach((t, i) => drawTile(i)));
 
@@ -1415,7 +1466,7 @@ function takeItem(p, id) { const k = p.items.indexOf(id); if (k >= 0) p.items.sp
 function updateHUD() {
   $('#players').innerHTML = G.players.map((p, k) => `
     <div class="pc ${G.turn === k ? 'active' : ''} ${p.out ? 'out' : ''}" style="--c:${p.char.color}">
-      <div class="av">${p.char.glyph}</div>
+      ${avatar(p.char)}
       <div class="pi">
         <div class="nm">${p.char.name}<small>${esc(label(p))}</small></div>
         <div class="cash">${p.out ? '退選' : fmt(p.cash)}</div>
@@ -1543,7 +1594,7 @@ function renderSetup() {
     const r = slots.findIndex(x => x.ci === k), mine = client && NET.pick === k;
     return `<button class="ch ${r >= 0 ? 'sel' : ''} ${mine ? 'mine' : ''} ${client && r >= 0 && !mine ? 'taken' : ''}" data-ci="${k}" style="--c:${c.color}">
       ${r >= 0 ? `<span class="badge">${r + 1} 號・${esc(modeLabel(slots[r]))}</span>` : mine ? '<span class="badge">你選的（等房主確認）</span>' : ''}
-      <div class="top"><div class="av">${c.glyph}</div><div><h3>${c.name}</h3><div class="ttl">${c.title}</div></div></div>
+      <div class="top">${avatar(c)}<div><h3>${c.name}</h3><div class="ttl">${c.title}</div></div></div>
       <p class="quote">「${c.lines.sig[0]}」</p>
       <p class="skill">${c.skill}</p>
     </button>`;
@@ -1565,7 +1616,7 @@ function renderSetup() {
     if (!r) return `<div class="slot"><span class="empty">${k + 1} 號：空位</span></div>`;
     const c = CHARS[r.ci];
     const btn = client || r.mode === 'remote' ? `<span class="empty">${esc(modeLabel(r))}</span>` : `<button data-slot="${k}">${modeLabel(r)}</button>`;
-    return `<div class="slot full" style="--c:${c.color}"><div class="av">${c.glyph}</div><b>${c.name}</b>${btn}</div>`;
+    return `<div class="slot full" style="--c:${c.color}">${avatar(c)}<b>${c.name}</b>${btn}</div>`;
   }).join('');
   $('#slots').querySelectorAll('[data-slot]').forEach(b => b.onclick = () => { const r = roster[+b.dataset.slot]; r.mode = r.mode === 'human' ? 'ai' : 'human'; renderSetup(); sendLobby(); });
   $('#btn-start').hidden = client; $('#guest-wait').hidden = !client;
@@ -2350,7 +2401,8 @@ function aiPickItem(p) {
   const leader = danger || hitNow || [...opp].sort((a, b) => score(b) - score(a))[0];
   if (danger && has('troll')) return ['troll', danger];
   let choice = null;
-  if (has('expose')) { const q = opp.find(x => !x.mPublic && score(x) >= score(p)); if (q) return ['expose', q]; }
+  // 爆料留到中後段、而且挑領先的人，祕密任務才有懸念
+  if (has('expose') && G.round >= 4 && Math.random() < .4) { const q = opp.find(x => !x.mPublic && score(x) >= score(p) * 1.1); if (q) return ['expose', q]; }
   if (has('build')) { const v = validTiles(p, 'build'); if (v.length) return ['build', v.sort((a, b) => G.tiles[b].level - G.tiles[a].level)[0]]; }
   if (has('missiles') && G.tiles.filter(s => s.owner >= 0 && s.owner !== p.seat && s.level > 0 && s.level < 5).length >= 2) return ['missiles', true];
   if (has('typhoon')) { const z = ZKEYS.map(k => [k, TILES.reduce((s, t, i) => t.zone === k && G.tiles[i].owner >= 0 ? s + (G.tiles[i].owner === p.seat ? -G.tiles[i].level : G.tiles[i].level) : s, 0)]).sort((a, b) => b[1] - a[1])[0]; if (z && z[1] >= 3) return ['typhoon', z[0]]; }
@@ -2725,9 +2777,11 @@ function tapGame(p) {
     btn.focus();
     const tick = () => {
       const k = (performance.now() - t0) / D; $('#tapbar').style.width = Math.max(0, 100 - k * 100) + '%';
-      if (k < 1) requestAnimationFrame(tick); else { btn.disabled = true; setTimeout(() => { modal.hidden = true; res(n); }, 350); }
+      if (k < 1) return requestAnimationFrame(tick);
+      if (fin) return; fin = true; btn.disabled = true; setTimeout(() => { modal.hidden = true; res(n); }, 350);
     };
-    tick();
+    let fin = false; tick();
+    setTimeout(tick, D + 150);   // 分頁切到背景時動畫會停，用計時器保證一定結束
   });
 }
 async function liveTile(p) {
@@ -2853,6 +2907,7 @@ function quizQT(p, q, k, total = 3, secs = 7) {
       if (r <= 0) finish(-1); else requestAnimationFrame(tick);
     };
     tick();
+    setTimeout(() => finish(-1), D + 150);
   });
 }
 async function quizTile(p) {
@@ -3044,6 +3099,7 @@ function handshakeGame(p) {
       setTimeout(() => { if (state[k] === kind) { state[k] = null; holes[k].textContent = ''; } }, 850);
     }, 380);
     const tick = () => {
+      if (done) return;
       const r = 1 - (performance.now() - t0) / D;
       $('#hsbar').style.width = Math.max(0, r * 100) + '%'; $('#hssec').textContent = Math.max(0, Math.ceil(r * 7));
       if (r > 0) return requestAnimationFrame(tick);
@@ -3051,6 +3107,7 @@ function handshakeGame(p) {
       setTimeout(() => { modal.hidden = true; res([hits, eggs]); }, 400);
     };
     tick();
+    setTimeout(tick, D + 150);
   });
 }
 async function handshakeTile(p) {
@@ -3354,6 +3411,7 @@ function tugUI(cfg) {
       setTimeout(() => { modal.hidden = true; res({ L, R }); }, 600);
     };
     tick();
+    setTimeout(tick, D + 150);
   });
 }
 
