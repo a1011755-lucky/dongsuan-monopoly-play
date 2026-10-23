@@ -124,6 +124,9 @@ button.hot{background:var(--hot);color:#fff}
 #phrases{position:absolute;right:0;bottom:calc(100% + 8px);display:grid;grid-template-columns:1fr 1fr;gap:5px;background:var(--paper);border:3px solid var(--ink);border-radius:14px;padding:8px;box-shadow:3px 3px 0 var(--ink);width:min(300px,80vw)}
 #phrases[hidden]{display:none}
 #phrases button{font-size:12px;padding:6px 4px}
+#phrases{max-height:min(60vh,420px);overflow-y:auto}
+#phrases .ph-h{grid-column:1/-1;font-family:var(--display);font-size:12px;font-weight:900;color:var(--muted);margin-top:2px}
+#phrases button.taunt{grid-column:1/-1;background:#fff3e0;text-align:left;padding:7px 10px;font-size:13px}
 /* 小遊戲：反應、打假新聞、拔河倒數 */
 .react{display:block;width:100%;height:150px;margin:10px 0;font-size:30px;background:#455a64;color:#fff;border-radius:18px;touch-action:manipulation;user-select:none}
 .react.flash{background:#fffde7;color:var(--ink);box-shadow:0 0 0 6px #fff59d,3px 3px 0 var(--ink)}
@@ -546,6 +549,22 @@ const CHARS = [
     skill: '硬起來：住院天數減半，嗆聲對決平手算你贏。',
     lines: { sig: ['練起來！', '健身房開張啦！', '男人就是要硬！'], attack: ['吃我一拳…不對，吃我一顆火箭！'], hit: ['這點痛算什麼！'], champion: ['冠軍！蛋白質加倍！'] } },
 ];
+// 招牌嗆聲：各人公開講過的口號、名句（網路查證過的放前面），玩家可以按來嗆對手，電腦出招時也會講
+// 原則同上：只用公開口號和梗，不寫官司、醜聞、性暗示
+const TAUNTS = {
+  bian: ['阿扁錯了嗎？', '台灣中國，一邊一國！', '有夢最美，希望相隨！', '阿扁們，我永遠愛您們！', '我是台灣之子！'],
+  ma: ['馬上好！', '我是吃台灣米、喝台灣水長大的新台灣人！', '不統、不獨、不武！', '我會虛心檢討。', '先慢跑一圈再說！'],
+  tsai: ['辣台妹出擊！', '一國兩制，台灣絕不接受！', '總統級貓奴報到！', '我們都是台灣人！', '想想跟阿才在等我回家。'],
+  soong: ['台灣走透透，三百多個鄉鎮我都走過！', '被嫉妒是庸才，不被黑是蠢才！', '天道酬勤，一步一步踏實走！', '老宋做事，你放心！'],
+  lien: ['連爺爺，您回來了！', '慢慢來，比較快。', '年輕人，這叫經驗！', '大家好，我是連爺爺！'],
+  ko: ['垃圾不分藍綠！', '獅子無法了解狗的悲哀！', '這個邏輯很簡單！', '政治人物要給選民希望！', '我是算過的。'],
+  kc: ['我手上有資料！', '請你尊重人家發言好不好！', '你在講話我有在插話嗎？', '舉這個牌子真的很蠢！', '請正面回答！'],
+  chiang: ['萬安演習，請大家就地避難！', '台北市長報到！', '台北隊，衝！', '今天也要帥帥的。'],
+  puma: ['黑熊學院開課囉！', '大家要有韌性！', '全民防衛，從你我做起！', '準備好了嗎？演練開始！'],
+  su: ['認真做事最實在！', '我來問清楚！', '這題我有做功課！', '新北加油！'],
+  '3q': ['3Q！3Q！', '3Q 你的配合！', '光頭最閃亮！', '海線報到！'],
+  gz: ['練起來！', '男人就是要硬！', '講那麼多，先去練腿！', '健身房開張啦！', '冠軍！蛋白質加倍！'],
+};
 const GENERIC = {
   buy: ['這塊我買了！', '地契拿來！', '投資台灣，從這塊地開始！'],
   upgrade: ['蓋！給我蓋大樓！', '建設看得到！', '地價噴發中！'],
@@ -1807,6 +1826,9 @@ function caption(big, sub = '', ms = 1600) {
 function say(p, key, text) {
   if (!p.bubble) return;
   const own = p.char.lines[key] || [];
+  // 擲骰、出招、贏的時候，三成五機率講招牌嗆聲
+  const tt = TAUNTS[p.char.id] || [];
+  if (!text && tt.length && ['roll', 'start', 'attack', 'win'].includes(key) && Math.random() < .35) text = pick(tt);
   const pool = key === 'roll' || key === 'start' ? p.char.lines.sig : (own.length && Math.random() < .75 ? own : (GENERIC[key] || own));
   sayLine(p.seat, text || pick(pool && pool.length ? pool : ['……']), key);
 }
@@ -4298,23 +4320,36 @@ function showChatbar() {
   $('#chatbar').hidden = NET.mode === 'off';
   $('#btn-talk').hidden = !(roomApi && roomApi.isRelay && window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 }
-function showChat(seat, text, voice) {
+function showChat(seat, text, voice, taunt) {
   const p = G.players[seat]; if (!p || !p.bubble) return;
+  if (taunt) flyEmo('😤', p);
   const b = document.createElement('b'); b.textContent = p.char.name;
-  p.bubble.replaceChildren(b, document.createTextNode(text)); p.bubble.classList.add('on');
+  p.bubble.replaceChildren(b, document.createTextNode((taunt ? '🗯️ ' : '') + text)); p.bubble.classList.add('on');
   clearTimeout(p.bt); p.bt = setTimeout(() => p.bubble.classList.remove('on'), 3200);
-  logLocal(`<b style="color:${p.char.color}">${p.char.name}</b>${voice ? ' 🎤' : ' 💬'}：「${esc(text)}」`);
+  logLocal(`<b style="color:${p.char.color}">${p.char.name}</b>${voice ? ' 🎤' : taunt ? ' 🗯️嗆聲' : ' 💬'}：「${esc(text)}」`);
 }
-function sendChat(k) {
-  const me = viewer(); if (!me || !NET.named || !PHRASES[k]) return;
+// t：招牌嗆聲的編號（自己角色的 TAUNTS）；k：通用喊話的編號
+const chatText = (p, d) => d.t !== undefined && d.t !== null ? (TAUNTS[p.char.id] || [])[d.t | 0] : PHRASES[d.k | 0];
+function sendChat(d) {
+  const me = viewer(); if (!me || !NET.named) return;
+  const text = chatText(me, d); if (!text) return;
   const now = Date.now(); if (now - (NET.lastChat || 0) < 1500) return; NET.lastChat = now;
-  NET.named.emit('chat', { s: me.seat, k }).catch(() => { });
-  showChat(me.seat, PHRASES[k]); speak(me.char, PHRASES[k]);
+  NET.named.emit('chat', { s: me.seat, ...d }).catch(() => { });
+  showChat(me.seat, text, false, d.t !== undefined); speak(me.char, text);
+  if (d.t !== undefined) { SFX.whoosh(); cam.shake = .25; }
   $('#phrases').hidden = true;
 }
-$('#phrases').innerHTML = PHRASES.map((t, k) => `<button data-k="${k}">${t}</button>`).join('');
-$('#phrases').onclick = e => { const b = e.target.closest('[data-k]'); if (b) sendChat(+b.dataset.k); };
-$('#btn-chat').onclick = () => { $('#phrases').hidden = !$('#phrases').hidden; };
+// 打開喊話選單：上面是自己角色的招牌嗆聲，下面是通用喊話
+function buildPhrases() {
+  const me = viewer(), tt = me ? TAUNTS[me.char.id] || [] : [];
+  $('#phrases').innerHTML = (tt.length ? `<div class="ph-h">🗯️ ${me.char.name}的招牌嗆聲</div>${tt.map((t, k) => `<button class="taunt" data-t="${k}">${esc(t)}</button>`).join('')}` : '')
+    + `<div class="ph-h">💬 通用喊話</div>${PHRASES.map((t, k) => `<button data-k="${k}">${t}</button>`).join('')}`;
+}
+$('#phrases').onclick = e => {
+  const b = e.target.closest('[data-k],[data-t]'); if (!b) return;
+  sendChat(b.dataset.t !== undefined ? { t: +b.dataset.t } : { k: +b.dataset.k });
+};
+$('#btn-chat').onclick = () => { if ($('#phrases').hidden) buildPhrases(); $('#phrases').hidden = !$('#phrases').hidden; };
 // 按住說話：錄一段（最多 8 秒）透過轉發伺服器傳給大家
 let rec = null, talkHeld = false;
 async function startTalk() {
@@ -4374,8 +4409,11 @@ function setupChat() {
   });
   NET.named.on('chat', m => {
     const d = m.data; if (m.sameTab || m.isMe || !d || !NET.started) return;
-    const k = d.k | 0, s = d.s | 0; if (!PHRASES[k] || !G.players[s] || !okRate(m.peer, 800)) return;
-    showChat(s, PHRASES[k]); speak(G.players[s].char, PHRASES[k]);
+    const s = d.s | 0, p = G.players[s]; if (!p || !okRate(m.peer, 800)) return;
+    const text = chatText(p, d); if (!text) return;
+    const taunt = d.t !== undefined && d.t !== null;
+    showChat(s, text, false, taunt); speak(p.char, text);
+    if (taunt) { SFX.whoosh(); cam.shake = .25; }
   });
   NET.named.on('voice', m => {
     const d = m.data; if (m.sameTab || m.isMe || !d || !NET.started) return;
