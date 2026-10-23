@@ -656,7 +656,7 @@ const SPECIAL_NAMES = { start: '凍蒜廣場', item: '道具箱', live: '直播�
 const hexagon = r => Array.from({ length: 6 }, (_, k) => { const a = (30 + 60 * k) * Math.PI / 180; return [r * Math.cos(a), r * Math.sin(a)]; });
 const MAPS = {
   tpe: {
-    name: '台北', blurb: '正方形棋盤街道，101、圓山大飯店、西門紅樓坐鎮', fly: '松山機場', ground: '#e8f2dc',
+    name: '台北', blurb: '正方形棋盤街道，101、圓山大飯店、西門紅樓坐鎮', fly: '松山機場', ground: '#e8f2dc', river: '淡水河', mount: '陽明山',
     shape: [[16, 16], [-16, 16], [-16, -16], [16, -16]],
     zones: ['信義區', '中正萬華', '大安中山', '士林北投'],
     props: [['信義威秀', '象山步道', '台北101', '松山文創', '信義商圈'], ['西門町', '剝皮寮', '台北車站', '華山文創', '迪化街'],
@@ -664,7 +664,7 @@ const MAPS = {
     stage: [0, 0, 1], marks: [['t101', 6, 6, 0], ['grand', -7, -6, 0], ['redhouse', -7, 6, 0], ['wheel', 7, -6, 0]],
   },
   tyn: {
-    name: '桃園', blurb: '寬長形棋盤，中間就是機場跑道，飛機會起飛', fly: '桃園國際機場', ground: '#e6efd6',
+    name: '桃園', blurb: '寬長形棋盤，中間就是機場跑道，飛機會起飛', fly: '桃園國際機場', ground: '#e6efd6', river: '大漢溪', mount: '拉拉山', ponds: 4,
     shape: [[20, 12], [-20, 12], [-20, -12], [20, -12]],
     zones: ['桃園市區', '中壢青埔', '大溪石門', '濱海鄉野'],
     props: [['桃園火車站', '虎頭山', '桃園巨蛋', '藝文特區', '統領商圈'], ['中壢夜市', '青埔高鐵站', 'Xpark水族館', '華泰名品城', '國際棒球場'],
@@ -672,7 +672,7 @@ const MAPS = {
     stage: [0, -3, .85], marks: [['runway', 2, 4, 0], ['tower', -9, -3, 0], ['dam', 9.5, -3, 0], ['gate', -12.5, 4, 0]],
   },
   txg: {
-    name: '台中', blurb: '六角形棋盤，歌劇院、高美濕地風車、彩虹眷村', fly: '台中高鐵站', ground: '#eef3d8',
+    name: '台中', blurb: '六角形棋盤，歌劇院、高美濕地風車、彩虹眷村', fly: '台中高鐵站', ground: '#eef3d8', river: '大甲溪', mount: '合歡山',
     shape: hexagon(21.33),
     zones: ['七期新市政', '中區舊城', '西屯北區', '海線山城'],
     props: [['秋紅谷', '草悟道', '國家歌劇院', '勤美誠品', '市政府商圈'], ['宮原眼科', '第二市場', '台中公園', '審計新村', '一中街'],
@@ -680,7 +680,7 @@ const MAPS = {
     stage: [0, 0, 1], marks: [['opera', 7, 5, -.5], ['windmill', -9, 5, 0], ['windmill', -6.5, 9, 0], ['rainbow', -8, -5, .4], ['church', 8, -6, .5]],
   },
   khh: {
-    name: '高雄', blurb: '港灣形棋盤，中間有港口水道，85 大樓、蓮池潭、摩天輪', fly: '小港機場', ground: '#e3eedc',
+    name: '高雄', blurb: '港灣形棋盤，中間有港口水道，85 大樓、蓮池潭、摩天輪', fly: '小港機場', ground: '#e3eedc', river: '高屏溪', mount: '壽山',
     shape: [[18, 10], [-18, 10], [-18, -10], [-5, -10], [-5, -2], [5, -2], [5, -10], [18, -10]],
     zones: ['港灣區', '市中心', '亞洲新灣區', '山海鄉野'],
     props: [['駁二藝術特區', '旗津', '85大樓', '西子灣', '流行音樂中心'], ['六合夜市', '美麗島站', '愛河', '中央公園', '大立百貨'],
@@ -1040,6 +1040,35 @@ function windowsTex(bg, win, cols, rows, lit) {
     }
   });
 }
+// 浮誇版飛機：彩色條紋機身、駕駛艙、客艙窗、後掠機翼、兩具引擎、尾翼寫「凍蒜航空」、閃爍航行燈，還拖著競選布條
+function fancyPlane(accent = '#3d8bff', banner = '') {
+  const pl = new THREE.Group();
+  const body = cyl(.42, .42, 3.2, '#ffffff', 0, 0, 0, pl, 16); body.rotation.z = Math.PI / 2;
+  const nose = ball(.42, '#ffffff', 1.6, 0, 0, pl); nose.scale.set(1.5, 1, 1);
+  const tail = cone(.42, 1.3, '#ffffff', -2.25, .08, 0, pl, 16); tail.rotation.z = Math.PI / 2;
+  const stripe = cyl(.43, .43, 3.1, accent, 0, -.1, 0, pl, 16); stripe.rotation.z = Math.PI / 2; stripe.scale.set(1, 1, .35);
+  box(.32, .2, .74, '#1d1633', 1.85, .16, 0, pl);   // 駕駛艙玻璃
+  for (let k = -5; k <= 4; k++) [-.41, .41].forEach(zz => box(.14, .12, .02, '#263238', k * .26, .12, zz, pl));
+  [-1, 1].forEach(sd => {
+    const w = box(1.1, .08, 2.4, accent, .1, -.18, sd * 1.35, pl); w.rotation.y = sd * .38;
+    box(.5, .3, .06, accent, -.25, .02, sd * 2.45, pl);   // 翼尖小翼
+    const e = cyl(.22, .2, .85, '#cfd8dc', .45, -.42, sd * 1.15, pl, 12); e.rotation.z = Math.PI / 2;
+    const fan = cyl(.17, .17, .05, '#1d1633', .88, -.42, sd * 1.15, pl, 12); fan.rotation.z = Math.PI / 2;
+    ball(.08, glow(sd < 0 ? '#ff1744' : '#00e676'), .1, -.12, sd * 2.5, pl);
+  });
+  const fin = box(.95, 1.05, .07, accent, -2.15, .75, 0, pl); fin.rotation.z = .4;
+  [-1, 1].forEach(sd => { const l = textPlane('凍蒜航空', .9, .3, '#ffffff', null, 90); l.position.set(-2.1, .7, sd * .05); l.rotation.y = sd < 0 ? Math.PI : 0; pl.add(l); });
+  box(.6, .06, 1.9, accent, -2.25, .12, 0, pl);
+  const strobe = ball(.07, glow('#ffffff'), -2.55, 1.3, 0, pl);
+  boardAnims.push(t => { strobe.visible = (t * 2) % 1 < .15; });
+  if (banner) {
+    box(1.6, .03, .03, '#eceff1', -3.3, -.1, 0, pl);
+    const bn = textPlane(banner, 3, .6, '#ffffff', '#ff4f79', 110); bn.position.set(-5.6, -.15, 0); pl.add(bn);
+    const bn2 = textPlane(banner, 3, .6, '#ffffff', '#ff4f79', 110); bn2.position.set(-5.6, -.15, -.01); bn2.rotation.y = Math.PI; pl.add(bn2);
+    boardAnims.push(t => { bn.rotation.x = bn2.rotation.x = Math.sin(t * 6) * .12; });
+  }
+  return pl;
+}
 const MARKS = {
   t101(g) {
     box(2.4, 1.6, 2.4, '#5e9c94', 0, .8, 0, g);
@@ -1075,9 +1104,7 @@ const MARKS = {
   runway(g) {    // 機場跑道＋會起飛的飛機
     box(22, .06, 2.8, '#3a3f47', 0, .03, 0, g);
     for (let k = -9; k <= 9; k += 2.2) box(1.1, .07, .18, '#ffffff', k, .07, 0, g);
-    const pl = new THREE.Group(); g.add(pl);
-    cyl(.38, .3, 3.4, '#ffffff', 0, 0, 0, pl).rotation.z = Math.PI / 2;
-    box(.9, .1, 4, '#3d8bff', 0, 0, 0, pl); box(.5, .9, .1, '#3d8bff', -1.5, .45, 0, pl); box(.4, .1, 1.4, '#3d8bff', -1.5, .1, 0, pl);
+    const pl = fancyPlane('#ff4f79'); g.add(pl);
     boardAnims.push(t => {
       const k = (t % 14) / 14;
       if (k < .55) { const u = k / .55; pl.position.set(-9 + u * u * 16, .55, 0); pl.rotation.z = 0; pl.visible = true; }
@@ -1151,8 +1178,50 @@ const MARKS = {
 };
 function buildStage(g, s) {
   g.scale.setScalar(s);
-  cyl(3.4, 3.6, .6, '#ffd23f', 0, .3, 0, g, 32);
-  cyl(2.8, 2.8, .2, '#ff4f79', 0, .7, 0, g, 32);
+  // 兩層台階＋條紋裙邊
+  cyl(4.3, 4.5, .3, '#ffffff', 0, .15, 0, g, 40);
+  const skirt = canvasTex(256, 32, (x, w, h) => { for (let k = 0; k < 16; k++) { x.fillStyle = k % 2 ? '#ff4f79' : '#ffffff'; x.fillRect(k * w / 16, 0, w / 16, h); } });
+  skirt.wrapS = THREE.RepeatWrapping; skirt.repeat.x = 3;
+  const sk = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, .6, 40, 1, true), new THREE.MeshStandardMaterial({ map: skirt, side: THREE.DoubleSide })); sk.position.y = .6; g.add(sk);
+  cyl(3.4, 3.6, .6, '#ffd23f', 0, .6, 0, g, 32);
+  cyl(2.8, 2.8, .2, '#ff4f79', 0, 1, 0, g, 32);
+  // 旗桿一圈＋三角旗串
+  const poles = [], flags = [];
+  for (let k = 0; k < 8; k++) {
+    const a = k / 8 * Math.PI * 2, px = Math.cos(a) * 4.1, pz = Math.sin(a) * 4.1;
+    cyl(.07, .09, 3.6, '#eceff1', px, 2.1, pz, g, 8); ball(.14, '#ffd23f', px, 3.95, pz, g);
+    const f = box(.9, .55, .04, ['#ff4f79', '#3d8bff', '#4cb944', '#ffd23f'][k % 4], px + .45, 3.5, pz, g); flags.push([f, a]);
+    poles.push([px, pz]);
+  }
+  poles.forEach(([x1, z1], k) => {
+    const [x2, z2] = poles[(k + 1) % poles.length];
+    for (let j = 1; j < 6; j++) { const u = j / 6, sag = Math.sin(u * Math.PI) * .45; const b = cone(.14, .3, ['#ff4f79', '#ffd23f', '#3d8bff', '#4cb944', '#ffffff'][(j + k) % 5], x1 + (x2 - x1) * u, 3.55 - sag, z1 + (z2 - z1) * u, g, 3); b.rotation.x = Math.PI; }
+  });
+  // 四支探照燈，光束來回掃
+  const beams = [];
+  [0, 1, 2, 3].forEach(k => {
+    const a = k / 4 * Math.PI * 2 + Math.PI / 4, px = Math.cos(a) * 3.3, pz = Math.sin(a) * 3.3;
+    cyl(.25, .3, .4, '#37474f', px, 1.1, pz, g, 10);
+    const pivot = new THREE.Group(); pivot.position.set(px, 1.3, pz); g.add(pivot);
+    const beam = new THREE.Mesh(new THREE.ConeGeometry(.9, 9, 16, 1, true), new THREE.MeshBasicMaterial({ color: ['#fff59d', '#ff80ab', '#80d8ff', '#b9f6ca'][k], transparent: true, opacity: .16, depthWrite: false, side: THREE.DoubleSide }));
+    beam.position.y = 4.5; beam.rotation.x = Math.PI; pivot.add(beam); beams.push([pivot, k]);
+  });
+  // 氣球
+  const balloons = [];
+  for (let k = 0; k < 6; k++) {
+    const a = k / 6 * Math.PI * 2 + .3, bx = Math.cos(a) * 3, bz = Math.sin(a) * 3;
+    const bl = new THREE.Group(); bl.position.set(bx, 4.6, bz); g.add(bl);
+    ball(.32, ['#ff4f79', '#ffd23f', '#3d8bff', '#4cb944', '#ff9f1c', '#9c4dcc'][k], 0, 0, 0, bl).scale.y = 1.2;
+    box(.02, 1.2, .02, '#ffffff', 0, -.9, 0, bl); balloons.push([bl, k]);
+  }
+  let lastFw = -1;
+  boardAnims.push(t => {
+    flags.forEach(([f, a], k) => { f.rotation.y = -a + Math.sin(t * 3 + k) * .35; });
+    beams.forEach(([p, k]) => { p.rotation.z = Math.sin(t * .9 + k * 1.7) * .5; p.rotation.x = Math.cos(t * .7 + k) * .4; });
+    balloons.forEach(([b, k]) => { b.position.y = 4.6 + Math.sin(t * 1.3 + k) * .25; });
+    // 每 6 秒放一次小煙火（手機省略）
+    const fw = Math.floor(t / 6); if (!LITE && fw !== lastFw) { lastFw = fw; const wp = new THREE.Vector3(); g.localToWorld(wp.set((Math.random() - .5) * 4, 9, (Math.random() - .5) * 4)); burst(wp, ['#ffd23f', '#ff4f79', '#80d8ff', '#ffffff'], 22, .55); }
+  });
   const voteTex = canvasTex(256, 256, (x) => {
     x.fillStyle = '#ffffff'; x.fillRect(0, 0, 256, 256);
     x.lineWidth = 16; x.strokeStyle = '#1d1633'; x.strokeRect(8, 8, 240, 240);
@@ -1162,13 +1231,97 @@ function buildStage(g, s) {
   });
   const vm = new THREE.MeshStandardMaterial({ map: voteTex });
   const bx = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), [vm, vm, M('#ffd23f'), M('#ffd23f'), vm, vm]);
-  bx.position.set(0, 2.4, 0); bx.castShadow = true; g.add(bx);
-  const slot = box(1.6, .05, .3, '#1d1633', 0, 3.92, 0, g);
-  const ballot = box(1, .05, 1.3, '#ffffff', 0, 5, 0, g);
+  bx.position.set(0, 2.7, 0); bx.castShadow = true; g.add(bx);
+  const slot = box(1.6, .05, .3, '#1d1633', 0, 4.22, 0, g);
+  const ballot = box(1, .05, 1.3, '#ffffff', 0, 5.3, 0, g);
   boardAnims.push(t => {
     bx.rotation.y = t * .35; slot.rotation.y = t * .35;
-    const k = (t * .6) % 1; ballot.position.y = 6 - k * 2.2; ballot.rotation.y = t; ballot.visible = k < .95;
+    const k = (t * .6) % 1; ballot.position.y = 6.3 - k * 2.2; ballot.rotation.y = t; ballot.visible = k < .95;
   });
+}
+
+/* ---------- 地圖外圍風景：海、山脈、河谷、河流、瀑布、橋、樹 ---------- */
+// 會流動的水面貼圖
+function waterTex(calm) {
+  const t = canvasTex(128, 128, (x, w, h) => {
+    x.fillStyle = '#4fb8ec'; x.fillRect(0, 0, w, h);
+    for (let k = 0; k < (calm ? 7 : 26); k++) { x.strokeStyle = `rgba(255,255,255,${calm ? .12 + Math.random() * .15 : .25 + Math.random() * .35})`; x.lineWidth = 2 + Math.random() * 2; const y = Math.random() * h, l = 10 + Math.random() * 26, sx = Math.random() * w; x.beginPath(); x.moveTo(sx, y); x.quadraticCurveTo(sx + l / 2, y - 4, sx + l, y); x.stroke(); }
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+// 沿著一串點做一條有寬度的帶子（河流用）
+function ribbon(points, width, mat, y) {
+  const pos = [], uv = [], idx = []; let len = 0;
+  points.forEach((p, k) => {
+    const a = points[Math.max(0, k - 1)], b = points[Math.min(points.length - 1, k + 1)];
+    const dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1, nx = -dz / l * width / 2, nz = dx / l * width / 2;
+    if (k) len += Math.hypot(p[0] - points[k - 1][0], p[1] - points[k - 1][1]);
+    pos.push(p[0] + nx, y, p[1] + nz, p[0] - nx, y, p[1] - nz); uv.push(0, len / width, 1, len / width);
+    if (k) { const i = k * 2; idx.push(i - 2, i, i - 1, i - 1, i, i + 1); }
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, mat); m.receiveShadow = true; return m;
+}
+function tree(g, x, z, s = 1, y = -.15) {
+  cyl(.12 * s, .16 * s, .8 * s, '#795548', x, y + .4 * s, z, g, 6);
+  const c = pick(['#43a047', '#2e7d32', '#66bb6a', '#558b2f']);
+  cone(.9 * s, 1.4 * s, c, x, y + 1.3 * s, z, g, 7); cone(.65 * s, 1.1 * s, c, x, y + 2 * s, z, g, 7);
+}
+function mountain(g, x, z, r, h) {
+  const col = pick(['#3f8a34', '#4c9a3c', '#357a2e', '#5b8f2f']);
+  const m = cone(r, h, col, x, -1.3 + h / 2, z, g, 9); m.rotation.y = Math.random() * 3;
+  const rock = cone(r * .5, h * .5, '#7b6a58', x, -1.3 + h * .75, z, g, 9); rock.rotation.y = m.rotation.y;   // 山腰岩石
+  cone(r * .72, h * .55, '#2f6b28', x + r * .5, -1.3 + h * .27, z + r * .3, g, 8);
+  if (h > 6) { const c = cone(r * .3, h * .3, '#ffffff', x, -1.3 + h - h * .15, z, g, 9); c.rotation.y = m.rotation.y; }
+}
+function buildScenery(m) {
+  const xs = m.shape.map(p => p[0]), zs = m.shape.map(p => p[1]);
+  const minX = Math.min(...xs) - 3.4, maxX = Math.max(...xs) + 3.4, minZ = Math.min(...zs) - 3.4, maxZ = Math.max(...zs) + 3.4;
+  // 海：整片會流動的海面
+  const wt = waterTex(true); wt.repeat.set(16, 16);
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(320, 320), new THREE.MeshStandardMaterial({ map: wt, color: '#3aa3dc', roughness: .4, metalness: .05 }));
+  sea.rotation.x = -Math.PI / 2; sea.position.y = -1.3; sea.receiveShadow = true; BG.add(sea);
+  // 河谷：棋盤後方（遠離鏡頭那側）一塊綠地，接到山腳
+  const vw = (maxX - minX) * .62, vx = minX + (maxX - minX) * .45, vz0 = minZ, vz1 = minZ - 11;
+  box(vw, 1.2, vz0 - vz1 + 1, '#8fc95a', vx, -.75, (vz0 + vz1) / 2, BG);
+  // 山脈：後方一排、左側一排
+  const few = LITE ? 2 : 1;
+  for (let x = minX - 4; x <= maxX + 4; x += 5.5 * few) mountain(BG, x + Math.random() * 2, vz1 - 3 - Math.random() * 4, 4 + Math.random() * 2.5, 5 + Math.random() * 4);
+  for (let z = minZ - 2; z <= maxZ + 2; z += 6 * few) mountain(BG, minX - 10 - Math.random() * 4, z + Math.random() * 2, 3.5 + Math.random() * 2.5, 4 + Math.random() * 4);
+  // 河：從山腳流過河谷，從側邊流進海裡
+  const rx0 = vx - vw * .3, pts = [];
+  for (let k = 0; k <= 16; k++) { const u = k / 16; pts.push([rx0 + u * (vw * .82), vz1 + 1 + u * (vz0 - vz1 - 3) * .55 + Math.sin(u * Math.PI * 3) * 1.6]); }
+  pts.push([vx + vw / 2 + 4, pts[pts.length - 1][1] + 1]);
+  const rtex = waterTex(); rtex.repeat.set(1, 1);
+  const rmat = new THREE.MeshStandardMaterial({ map: rtex, color: '#bfe9ff', roughness: .25, side: THREE.DoubleSide });
+  BG.add(ribbon(pts, 2.2, rmat, -.12));
+  // 瀑布：河的源頭從山上衝下來
+  const fall = new THREE.Mesh(new THREE.PlaneGeometry(2, 5), new THREE.MeshStandardMaterial({ map: rtex, color: '#e3f6ff', transparent: true, opacity: .9, side: THREE.DoubleSide }));
+  fall.position.set(pts[0][0], 2.2, pts[0][1] - 1.3); fall.rotation.x = -.35; BG.add(fall);
+  for (let k = 0; k < 5; k++) ball(.35 + Math.random() * .25, '#ffffff', pts[0][0] + (Math.random() - .5) * 1.6, 0, pts[0][1] + Math.random() * .6, BG);
+  // 紅色拱橋
+  const bp = pts[8], bq = pts[9], ang = Math.atan2(bq[1] - bp[1], bq[0] - bp[0]);
+  const br = new THREE.Group(); br.position.set(bp[0], -.1, bp[1]); br.rotation.y = -ang + Math.PI / 2; BG.add(br);
+  for (let k = -3; k <= 3; k++) box(.5, .12, 1.3, '#c62828', k * .45, .45 - Math.abs(k) * k * 0 - (k * k) * .04, 0, br);
+  [-.62, .62].forEach(zz => { for (let k = -3; k <= 3; k++) box(.08, .4, .08, '#ffca28', k * .45, .75 - k * k * .04, zz, br); box(3.2, .08, .08, '#ffca28', 0, .92, zz, br); });
+  // 河名、山名寫在地上
+  const label = (txt, x, z, color) => {
+    const tex = canvasTex(512, 96, (c, w, h) => { c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `900 60px ${FONT}`; c.lineWidth = 12; c.strokeStyle = '#fff'; c.strokeText(txt, w / 2, h / 2); c.fillStyle = color; c.fillText(txt, w / 2, h / 2); });
+    const lm = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.1), new THREE.MeshBasicMaterial({ map: tex, transparent: true })); lm.rotation.x = -Math.PI / 2; lm.position.set(x, -.08, z); BG.add(lm);
+  };
+  if (m.river) label('〰 ' + m.river, pts[12][0], pts[12][1] + 2.3, '#0277bd');
+  if (m.mount) label('⛰ ' + m.mount, vx - vw * .25, vz1 + 1.2, '#33691e');
+  // 埤塘（桃園）
+  for (let k = 0; k < (m.ponds || 0); k++) { const p = cyl(1.2 + Math.random() * .6, 1.2, .05, '#4fc3f7', vx + vw * .1 + k * 2.6 - 3, -.1, vz0 - 2.2 - (k % 2) * 2.6, BG, 18); p.material = rmat; }
+  // 樹
+  const nt = LITE ? 10 : 22;
+  for (let k = 0; k < nt; k++) {
+    const x = vx + (Math.random() - .5) * vw * .95, z = vz1 + 1 + Math.random() * (vz0 - vz1 - 2);
+    if (pts.some(p => Math.hypot(p[0] - x, p[1] - z) < 2.2)) continue;
+    tree(BG, x, z, .7 + Math.random() * .5);
+  }
+  boardAnims.push(t => { wt.offset.set(t * .01, t * .02); rtex.offset.y = -t * .6; });
 }
 
 /* ---------- 建立整個棋盤（開場和換地圖時呼叫） ---------- */
@@ -1186,6 +1339,7 @@ function buildBoard(id) {
   land.rotation.x = -Math.PI / 2; land.position.y = -1.35; land.receiveShadow = true; BG.add(land);
   const inner = new THREE.Mesh(new THREE.ShapeGeometry(toShape(offsetPoly(m.shape, -2.3, BOARD.sgn))), new THREE.MeshStandardMaterial({ color: m.ground, roughness: .95 }));
   inner.rotation.x = -Math.PI / 2; inner.position.y = -.13; inner.receiveShadow = true; BG.add(inner);
+  buildScenery(m);
   // 格子
   TILES.forEach((t, i) => {
     const [x, z] = tilePos(i), th = tileTheta(i);
@@ -1226,10 +1380,12 @@ function buildBoard(id) {
     boardAnims.push(t => { siren.material.emissiveIntensity = (Math.sin(t * 8) > 0) ? 1.2 : .1; });
   });
   cornerProp(16, g => {
-    const pl = new THREE.Group(); pl.position.y = 2.2; g.add(pl);
-    cyl(.45, .35, 3.6, '#ffffff', 0, 0, 0, pl).rotation.z = Math.PI / 2;
-    box(1, .12, 4.2, '#3d8bff', 0, 0, 0, pl); box(.5, 1, .1, '#3d8bff', -1.6, .5, 0, pl);
-    boardAnims.push(t => { pl.position.y = 2.2 + Math.sin(t * 1.5) * .35; pl.rotation.x = Math.sin(t * 1.2) * .08; });
+    // 機場：小航廈＋塔台，上空一架拖著競選布條的飛機一直繞圈
+    box(2.6, 1.2, 1.6, '#eceff1', 0, .6, -.6, g); box(2.8, .15, 1.8, '#3d8bff', 0, 1.25, -.6, g);
+    cyl(.18, .25, 2.4, '#e0e0e0', 1.1, 1.2, .6, g, 8); cyl(.45, .35, .45, glow('#4fc3f7', .35), 1.1, 2.6, .6, g, 10);
+    const orbit = new THREE.Group(); orbit.position.y = 5.2; g.add(orbit);
+    const pl = fancyPlane('#3d8bff', '凍蒜！投我一票'); pl.scale.setScalar(.75); orbit.add(pl);
+    boardAnims.push(t => { const a = t * .5; pl.position.set(Math.cos(a) * 4, Math.sin(t * 1.3) * .4, Math.sin(a) * 4); pl.rotation.set(-.35, -a - Math.PI / 2, 0); });
   });
   cornerProp(HOSP, g => {
     box(3, 2, 2, '#ffffff', 0, 1, 0, g);
@@ -1432,11 +1588,46 @@ function play(p, name, once) {
 const baseAnim = p => p.moving || p.animating ? 'walk' : p.skip > 0 && p.where ? 'sit' : 'idle';
 
 /* ---------- NPC ---------- */
+// 路上的人：先用方塊人佔位（person 群組），之後換成 Kenney 3D 人物模型（model：哪個模型、衣服顏色、戴什麼）
 const NPCS = [
-  { id: 'chicken', name: '雞鴨販', build(g) { box(1.2, .6, .8, '#a1887f', 0, .5, 0, g); [-.4, .4].forEach(x => { const w = cyl(.22, .22, .1, '#333333', x, .22, .42, g, 10); w.rotation.x = Math.PI / 2; }); ball(.25, '#ffffff', -.2, 1.0, 0, g); cone(.08, .15, '#e53935', -.2, 1.3, 0, g, 6); ball(.2, '#ffe082', .3, .98, .1, g); cone(.06, .12, '#ff8f00', .5, .98, .1, g, 6).rotation.z = -Math.PI / 2; cyl(.3, .4, .9, '#4e342e', 0, 1.3, -.5, g); ball(.25, '#ffd9b5', 0, 1.95, -.5, g); cone(.45, .3, '#d7ccc8', 0, 2.2, -.5, g, 12); } },
-  { id: 'cops', name: '檢調', build(g) { cyl(.38, .5, 1.1, '#263238', 0, .7, 0, g); ball(.4, '#ffd9b5', 0, 1.55, 0, g); box(.6, .1, .05, '#111111', 0, 1.6, .38, g); box(.5, .5, .1, '#eceff1', .45, .8, .35, g); const s = textPlane('搜索', .5, .2, '#c62828', '#ffffff', 140); s.position.set(.45, .85, .41); g.add(s); } },
-  { id: 'boss', name: '樁腳伯', build(g) { cyl(.4, .55, 1.1, '#c62828', 0, .7, 0, g); ball(.42, '#ffd9b5', 0, 1.58, 0, g); cone(.55, .35, '#f5f5dc', 0, 1.95, 0, g, 16); const m = cyl(.08, .2, .45, '#ffd23f', .45, 1.3, .3, g, 10); m.rotation.z = -1.2; box(.25, .3, .05, '#e53935', -.45, .8, .4, g); } },
+  { id: 'chicken', name: '雞鴨販', model: { name: 'male-c', shirt: '#8d6e63', hat: 'straw', at: [0, 0, -.6] }, build(g, pg) {
+    box(1.3, .55, .85, '#a1887f', 0, .5, 0, g); box(1.4, .08, .95, '#6d4c41', 0, .8, 0, g);
+    [-.45, .45].forEach(x => { const w = cyl(.24, .24, .1, '#333333', x, .24, .45, g, 12); w.rotation.x = Math.PI / 2; });
+    ball(.25, '#ffffff', -.25, 1.08, 0, g); cone(.08, .15, '#e53935', -.25, 1.38, 0, g, 6); cone(.05, .1, '#ff8f00', -.05, 1.1, 0, g, 6).rotation.z = -Math.PI / 2;
+    ball(.2, '#ffe082', .3, 1.04, .1, g); cone(.06, .12, '#ff8f00', .5, 1.04, .1, g, 6).rotation.z = -Math.PI / 2;
+    const sign = textPlane('凍蒜雞', .8, .3, '#ffffff', '#c62828', 120); sign.position.set(0, .5, .44); g.add(sign);
+    cyl(.3, .4, .9, '#4e342e', 0, 1.3, 0, pg); ball(.25, '#ffd9b5', 0, 1.95, 0, pg); cone(.45, .3, '#d7ccc8', 0, 2.2, 0, pg, 12);
+  } },
+  { id: 'cops', name: '檢調', model: { name: 'male-b', shirt: '#263238', glasses: 'sunglasses', at: [0, 0, 0] }, build(g, pg) {
+    box(.5, .5, .1, '#eceff1', .5, .85, .35, g); const s = textPlane('搜索', .5, .2, '#c62828', '#ffffff', 140); s.position.set(.5, .9, .41); g.add(s);
+    box(.5, .35, .15, '#212121', -.5, .55, .1, g);   // 公事包
+    cyl(.38, .5, 1.1, '#263238', 0, .7, 0, pg); ball(.4, '#ffd9b5', 0, 1.55, 0, pg); box(.6, .1, .05, '#111111', 0, 1.6, .38, pg);
+  } },
+  { id: 'boss', name: '樁腳伯', model: { name: 'male-f', shirt: '#c62828', hat: 'straw', at: [0, 0, 0] }, build(g, pg) {
+    const m = cyl(.08, .2, .45, '#ffd23f', .5, 1.2, .3, g, 10); m.rotation.z = -1.2;
+    cyl(.03, .03, 1.6, '#8d6e63', -.55, .8, .2, g, 6); const fl = box(.6, .4, .03, '#ff4f79', -.25, 1.4, .2, g);
+    const ft = textPlane('凍蒜', .5, .3, '#ffffff', null, 120); ft.position.set(-.25, 1.4, .22); g.add(ft);
+    boardAnims.push(t => { fl.rotation.y = Math.sin(t * 4) * .3; });
+    cyl(.4, .55, 1.1, '#c62828', 0, .7, 0, pg); ball(.42, '#ffd9b5', 0, 1.58, 0, pg); cone(.55, .35, '#f5f5dc', 0, 1.95, 0, pg, 16);
+  } },
 ];
+// 把路人的方塊人換成 3D 模型，播待機動畫
+async function upgradeNPC(n) {
+  const spec = n.def.model; if (!gltf || !spec) return;
+  let gl; try { gl = await loadGLB(`models/character-${spec.name}.glb`); } catch (e) { return; }
+  if (!n.mesh.parent) return;
+  const m = gl.scene, S = 2.5; m.scale.setScalar(S); m.position.set(...spec.at);
+  const shirt = new THREE.Color('#ffffff').lerp(new THREE.Color(spec.shirt), .7);
+  m.traverse(o => { if (o.isMesh) { o.castShadow = true; if (o.name === 'body-mesh') { o.material = o.material.clone(); o.material.color = shirt; } } });
+  const head = m.getObjectByName('head');
+  if (head && spec.hat === 'straw') { const h = new THREE.Mesh(new THREE.ConeGeometry(.22, .13, 16), M('#e8d9a8')); h.position.set(0, .46, 0); head.add(h); const r = new THREE.Mesh(new THREE.CylinderGeometry(.25, .25, .015, 16), M('#d7c48e')); r.position.set(0, .4, 0); head.add(r); }
+  if (head && spec.glasses) loadGLB(`models/aid-${spec.glasses}.glb`).then(x => { x.scene.position.set(0, .1, .1); head.add(x.scene); }).catch(() => { });
+  n.person.visible = false; n.mesh.add(m);
+  n.mixer = new THREE.AnimationMixer(m);
+  const idle = gl.animations.find(a => a.name === 'idle') || gl.animations[0];
+  if (idle) n.mixer.clipAction(idle).play();
+  n.clips = {}; gl.animations.forEach(a => { n.clips[a.name] = a; });
+}
 function npcSpot(i) { const [x, z] = tilePos(i), [ix, iz] = tileIn(i); return [x + ix * 1.1, z + iz * 1.1]; }
 
 /* ---------- 骰子 ---------- */
@@ -1766,6 +1957,7 @@ function frame(now) {
   if (aiming) hiMat.opacity = .35 + Math.abs(Math.sin(t * 4)) * .4;
   for (const i in trapMeshes) trapMeshes[i].visible = trapVisible(G.traps[i]);
   if (G.bomb) { const h = G.players[G.bomb.holder]; bombObj.visible = !!h.mesh && !h.out; if (h.mesh) { bombObj.position.copy(h.mesh.position); bombObj.position.y += 3; } }
+  G.npcs && G.npcs.forEach(n => { if (n.mixer) n.mixer.update(dt); });
   G.players.forEach((p, pi) => {
     if (p.mixer) {
       p.mixer.update(dt);
@@ -2140,8 +2332,9 @@ function startGame(cfg) {
     upgradeToken(p);
   });
   [6, 14, 22].forEach((pos, k) => {
-    const def = NPCS[k], g = new THREE.Group(); def.build(g); g.traverse(o => { if (o.isMesh) o.castShadow = true; });
-    const n = { def, pos, mesh: g }; const [x, z] = npcSpot(pos); g.position.set(x, .2, z); g.rotation.y = tileTheta(pos); scene.add(g); G.npcs.push(n);
+    const def = NPCS[k], g = new THREE.Group(), pg = new THREE.Group(); pg.position.set(...def.model.at); g.add(pg); def.build(g, pg); g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    const n = { def, pos, mesh: g, person: pg }; const [x, z] = npcSpot(pos); g.position.set(x, .2, z); g.rotation.y = tileTheta(pos); scene.add(g); G.npcs.push(n);
+    upgradeNPC(n);
   });
   TILES.forEach((t, i) => drawTile(i));
   $('#setup').hidden = true;
@@ -3591,6 +3784,53 @@ const QUIZ = [
   ['直角三角形兩股是 3 和 4，斜邊是？', '5', ['6', '7', '12'], '數學'],
   ['圓周率大約是多少？', '3.14', ['2.71', '1.41', '3.41'], '數學'],
   ['一打是幾個？', '12 個', ['10 個', '20 個', '24 個'], '數學'],
+  ['時鐘 3 點整，時針和分針夾幾度？', '90 度', ['60 度', '120 度', '180 度'], '數學'],
+  ['半打加一打是幾個？', '18 個', ['12 個', '15 個', '24 個'], '數學'],
+  // 腦筋急轉彎
+  ['什麼瓜不能吃？', '傻瓜', ['西瓜', '南瓜', '苦瓜'], '急轉彎'],
+  ['什麼布剪不斷？', '瀑布', ['棉布', '帆布', '抹布'], '急轉彎'],
+  ['什麼門永遠關不上？', '球門', ['鐵門', '木門', '自動門'], '急轉彎'],
+  ['什麼書在書店買不到？', '秘書', ['漫畫書', '字典', '食譜'], '急轉彎'],
+  ['天氣越熱，什麼東西爬得越高？', '溫度計', ['螞蟻', '藤蔓', '氣球'], '急轉彎'],
+  ['什麼路最窄？', '冤家路窄', ['單行道', '山路', '防火巷'], '急轉彎'],
+  ['什麼東西明明是你的，別人卻用得比你多？', '你的名字', ['你的錢', '你的手機', '你的車'], '急轉彎'],
+  ['一年之中，哪個月有 28 天？', '每個月都有', ['只有二月', '十二月', '都沒有'], '急轉彎'],
+  ['小明的爸爸有三個兒子：大毛、二毛，第三個叫什麼？', '小明', ['三毛', '四毛', '小毛'], '急轉彎'],
+  ['什麼人一年只上一天班？', '聖誕老人', ['候選人', '煙火師', '月老'], '急轉彎'],
+  ['什麼東西越生氣就越大？', '脾氣', ['氣球', '輪胎', '西瓜'], '急轉彎'],
+  ['打什麼東西完全不用花力氣？', '打哈欠', ['打籃球', '打鐵', '打蚊子'], '急轉彎'],
+  ['什麼水不能喝？', '薪水', ['礦泉水', '白開水', '檸檬水'], '急轉彎'],
+  ['什麼東西有腳，卻不會走路？', '桌子', ['小狗', '螞蟻', '青蛙'], '急轉彎'],
+  ['什麼車寸步難行？', '風車', ['腳踏車', '火車', '公車'], '急轉彎'],
+  ['什麼帽子不能戴？', '螺帽', ['安全帽', '草帽', '棒球帽'], '急轉彎'],
+  ['什麼蛋不能吃？', '笨蛋', ['鴨蛋', '雞蛋', '皮蛋'], '急轉彎'],
+  ['什麼東西洗好了卻不能吃？', '撲克牌', ['蘋果', '青菜', '葡萄'], '急轉彎'],
+  ['候選人為什麼一直對大家鞠躬？', '在拜票', ['腰痠', '在撿錢', '綁鞋帶'], '急轉彎'],
+  ['什麼東西越擦越小？', '橡皮擦', ['桌子', '眼鏡', '窗戶'], '急轉彎'],
+  // 台灣冷知識
+  ['台灣最長的河流是？', '濁水溪', ['高屏溪', '淡水河', '大甲溪'], '地理'],
+  ['台灣面積最大的縣市是？', '花蓮縣', ['南投縣', '台東縣', '屏東縣'], '地理'],
+  ['太魯閣國家公園在哪一個縣？', '花蓮縣', ['宜蘭縣', '台東縣', '南投縣'], '地理'],
+  ['澎湖縣政府在哪裡？', '馬公', ['金城', '南竿', '七美'], '地理'],
+  ['台灣高鐵最南邊的車站是？', '左營', ['台南', '屏東', '小港'], '地理'],
+  ['悠遊卡最早是用來搭什麼？', '台北捷運', ['高鐵', '台鐵', '計程車'], '台灣'],
+  // 選舉小知識
+  ['立法委員一屆任期幾年？', '4 年', ['3 年', '5 年', '6 年'], '政治'],
+  ['投票時蓋在選票上的圖案是？', '「卜」字', ['圈圈', '打勾', '叉叉'], '政治'],
+  ['投票所通常幾點關門？', '下午 4 點', ['下午 5 點', '晚上 8 點', '中午 12 點'], '政治'],
+  ['國旗上的白日有幾道光芒？', '12 道', ['8 道', '10 道', '16 道'], '政治'],
+  // 生活常識
+  ['一般成人有幾顆恆牙（含智齒）？', '32 顆', ['28 顆', '30 顆', '36 顆'], '生活'],
+  ['一般說彩虹有幾種顏色？', '7 種', ['5 種', '6 種', '8 種'], '生活'],
+  ['一大氣壓下，水在幾度沸騰？', '100°C', ['90°C', '110°C', '80°C'], '生活'],
+  ['蜘蛛有幾隻腳？', '8 隻', ['6 隻', '10 隻', '4 隻'], '生活'],
+  ['地球上最大的海洋是？', '太平洋', ['大西洋', '印度洋', '北冰洋'], '生活'],
+  ['打雷時先看到閃電、才聽到雷聲，是因為？', '光比聲音快', ['閃電比較近', '耳朵反應慢', '雷比較害羞'], '生活'],
+  // 成語
+  ['「三人成虎」比喻什麼？', '謠言講多了會被當真', ['三個人能打老虎', '團結力量大', '老虎很可怕'], '國學'],
+  ['「一石二鳥」意思最接近？', '一舉兩得', ['一心二用', '一言為定', '一刀兩斷'], '國學'],
+  ['「紙上談兵」比喻什麼？', '只會空談、不會實做', ['很會打仗', '很會寫字', '很會下棋'], '國學'],
+  ['「狐假虎威」比喻什麼？', '仗著別人的勢力嚇人', ['狐狸很勇敢', '老虎很聰明', '朋友互相幫忙'], '國學'],
 ];
 // 速算題：每次隨機出
 function mathQ() {
