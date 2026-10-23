@@ -736,7 +736,7 @@ const ITEMS = {
   free: { name: '免死金牌', icon: '🎫', price: 1200, passive: true, desc: '被動：下次要付過路費時可以免付。' },
   equal: { name: '均富卡', icon: '⚖️', price: 1500, desc: '所有人的現金平均分配。' },
   mirror: { name: '照妖鏡', icon: '🪞', price: 1300, passive: true, desc: '被動：下次有人用檢舉、網軍、烏龜、炸彈、爆料對付你，原封不動彈回去。' },
-  expose: { name: '爆料卡', icon: '📰', price: 1000, aim: 'player', desc: '把一位對手的祕密任務公開給所有人看；他之後完成任務，獎勵減半。' },
+  expose: { name: '爆料卡', icon: '📰', price: 1000, aim: 'player', desc: '把一位對手的祕密任務公開給所有人看；他會馬上換一個新任務，但之後完成獎勵減半。' },
   typhoon: { name: '颱風卡', icon: '🌀', price: 1800, aim: 'zone', desc: '指定一個地區颳颱風：那區所有房子各掉一層（地標不怕）。' },
   magnet: { name: '吸金卡', icon: '🧲', price: 1500, aim: 'player', desc: '從一位對手身上吸走他 10% 現金。' },
   swap: { name: '換位卡', icon: '🔄', price: 1000, aim: 'player', desc: '跟一位對手瞬間交換位置。' },
@@ -813,7 +813,7 @@ const MISSIONS = {
   killer: { name: '政壇殺手', desc: '讓任何一位對手破產退選', check: p => p.stats.kos >= 1 },
   tycoon: { name: '炒地皮大亨', desc: '同時擁有 2 棟摩天樓', check: p => G.tiles.filter(s => s.owner === p.seat && s.level === 5).length >= 2 },
   idol: { name: '民調天王', desc: '民調衝到 90% 以上', check: p => p.poll >= 90 },
-  snake: { name: '背骨仔', desc: '背刺盟友 2 次', check: p => p.stats.stabs >= 2 },
+  snake: { name: '背骨仔', desc: '背刺盟友 1 次', check: p => p.stats.stabs >= 1 },
   lord: { name: '大地主', desc: '同時擁有 6 塊地', check: p => G.tiles.filter(s => s.owner === p.seat).length >= 6 },
   bomber: { name: '爆破專家', desc: '用道具或地雷把對手送進醫院、約談所 4 次', check: p => p.stats.sends >= 4 },
   rich: { name: '黑金帝國', desc: '手上現金達到 40,000', check: p => p.cash >= 40000 },
@@ -1495,10 +1495,16 @@ function loadPortraits() {
   return portraitImg || (portraitImg = new Promise(res => {
     const img = new Image();
     img.onload = () => {
+      // 陳水扁用另一張圖 models/bian.jpg（2000×2000，臉的中心、半徑）；讀不到就用畫的卡通臉
+      const bimg = new Image();
+      bimg.onload = () => build(bimg, [1000, 860, 590]);
+      bimg.onerror = () => build(drawBianFace(), [128, 128, 128]);
+      bimg.src = 'models/bian.jpg';
+    };
+    const build = (bianSrc, bianCrop) => {
       // 先做好每個人的圓形頭像（白邊＋黑框），給 3D 大頭和玩家卡共用
-      const bianCv = drawBianFace();
-      [...Object.entries(PORTRAIT), ['bian', [128, 128, 128]]].forEach(([id, [cx, cy, r]]) => {
-        const img0 = id === 'bian' ? bianCv : img;
+      [...Object.entries(PORTRAIT), ['bian', bianCrop]].forEach(([id, [cx, cy, r]]) => {
+        const img0 = id === 'bian' ? bianSrc : img;
         const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
         x.beginPath(); x.arc(128, 128, 122, 0, 7); x.fillStyle = '#1d1633'; x.fill();
         x.beginPath(); x.arc(128, 128, 116, 0, 7); x.fillStyle = '#ffffff'; x.fill();
@@ -1617,12 +1623,13 @@ const baseAnim = p => p.moving || p.animating ? 'walk' : p.skip > 0 && p.where ?
 /* ---------- NPC ---------- */
 // 路上的人：先用方塊人佔位（person 群組），之後換成 Kenney 3D 人物模型（model：哪個模型、衣服顏色、戴什麼）
 const NPCS = [
-  { id: 'chicken', name: '雞鴨販', model: { name: 'male-c', shirt: '#8d6e63', hat: 'straw', at: [0, 0, -.6] }, build(g, pg) {
+  { id: 'chicken', name: '軍火販子', model: { name: 'male-c', shirt: '#8d6e63', hat: 'straw', at: [0, 0, -.6] }, build(g, pg) {
     box(1.3, .55, .85, '#a1887f', 0, .5, 0, g); box(1.4, .08, .95, '#6d4c41', 0, .8, 0, g);
     [-.45, .45].forEach(x => { const w = cyl(.24, .24, .1, '#333333', x, .24, .45, g, 12); w.rotation.x = Math.PI / 2; });
-    ball(.25, '#ffffff', -.25, 1.08, 0, g); cone(.08, .15, '#e53935', -.25, 1.38, 0, g, 6); cone(.05, .1, '#ff8f00', -.05, 1.1, 0, g, 6).rotation.z = -Math.PI / 2;
-    ball(.2, '#ffe082', .3, 1.04, .1, g); cone(.06, .12, '#ff8f00', .5, 1.04, .1, g, 6).rotation.z = -Math.PI / 2;
-    const sign = textPlane('凍蒜雞', .8, .3, '#ffffff', '#c62828', 120); sign.position.set(0, .5, .44); g.add(sign);
+    // 攤車上擺炸彈、火箭
+    ball(.22, '#1b1b1b', -.32, 1.06, -.05, g); ball(.18, '#1b1b1b', -.05, 1.02, .18, g); cyl(.03, .03, .12, '#c8a165', -.28, 1.3, -.05, g, 5);
+    cyl(.08, .08, .55, '#eceff1', .35, 1.12, 0, g, 8).rotation.z = .5; cone(.08, .16, '#e53935', .22, 1.38, 0, g, 8).rotation.z = .5;
+    const sign = textPlane('軍火攤', .8, .3, '#ffffff', '#c62828', 120); sign.position.set(0, .5, .44); g.add(sign);
     cyl(.3, .4, .9, '#4e342e', 0, 1.3, 0, pg); ball(.25, '#ffd9b5', 0, 1.95, 0, pg); cone(.45, .3, '#d7ccc8', 0, 2.2, 0, pg, 12);
   } },
   { id: 'cops', name: '檢調', model: { name: 'male-b', shirt: '#263238', glasses: 'sunglasses', at: [0, 0, 0] }, build(g, pg) {
@@ -2402,10 +2409,12 @@ function startGame(cfg) {
     p.bubble = document.createElement('div'); p.bubble.className = 'bubble'; p.bubble.style.setProperty('--bc', p.char.color); $('#bubbles').append(p.bubble);
     p.tag = document.createElement('div'); p.tag.className = 'ntag'; p.tag.style.setProperty('--c', p.char.color);
     p.tag.textContent = p.char.name + (p.nick ? '・' + p.nick : ''); $('#bubbles').append(p.tag);
-    if (NET.mode !== 'client') shuffle(ATTACK_KEYS).slice(0, 3).forEach(id => p.items.push(id));
+    // 開局 3 個道具：保證有一個火箭／炸彈／地雷，另外兩個隨機（爆料卡不放開局）
+    if (NET.mode !== 'client') [pick(['rocket', 'bomb', 'mine']), ...shuffle(ATTACK_KEYS.filter(k => k !== 'expose')).slice(0, 2)].forEach(id => p.items.push(id));
     upgradeToken(p);
   });
-  [6, 14, 22].forEach((pos, k) => {
+  // 路人只放 2 個：軍火販子、樁腳伯（太多會一直被打斷）
+  [[10, 0], [26, 2]].forEach(([pos, k]) => {
     const def = NPCS[k], g = new THREE.Group(), pg = new THREE.Group(); pg.position.set(...def.model.at); g.add(pg); def.build(g, pg); g.traverse(o => { if (o.isMesh) o.castShadow = true; });
     const n = { def, pos, mesh: g, person: pg }; const [x, z] = npcSpot(pos); g.position.set(x, .2, z); g.rotation.y = tileTheta(pos); scene.add(g); G.npcs.push(n);
     upgradeNPC(n);
@@ -3198,6 +3207,7 @@ async function useItem(p, id, arg, free) {
       say(arg, 'hit', pick(['誰爆的料！', '這是斷章取義！', '我要提告！']));
       log(`📰 <b>${arg.char.name}</b> 的祕密任務被爆料：「${MISSIONS[arg.mission].name}」`);
       await caption('📰 獨家爆料！', `${arg.char.name} 的祕密任務是「${MISSIONS[arg.mission].name}」：${MISSIONS[arg.mission].desc}`, 2600);
+      await newMission(arg);
       break;
     }
     case 'robot': {
@@ -3239,6 +3249,13 @@ async function useItem(p, id, arg, free) {
   return null;
 }
 
+// 被爆料的人馬上換一個新的祕密任務（完成獎勵一樣減半），對手就不知道他現在要做什麼
+async function newMission(q) {
+  q.mission = pick(MISSION_KEYS.filter(k => k !== q.mission)); q.mPublic = false; q.mDone = false;
+  await caption('🤫 換了新任務！', `${q.char.name} 馬上換了一個新的祕密任務（完成獎勵減半）`, 1600);
+  if (viaNet(q)) req(q, 'mission', { key: q.mission });
+  else if (!q.isAI && canSeeMission(q)) await ask(`<h2>🎯 你的新祕密任務</h2><p style="font-size:13px;color:var(--muted)">舊任務被爆料了，這是新的，別再被發現！</p>${missionHtml(q)}`, [{ label: '記住了', cls: 'primary' }], q);
+}
 async function fireRocket(p, i) {
   lookAtTile(i); cam.zoom = 1.25;
   hostFx('rocket', [p.seat, i]);
@@ -3419,7 +3436,7 @@ function aiPickItem(p) {
   if (danger && has('troll')) return ['troll', danger];
   let choice = null;
   // 爆料留到中後段、而且挑領先的人，祕密任務才有懸念
-  if (has('expose') && G.round >= 4 && Math.random() < .4) { const q = opp.find(x => !x.mPublic && score(x) >= score(p) * 1.1); if (q) return ['expose', q]; }
+  if (has('expose') && G.round >= 6 && Math.random() < .25) { const q = opp.find(x => !x.mPublic && score(x) >= score(p) * 1.1); if (q) return ['expose', q]; }
   if (has('build')) { const v = validTiles(p, 'build'); if (v.length) return ['build', v.sort((a, b) => G.tiles[b].level - G.tiles[a].level)[0]]; }
   if (has('missiles') && G.tiles.filter(s => s.owner >= 0 && s.owner !== p.seat && s.level > 0 && s.level < 5).length >= 2) return ['missiles', true];
   if (has('typhoon')) { const z = ZKEYS.map(k => [k, TILES.reduce((s, t, i) => t.zone === k && G.tiles[i].owner >= 0 ? s + (G.tiles[i].owner === p.seat ? -G.tiles[i].level : G.tiles[i].level) : s, 0)]).sort((a, b) => b[1] - a[1])[0]; if (z && z[1] >= 3) return ['typhoon', z[0]]; }
@@ -3512,23 +3529,23 @@ async function passStart(p) {
   let pay = SALARY;
   if (p.char.id === 'soong') addPoll(p, 8);
   p.cash += pay; SFX.coin(); say(p, 'start');
-  const gift = Math.random() < .4 ? 'rocket' : pick(ITEM_KEYS); giveItem(p, gift); updateHUD();   // 四成機率送火箭
+  const gift = Math.random() < .6 ? pick(['rocket', 'bomb', 'mine']) : pick(ITEM_KEYS); giveItem(p, gift); updateHUD();   // 六成機率送武器
   caption('經過凍蒜廣場', `${p.char.name} 領政治獻金 ${fmt(pay)}＋${ITEMS[gift].icon}${ITEMS[gift].name}${p.char.id === 'soong' ? '，民調 +8' : ''}`, 1000);
 }
 
 async function meetNPC(p, n) {
   const id = n.def.id;
   if (id === 'chicken') {
+    // 軍火販子：隨機 3 種武器打 4 折，挑一個
+    const pool = shuffle(['rocket', 'bomb', 'mine', 'missiles', 'block', 'report', 'magnet']).slice(0, 3);
+    const price = k => Math.round(ITEMS[k].price * .4 / 10) * 10;
     say(p, 'roll', '老闆，今天有什麼好貨？');
-    const buy = p.cash < 500 ? false : p.isAI ? p.cash > 3000 : await ask('<h2>🐔 遇到雞鴨販</h2><p>「少年耶，來一隻凍蒜雞啦！500 元，吃了保證凍蒜！」</p>', [{ label: '買一隻！', value: true, cls: 'primary' }, { label: '不用了', value: false }], p);
-    if (buy) {
-      p.cash -= 500;
-      const r = rnd(4);
-      if (r === 0) { addPoll(p, 12); await info(p, '凍蒜雞真的有效！', '吃完精神百倍，民調 +12。'); }
-      else if (r === 1) { const it = pick(ITEM_KEYS); giveItem(p, it); await info(p, '雞肚子裡有東西！', `剖開發現一個 ${ITEMS[it].icon} ${ITEMS[it].name}。`); }
-      else if (r === 2) { p.cash += 2000; SFX.coin(); await info(p, '雞會生金蛋！', '拿到 2,000 元。'); }
-      else { await info(p, '鴨子跑掉了…', '買的是鴨，一打開籠子就飛走了。'); }
-    } else say(p, 'lose', '下次再說…');
+    let got = null;
+    if (p.isAI) { const ok = pool.filter(k => p.cash > price(k) + 2000); got = ok.length && Math.random() < .8 ? pick(ok) : null; }
+    else got = await ask(`<h2>🧨 遇到軍火販子</h2><p>「少年耶，今天全部 4 折，要哪一個？」</p><div class="cardlist">${pool.map(k => `<div class="cardrow"><span class="ic">${ITEMS[k].icon}</span><div><b>${ITEMS[k].name}　${fmt(price(k))}</b><small>${ITEMS[k].desc}</small></div></div>`).join('')}</div>`,
+      [...pool.map(k => ({ label: `${ITEMS[k].icon} ${ITEMS[k].name} ${fmt(price(k))}`, value: k, cls: 'primary', disabled: p.cash < price(k) })), { label: '不用了', value: null }], p);
+    if (got && ITEMS[got]) { p.cash -= price(got); giveItem(p, got); SFX.coin(); say(p, 'item', '這個好，包起來！'); await caption(`🧨 買到 ${ITEMS[got].icon}${ITEMS[got].name}`, `${p.char.name} 只花 ${fmt(price(got))}`, 1200); }
+    else say(p, 'lose', '下次再說…');
     relocateNPC(n); updateHUD(); return false;
   }
   if (id === 'cops') {
@@ -3538,10 +3555,11 @@ async function meetNPC(p, n) {
     await info(p, '🕵️ 撞見檢調！', `「依法搜索！」${lost ? `${ITEMS[lost].icon} ${ITEMS[lost].name}被沒收，` : '身上什麼都沒搜到，'}原地停下配合調查。`);
     relocateNPC(n); updateHUD(); return true;
   }
-  const gift = Math.random() < .5 ? 'rocket' : 'bento';
-  p.cash += 1000; addPoll(p, 5); giveItem(p, gift); SFX.coin();
+  // 樁腳伯：送錢，再偷偷塞一個武器
+  const gift = pick(['rocket', 'bomb', 'mine']);
+  p.cash += 500; addPoll(p, 5); giveItem(p, gift); SFX.coin();
   say(p, 'earn', '多謝阿伯！');
-  await info(p, '🧓 遇到樁腳伯', `「少年耶，阿伯挺你！」拿到 1,000 元、民調 +5，還有一個${gift === 'rocket' ? '🚀火箭（阿伯說：拿去轟對手！）' : '🍱發便當'}。`);
+  await info(p, '🧓 遇到樁腳伯', `「少年耶，阿伯挺你！」拿到 500 元、民調 +5，阿伯還偷偷塞給你一個 ${ITEMS[gift].icon}${ITEMS[gift].name}：「拿去對付對手！」`);
   relocateNPC(n); updateHUD(); return false;
 }
 
@@ -3560,7 +3578,7 @@ async function resolveTile(p) {
       else await payRent(p, i);
       break;
     case 'item': {
-      const r = Math.random(), id = r < .25 ? 'rocket' : r < .35 ? 'missiles' : pick(ITEM_KEYS); const ok = giveItem(p, id); SFX.fan(); say(p, 'item');
+      const r = Math.random(), id = r < .2 ? 'rocket' : r < .3 ? 'bomb' : r < .4 ? 'mine' : r < .47 ? 'missiles' : pick(ITEM_KEYS); const ok = giveItem(p, id); SFX.fan(); say(p, 'item');
       await info(p, ok ? `抽到 ${ITEMS[id].icon} ${ITEMS[id].name}` : '道具滿了', ok ? ITEMS[id].desc : '換成 500 元。');
       break;
     }
@@ -3995,6 +4013,7 @@ function quizQT0(p, q, k, total, secs) {
     const tick = () => {
       if (done) return;
       const r = 1 - (performance.now() - t0) / D;
+      if (!$('#qbar')) return;   // 視窗被別的畫面蓋掉：交給下面的 setTimeout 收尾
       $('#qbar').style.width = Math.max(0, r * 100) + '%'; $('#qsec').textContent = Math.max(0, Math.ceil(r * secs));
       if (r <= 0) finish(-1); else requestAnimationFrame(tick);
     };
