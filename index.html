@@ -46,9 +46,17 @@ button.hot{background:var(--hot);color:#fff}
 #mods{position:absolute;top:calc(max(12px,env(safe-area-inset-top,0px)) + 46px);left:50%;transform:translateX(-50%);display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:min(560px,92vw);pointer-events:none;z-index:5}
 #mods span{font-size:12px;font-weight:700;background:var(--hot);color:#fff;border:2px solid var(--ink);border-radius:999px;padding:2px 10px}
 #players{position:absolute;top:max(12px,env(safe-area-inset-top,0px));left:max(12px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:8px;width:240px;z-index:5}
-.pc{display:flex;gap:10px;align-items:center;padding:8px 10px;background:var(--paper);border:3px solid var(--ink);border-radius:14px;box-shadow:3px 3px 0 var(--ink);transition:transform .2s}
-.pc.active{transform:translateX(6px);box-shadow:5px 5px 0 var(--c);background:#fff}
+.pc{position:relative;display:flex;gap:10px;align-items:center;padding:8px 10px;background:var(--paper);border:3px solid var(--ink);border-radius:14px;box-shadow:3px 3px 0 var(--ink);transition:transform .2s}
+.pc.active{transform:translateX(6px);box-shadow:5px 5px 0 var(--c),0 0 0 4px var(--sun);background:#fff;animation:pcpulse 1.2s ease-in-out infinite}
+@keyframes pcpulse{50%{box-shadow:5px 5px 0 var(--c),0 0 0 7px var(--sun)}}
+.pc .turnb{position:absolute;left:-6px;top:-10px;z-index:1;padding:1px 7px;border:2px solid var(--ink);border-radius:999px;background:var(--sun);font-family:var(--display);font-weight:900;font-size:11px;box-shadow:2px 2px 0 var(--ink)}
+.pc .meb{display:inline-block;margin-left:4px;padding:0 6px;border-radius:999px;background:var(--hot);color:#fff;font-size:10px;font-weight:900;vertical-align:2px}
 .pc.out{opacity:.4;filter:grayscale(1)}
+/* 結盟／仇人小徽章：貼在玩家卡右上角 */
+.pc .rel{position:absolute;top:-8px;right:-8px;display:flex;gap:3px;z-index:1}
+.pc .rel span{display:flex;align-items:center;gap:2px;padding:2px 3px 2px 5px;border:2px solid var(--ink);border-radius:999px;background:#fff;font-size:16px;line-height:1;box-shadow:2px 2px 0 var(--ink)}
+.pc .rel span.ally{background:#c8f7d4}.pc .rel span.foe{background:#ffd6d6}
+.pc .rel .av{width:24px;height:24px;font-size:10px;border-width:2px}
 .av.face{background-size:cover;background-position:center;color:transparent;background-color:#fff}
 .av{flex:none;width:40px;height:40px;border-radius:50%;background:var(--c);color:#fff;border:3px solid var(--ink);display:grid;place-items:center;font-family:var(--display);font-weight:900;font-size:18px;letter-spacing:-.04em}
 .pi{min-width:0;flex:1}
@@ -73,10 +81,10 @@ button.hot{background:var(--hot);color:#fff}
 #btn-skill{background:#ffd6e3}
 #btn-ally{background:#d9f7d0}
 #btn-ally.stab{background:#3a0f1c;color:#fff}
-#turn-hint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + 66px);font-family:var(--display);font-weight:900;font-size:15px;background:var(--ink);color:var(--sun);padding:5px 14px;border-radius:999px;z-index:6;white-space:nowrap;max-width:calc(100vw - 24px);overflow:hidden;text-overflow:ellipsis}
+#turn-hint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--ah,52px) + 14px);font-family:var(--display);font-weight:900;font-size:15px;background:var(--ink);color:var(--sun);padding:5px 14px;border-radius:999px;z-index:6;white-space:nowrap;max-width:calc(100vw - 24px);overflow:hidden;text-overflow:ellipsis}
 #aimbar{position:absolute;left:50%;transform:translateX(-50%);top:calc(max(12px,env(safe-area-inset-top,0px)) + 52px);z-index:9;display:flex;gap:10px;align-items:center;padding:8px 10px 8px 16px;font-family:var(--display);font-weight:900;font-size:16px;background:var(--hot);color:#fff;max-width:calc(100vw - 24px)}
 #aimbar button{padding:5px 12px;font-size:14px}
-#gauge{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + 104px);z-index:7;width:min(420px,calc(100vw - 24px));box-sizing:border-box;padding:10px 12px;display:grid;gap:6px}
+#gauge{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--ah,52px) + 52px);z-index:7;width:min(420px,calc(100vw - 24px));box-sizing:border-box;padding:10px 12px;display:grid;gap:6px}
 #gauge .gtop{display:flex;justify-content:space-between;align-items:center;font-family:var(--display)}
 #gauge .gpar{display:flex;gap:6px}
 #gauge .gpar button{padding:4px 12px;font-size:13px;box-shadow:2px 2px 0 var(--ink)}
@@ -88,6 +96,59 @@ button.hot{background:var(--hot);color:#fff}
 #tip{position:absolute;z-index:7;padding:8px 12px;font-size:13px;line-height:1.5;pointer-events:none;max-width:220px}
 #tip b{font-family:var(--display);font-size:15px}
 
+/* 資料面板（道具／任務／超能力，隨時可看） */
+#sheet{position:absolute;inset:0;z-index:15;display:grid;place-items:center;background:rgba(29,22,51,.3);padding:16px}
+#sheet[hidden]{display:none}
+.sh-box{position:relative;width:min(440px,100%);max-height:min(80vh,640px);overflow-y:auto;overflow-x:hidden;background:var(--paper);border:3px solid var(--ink);border-radius:18px;box-shadow:5px 5px 0 var(--ink);padding:14px 16px}
+.sh-x{position:absolute;top:8px;right:8px;padding:4px 10px;font-size:16px}
+.sh-head{display:flex;gap:10px;align-items:center;margin-bottom:6px;padding-right:44px}
+.sh-head b{font-family:var(--display);font-size:20px;display:block}
+.sh-head small{color:var(--muted);font-weight:700;font-size:12px}
+.sh-box h4{margin:12px 0 6px;font-family:var(--display);font-size:15px}
+.sh-box .mut{color:var(--muted);font-size:13px}
+.sh-box em{font-style:normal;font-size:11px;padding:1px 7px;border-radius:999px;background:#eee;margin-left:4px}
+.sh-box em.okc{background:#b9f6ca}
+#players .pc{cursor:pointer}
+#actions button.ready{box-shadow:0 0 0 3px var(--sun),3px 3px 0 var(--ink)}
+/* 快速喊話／語音 */
+#chatbar{position:absolute;right:max(12px,env(safe-area-inset-right,0px));bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--ah,52px) + 16px);display:flex;flex-direction:column;align-items:flex-end;gap:6px;z-index:6}
+#chatbar[hidden]{display:none}
+#chatbar>button{font-size:15px;padding:8px 12px}
+#emos{display:flex;gap:4px}
+#emos button{font-size:20px;padding:4px 7px;line-height:1}
+.emofly{position:absolute;z-index:9;pointer-events:none;font-size:34px;transform:translate(-50%,-50%);animation:emofly 1.4s ease-out forwards;text-align:center}
+.emofly small{display:block;font-size:11px;font-weight:900;font-family:var(--display);background:#fff;border:2px solid var(--ink);border-radius:999px;padding:0 6px;white-space:nowrap}
+@keyframes emofly{0%{opacity:0;transform:translate(-50%,40px) scale(.6)}20%{opacity:1;transform:translate(-50%,-10px) scale(1.25)}100%{opacity:0;transform:translate(-50%,-90px) scale(1)}}
+#btn-talk{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#btn-talk.rec{background:var(--hot);color:#fff}
+#phrases{position:absolute;right:0;bottom:calc(100% + 8px);display:grid;grid-template-columns:1fr 1fr;gap:5px;background:var(--paper);border:3px solid var(--ink);border-radius:14px;padding:8px;box-shadow:3px 3px 0 var(--ink);width:min(300px,80vw)}
+#phrases[hidden]{display:none}
+#phrases button{font-size:12px;padding:6px 4px}
+/* 小遊戲：反應、打假新聞、拔河倒數 */
+.react{display:block;width:100%;height:150px;margin:10px 0;font-size:30px;background:#455a64;color:#fff;border-radius:18px;touch-action:manipulation;user-select:none}
+.react.flash{background:#fffde7;color:var(--ink);box-shadow:0 0 0 6px #fff59d,3px 3px 0 var(--ink)}
+.mole-top{display:flex;gap:10px;align-items:center;margin:6px 0}
+.mole-top b{font-family:var(--display);font-size:30px;min-width:56px;text-align:center}
+.mole-top .timer{flex:1}
+.moles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.moles button{height:72px;font-size:34px;background:#fff;border-radius:16px;touch-action:manipulation;user-select:none;padding:0}
+.moles button.up{background:#fff8e1}
+.tug{position:relative}
+.tugcd{position:absolute;inset:-4px;display:grid;place-items:center;font-family:var(--display);font-size:76px;font-weight:900;color:var(--hot);text-shadow:4px 4px 0 var(--ink);background:rgba(255,255,255,.8);border-radius:14px;z-index:2;pointer-events:none}
+.tugcd[hidden]{display:none}
+/* 觀戰卡片 */
+#peeks{position:absolute;top:calc(max(12px,env(safe-area-inset-top,0px)) + 84px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;width:min(380px,92vw);pointer-events:none;z-index:7}
+.pk{background:var(--paper);border:3px solid var(--ink);border-left:8px solid var(--c);border-radius:14px;box-shadow:3px 3px 0 var(--ink);padding:7px 10px;animation:pkin .25s ease-out}
+.pk.done{animation:none}
+.pk-h{display:flex;gap:7px;align-items:center;font-family:var(--display);font-size:14px}
+.pk-h .av{width:26px;height:26px;font-size:11px;border-width:2px}
+.pk-h small{margin-left:auto;font-family:var(--body);font-weight:700;font-size:11px;color:var(--muted);text-align:right}
+.pk-q{font-weight:800;font-size:14px;margin:4px 0 2px;line-height:1.35}
+.pk-o{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.pk-o span{font-size:12px;font-weight:700;padding:2px 8px;border:2px solid var(--ink);border-radius:999px;background:#fff}
+.pk-o span.ok{background:#b9f6ca}.pk-o span.bad{background:#ffcdd2;text-decoration:line-through}.pk-o span.pick{background:var(--sun)}
+.pk-r{font-size:12px;font-weight:900;margin-top:4px;color:var(--ink)}
+@keyframes pkin{from{transform:translateY(-8px);opacity:0}to{transform:none;opacity:1}}
 #caption{position:absolute;left:0;right:0;top:28%;text-align:center;pointer-events:none;z-index:8;padding:0 16px}
 #caption .big{display:inline-block;font-family:var(--display);font-weight:900;font-size:clamp(30px,6vw,58px);color:var(--sun);-webkit-text-stroke:9px var(--ink);paint-order:stroke fill;line-height:1.2;text-wrap:balance}
 #caption .sub{display:block;margin-top:6px;font-family:var(--display);font-weight:900;font-size:clamp(16px,2.6vw,22px);color:#fff;-webkit-text-stroke:6px var(--ink);paint-order:stroke fill}
@@ -230,17 +291,24 @@ button.hot{background:var(--hot);color:#fff}
   #players{left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));width:auto;display:grid;grid-template-columns:1fr 1fr;gap:6px;top:calc(max(8px,env(safe-area-inset-top,0px)) + 42px)}
   .pc{padding:5px 7px;gap:6px}
   .pc.active{transform:none}
+  .pc .turnb{font-size:10px;top:-9px;left:-4px}
   #players .av{width:30px;height:30px;font-size:12px;border-width:2px}
   .pi .nm{font-size:13px}
   .pi .cash{font-size:13px}
   .pi .st{display:none}
   #hud-top{top:max(8px,env(safe-area-inset-top,0px))}
   #hud-top .chip{font-size:13px;padding:4px 10px}
-  #mods{top:auto;bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + 150px)}
-  #aimbar{top:auto;bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + 110px);font-size:14px}
+  #mods{top:auto;bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--ah,96px) + 100px)}
+  #peeks{top:calc(max(8px,env(safe-area-inset-top,0px)) + 175px)}
+  #chatbar{bottom:auto;top:calc(max(8px,env(safe-area-inset-top,0px)) + 200px);z-index:8}
+  #emos{flex-direction:column}
+  #emos button{font-size:18px;padding:3px 6px}
+  #phrases{bottom:auto;top:0;right:calc(100% + 8px);width:min(250px,64vw)}
+  .pk{padding:5px 8px}.pk-q{font-size:13px}
+  #aimbar{top:auto;bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--ah,96px) + 58px);font-size:14px}
   #btn-roll{font-size:19px;padding:10px 20px;min-width:120px}
   #actions button:not(#btn-roll){font-size:13px;padding:7px 10px}
-  #turn-hint{bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + 112px);font-size:13px}
+  #turn-hint{font-size:13px}
   .chargrid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .slots{grid-template-columns:1fr 1fr}
   .rounds{grid-template-columns:1fr}
@@ -277,6 +345,7 @@ button.hot{background:var(--hot);color:#fff}
   <div id="actions" hidden>
     <button id="btn-roll" disabled>擲骰子</button>
     <button id="btn-items" disabled>道具 <span id="item-n">0</span></button>
+    <button id="btn-power" hidden>⚡ 超能力</button>
     <button id="btn-skill" disabled hidden>技能</button>
     <button id="btn-ally" disabled>🤝 結盟</button>
     <button id="btn-mission" title="偷看自己的祕密任務">🎯 任務</button>
@@ -286,6 +355,14 @@ button.hot{background:var(--hot);color:#fff}
     <button id="btn-voice" title="角色台詞語音開關">語音 開</button>
   </div>
   <div id="caption"></div>
+  <div id="peeks" aria-live="polite"></div>
+  <div id="sheet" hidden><div class="sh-box" role="dialog" aria-label="玩家資料"><button class="sh-x" id="sheet-x" aria-label="關閉">✕</button><div id="sheet-body"></div></div></div>
+  <div id="chatbar" hidden>
+    <div id="phrases" hidden></div>
+    <div id="emos"><button data-e="👍" title="按讚">👍</button><button data-e="🍅" title="丟番茄">🍅</button><button data-e="🥚" title="丟雞蛋">🥚</button><button data-e="💸" title="撒錢">💸</button><button data-e="😂" title="笑死">😂</button></div>
+    <button id="btn-chat" title="快速喊話">💬 喊話</button>
+    <button id="btn-talk" title="按住說話，放開送出" hidden>🎤 按住說話</button>
+  </div>
   <div id="modal" hidden><div class="box panel" id="modal-box"></div></div>
 
   <div id="setup">
@@ -318,9 +395,9 @@ button.hot{background:var(--hot);color:#fff}
         <div class="rounds seats" id="seats"></div>
         <h4>這局要玩多久？</h4>
         <div class="rounds" id="rounds">
-          <button data-r="15">閃電局 15 回合<small>約 20 分鐘</small></button>
-          <button data-r="25" aria-pressed="true">標準局 25 回合<small>約 30 分鐘</small></button>
-          <button data-r="35">馬拉松 35 回合<small>約 40 分鐘</small></button>
+          <button data-r="10">閃電局 10 回合<small>約 15 分鐘</small></button>
+          <button data-r="13" aria-pressed="true">標準局 13 回合<small>約 20 分鐘</small></button>
+          <button data-r="16">長局 16 回合<small>約 25 分鐘</small></button>
         </div>
         <details>
           <summary><b>怎麼玩？（30 秒看懂）</b></summary>
@@ -402,7 +479,7 @@ const myPlayer = () => G.players.find(p => p.ctl === 'r:' + NET.cid);
 function hostFx(k, d) { if (NET.mode === 'host' && NET.named && NET.started && !NET.quiet) NET.named.emit('fx', { k, d }).catch(() => { }); }
 function label(p) {
   if (p.isAI) return '電腦';
-  if (isRemote(p)) return NET.mode === 'client' && p.ctl === 'r:' + NET.cid ? '你' : (p.nick || '連線玩家');
+  if (isRemote(p)) return p.nick || (NET.mode === 'client' && p.ctl === 'r:' + NET.cid ? '你' : '連線玩家');
   return NET.mode === 'client' ? '房主' : '玩家' + p.humanNo;
 }
 // 別人傳來的 HTML 只留排版用的標籤，拿掉所有屬性（class 除外）
@@ -553,7 +630,7 @@ const KINDS = { hq: { name: '競選總部', mult: 4.5 }, stand: { name: '雞排�
 const ITEMS = {
   mine: { name: '地雷', icon: '💥', price: 800, aim: 'tile', desc: '埋在你前後 8 格內，踩到的人炸進醫院 2 回合。' },
   bomb: { name: '定時炸彈', icon: '⏰', price: 1200, aim: 'near', desc: '黏到 6 格內的對手身上，經過誰就傳給誰，4 回合後爆炸。' },
-  rocket: { name: '火箭', icon: '🚀', price: 2000, aim: 'tile', desc: '轟炸任何一格：房子全拆，站在那格的人送醫院。' },
+  rocket: { name: '火箭', icon: '🚀', price: 2000, aim: 'tile', desc: '轟炸任何一格：房子全拆，站在那格和左右隔壁的人都送醫院 2 回合。' },
   block: { name: '路障', icon: '🚧', price: 500, aim: 'tile', desc: '放在你前後 8 格內，經過的人被擋下來。' },
   dice: { name: '遙控骰子', icon: '🎲', price: 700, desc: '這次走幾步由你決定（1～12）。' },
   robot: { name: '清道夫', icon: '🧹', price: 600, desc: '清掉你前方 10 格內所有地雷和路障。' },
@@ -580,6 +657,62 @@ const ITEM_KEYS = Object.keys(ITEMS);
 const ATTACK_KEYS = ['mine', 'bomb', 'rocket', 'block', 'report', 'troll', 'turtle', 'demolish', 'dice', 'mirror', 'expose', 'typhoon', 'magnet', 'swap', 'ghost', 'missiles', 'build'];
 // 會直接打到某位玩家、可以疊連擊的道具
 const HIT_ITEMS = ['bomb', 'report', 'troll', 'turtle', 'expose', 'magnet', 'swap'];
+// 超能力：開局每人隨機抽一個，每 2 回合可以發動一次（有 item 的就是「免費用一次那個道具」）
+const POWERS = {
+  rocket: { name: '飛彈部隊', icon: '🚀', item: 'rocket', desc: '免費發射一枚火箭：炸掉一格的房子，站在那格和隔壁的人一起送醫院。' },
+  report: { name: '檢調關說', icon: '📝', item: 'report', desc: '指定一位對手，請他去檢調約談所喝咖啡 1 回合。' },
+  build: { name: '都更特權', icon: '🏗️', item: 'build', desc: '自己的一塊地免費往上蓋一層。' },
+  swap: { name: '乾坤大挪移', icon: '🔄', item: 'swap', desc: '跟一位對手瞬間交換位置。' },
+  dice: { name: '天選之骰', icon: '🎲', item: 'dice', desc: '這回合想走幾步就走幾步（1～12）。' },
+  ghost: { name: '金蟬脫殼', icon: '👻', item: 'ghost', desc: '隱身 2 回合，別人的攻擊都打不到你。' },
+  troll: { name: '網軍總部', icon: '🖥️', item: 'troll', desc: '指定一位對手民調 -15，你 +5。' },
+  donate: { name: '政治獻金', icon: '💰', desc: '每位對手各「樂捐」500 給你。' },
+  viral: { name: '網紅加持', icon: '📢', desc: '民調 +10，再拿 1,000 元業配費。' },
+};
+const powerReady = p => !!(p && POWERS[p.power] && !p.out && G.round - (p.powerAt ?? -9) >= 2);
+// 這台裝置上「我」是誰（看道具、任務、喊話用）
+function viewer() {
+  if (NET.mode === 'client') return myPlayer() || null;
+  if (typeof waiting !== 'undefined' && waiting && !waiting.p.isAI && !isRemote(waiting.p)) return waiting.p;
+  const locals = G.players.filter(q => !q.isAI && !isRemote(q));
+  return locals[0] || null;
+}
+// 祕密任務只給本人看；同一台電腦好幾個人輪流玩時，輪到誰才給誰看
+function canSeeMission(p) {
+  if (!p) return false;
+  if (NET.mode === 'client') return p === myPlayer();
+  if (p.isAI || isRemote(p)) return false;
+  const locals = G.players.filter(q => !q.isAI && !isRemote(q));
+  return locals.length === 1 || (typeof waiting !== 'undefined' && !!waiting && waiting.p === p);
+}
+// 只在自己畫面上跳字（不廣播給別人）
+function localCaption(big, sub = '', ms = 1400) {
+  const c = $('#caption');
+  c.innerHTML = `<span class="big">${big}</span>${sub ? `<span class="sub">${sub}</span>` : ''}`;
+  c.classList.remove('show'); void c.offsetWidth; c.classList.add('show');
+  clearTimeout(capTimer); capTimer = setTimeout(() => { c.innerHTML = ''; }, ms + 300);
+}
+function openSheet(p, focus) {
+  if (!p) { localCaption('還沒有你的角色', '先觀戰一下吧'); return; }
+  const mKey = NET.mode === 'client' && p === myPlayer() ? NET.myMission : p.mission;
+  const P = POWERS[p.power], kinds = [...new Set(p.items)];
+  const lands = G.tiles.map((st, i) => i).filter(i => G.tiles[i].owner === p.seat);
+  const ally = p.ally >= 0 ? G.players[p.ally] : null, foe = p.revenge >= 0 ? G.players[p.revenge] : null;
+  const mission = canSeeMission(p) && MISSIONS[mKey] ? missionHtml(p, mKey) : p.mPublic && MISSIONS[p.mission] ? missionHtml(p, p.mission) : '<p class="mut">（祕密，看不到）</p>';
+  $('#sheet-body').innerHTML = `<div class="sh-head" style="--c:${p.char.color}">${avatar(p.char)}<div><b>${p.char.name}</b><small>${esc(label(p))}・${p.out ? '退選' : fmt(p.cash)}・民調 ${Math.round(p.poll)}%</small></div></div>
+    ${P ? `<h4 id="sh-power">⚡ 超能力</h4><div class="cardrow"><span class="ic">${P.icon}</span><div><b>${P.name}${powerReady(p) ? '<em class="okc">可以發動</em>' : `<em>第 ${p.powerAt + 2} 回合可用</em>`}</b><small>${P.desc}</small></div></div>` : ''}
+    <h4 id="sh-mission">🎯 祕密任務</h4>${mission}
+    <h4 id="sh-items">🎒 道具（${p.items.length}）</h4>${kinds.length ? `<div class="cardlist">${kinds.map(c => `<div class="cardrow"><span class="ic">${ITEMS[c].icon}</span><div><b>${ITEMS[c].name} ×${p.items.filter(x => x === c).length}${ITEMS[c].passive ? '<em>被動</em>' : ''}</b><small>${ITEMS[c].desc}</small></div></div>`).join('')}</div>` : '<p class="mut">沒有道具</p>'}
+    <h4>🏠 地產（${lands.length} 塊）</h4><p class="mut">${lands.map(i => TILES[i].name + (G.tiles[i].level || G.tiles[i].kind ? `（${buildingName(i)}）` : '')).join('、') || '還沒有地'}</p>
+    ${ally || foe ? `<h4>🤝 關係</h4><p>${ally ? `🤝 跟 ${ally.char.name} 結盟中<br>` : ''}${foe ? `🗡️ 被 ${foe.char.name} 背刺過，打他第一下就算連擊` : ''}</p>` : ''}
+    <p class="mut" style="margin-top:10px">💡 點左邊任何一位玩家的卡片，可以看他的道具、超能力和地產。</p>`;
+  $('#sheet').hidden = false;
+  const t = $('#sh-' + focus); if (t) t.scrollIntoView({ block: 'start' });
+}
+$('#sheet-x').onclick = () => { $('#sheet').hidden = true; };
+if (window.ResizeObserver) new ResizeObserver(() => document.documentElement.style.setProperty('--ah', $('#actions').offsetHeight + 'px')).observe($('#actions'));
+$('#sheet').onclick = e => { if (e.target.id === 'sheet') $('#sheet').hidden = true; };
+$('#players').onclick = e => { const el = e.target.closest('.pc'); const p = el && G.players[+el.dataset.k]; if (p) openSheet(p, 'items'); };
 
 /* ---------- 祕密任務（勝利條件） ---------- */
 const MISSION_BONUS = 25000;
@@ -1363,7 +1496,12 @@ const BUILD = [
 
 /* ---------- 補間動畫 ---------- */
 const tweens = [];
-const speed = () => (G && G.fast ? .4 : 1);
+const speed = () => {
+  if (!G || !G.players) return 1;
+  if (G.fast) return .4;
+  const n = G.players.length, cur = G.players[G.turn], ai = cur && cur.isAI;
+  return ai ? (n > 4 ? .55 : .8) : (n > 4 ? .85 : 1);
+};
 function tween(ms, fn) { return new Promise(res => tweens.push({ t0: performance.now(), dur: Math.max(1, ms * speed()), fn, res })); }
 const wait = ms => new Promise(r => BGT.timeout(r, ms * speed()));
 
@@ -1410,6 +1548,10 @@ function showTip(i, x, y) {
 
 let aiming = null;
 function aimTile(valid, text, p) {
+  peek(p, { kind: 'aim', title: '🎯 選目標中', text });
+  return aimTile0(valid, text, p).then(i => { peekDone(p, { pick: i >= 0 && TILES[i] ? TILES[i].name : '取消' }); return i; });
+}
+function aimTile0(valid, text, p) {
   if (viaNet(p)) return req(p, 'aim', { valid, text }).then(i => valid.includes(i) ? i : -1);
   return new Promise(resolve => {
     aiming = { valid: new Set(valid), resolve };
@@ -1464,6 +1606,11 @@ function stepTweens(now) {
 }
 // 視窗被縮小或切到別的 App 時瀏覽器會停掉動畫；改用計時器繼續推進，遊戲才不會整局卡住
 BGT.interval(() => { const now = performance.now(); if (now - last > 300) stepTweens(now); }, 200);
+// 輪到誰：頭上的倒三角箭頭
+const turnArrow = new THREE.Group();
+{ const c = new THREE.Mesh(new THREE.ConeGeometry(.55, 1.1, 4), new THREE.MeshStandardMaterial({ color: '#ffd23f', emissive: '#332200', roughness: .4 })); c.rotation.x = Math.PI; turnArrow.add(c);
+  const e = new THREE.Mesh(new THREE.ConeGeometry(.62, 1.2, 4), new THREE.MeshBasicMaterial({ color: '#1d1633', side: THREE.BackSide })); e.rotation.x = Math.PI; turnArrow.add(e); }
+turnArrow.visible = false; scene.add(turnArrow);
 function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now; const t = now / 1000;
   stepTweens(now);
@@ -1496,6 +1643,9 @@ function frame(now) {
   if (spinning) dice.forEach((d, j) => { d.rotation.x += dt * (9 + j); d.rotation.y += dt * 7; });
   updateCamera(dt, t);
   renderer.render(scene, camera);
+  const tp = G.players[G.turn];
+  turnArrow.visible = !!(tp && tp.mesh && !tp.out && G.players.length && !G.over);
+  if (turnArrow.visible) { turnArrow.position.set(tp.mesh.position.x, tp.mesh.position.y + 5.2 + Math.sin(t * 5) * .35, tp.mesh.position.z); turnArrow.rotation.y = t * 2; turnArrow.children[0].material.color.set(tp.char.color); }
   G.players.forEach(p => {
     if (!p.bubble || !p.mesh) return;
     tmpV.copy(p.mesh.position); tmpV.y += 2.7; tmpV.project(camera);
@@ -1542,6 +1692,7 @@ function winRulesHtml() {
       <div class="cardrow"><span class="ic">⚡</span><div><b>立即凍蒜①：壟斷一整區</b><small>同一區的 5 塊地全部拿下，當場獲勝。有人拿到 4 塊時全場會發警報，快去收購他的地！</small></div></div>
       <div class="cardrow"><span class="ic">⚡</span><div><b>立即凍蒜②：聲量 100%</b><small>民調衝到 100% 會發全場警報，撐到自己下一回合開始還是 100% 就獲勝。其他人可以趁這一輪用網軍、爆料把他打下來！</small></div></div>
       <div class="cardrow"><span class="ic">⚡</span><div><b>立即凍蒜③：其他人全部破產</b><small>把所有對手逼到退選。</small></div></div>
+      <div class="cardrow"><span class="ic">🦸</span><div><b>超能力：每 2 回合發動一次</b><small>開局每人隨機抽到一個超能力（飛彈部隊、政治獻金、乾坤大挪移…），出牌時按「⚡」發動，用完冷卻 2 回合。點左邊玩家卡可以看每個人的超能力、道具和地產。</small></div></div>
       <div class="cardrow"><span class="ic">🗳️</span><div><b>時間到：得票最高的人當選</b><small>得票 = 現金 + 地產價值 + 民調 × ${POLL_VOTES} + 祕密任務 + 每擊倒一人 5,000。</small></div></div>
     </div>
     <p style="font-size:13px;margin-top:10px">💡 買地當下就能一次蓋到公寓；踩到別人的地，付完過路費可以花 1.5 倍價錢<b>強制收購</b>（摩天樓是地標，收不走）；擲出<b>對子再擲一次</b>。</p>`;
@@ -1561,16 +1712,19 @@ function takeItem(p, id) { const k = p.items.indexOf(id); if (k >= 0) p.items.sp
 function updateHUD() {
   $('#players').classList.toggle('many', G.players.length > 4);
   $('#players').innerHTML = G.players.map((p, k) => `
-    <div class="pc ${G.turn === k ? 'active' : ''} ${p.out ? 'out' : ''}" style="--c:${p.char.color}">
+    <div data-k="${k}" class="pc ${G.turn === k ? 'active' : ''} ${p.out ? 'out' : ''}" style="--c:${p.char.color}">
+      ${relBadges(p)}
+      ${G.turn === k && !p.out ? '<span class="turnb">🎲 輪到他</span>' : ''}
       ${avatar(p.char)}
       <div class="pi">
-        <div class="nm">${p.char.name}<small>${esc(label(p))}</small></div>
+        <div class="nm">${p.char.name}${p === viewer() && NET.mode !== 'off' ? '<span class="meb">你</span>' : ''}<small>${esc(label(p))}</small></div>
         <div class="cash">${p.out ? '退選' : fmt(p.cash)}</div>
         <div class="poll"><i style="width:${p.poll}%"></i><em>民調 ${Math.round(p.poll)}%</em></div>
         <div class="st">${statusText(p)}</div>
       </div>
     </div>`).join('');
   $('#round-chip').textContent = `第 ${Math.min(G.round, G.maxRounds)} / ${G.maxRounds} 回合`;
+  refreshSide(); syncScars();
   $('#mods').innerHTML = (finalNight() ? '<span>🌙 選前之夜：過路費 1.5 倍、軍火半價</span>' : '') + G.mods.filter(m => m.until >= G.round).map(m => `<span>${esc(m.label)}（到第 ${m.until} 回合）</span>`).join('');
   G.tiles.forEach((st, i) => { if (st.owner >= 0) drawTile(i); });
   if (NET.mode !== 'client') { checkMissions(); checkInstant(); }
@@ -1615,6 +1769,13 @@ function checkMissions() {
     log(`🎯 <b>${p.char.name}</b> 完成祕密任務「${MISSIONS[p.mission].name}」！`);
     caption(`🎯 ${p.char.name} 任務達成！`, `「${MISSIONS[p.mission].name}」+${fmt(missionBonus(p)).slice(1)} 票，快圍剿他！`, 2200);
   });
+}
+// 結盟 🤝 和仇人 🗡️ 的小徽章（帶對方的頭像）
+function relBadges(p) {
+  const a = p.ally >= 0 && G.players[p.ally] && !G.players[p.ally].out ? G.players[p.ally] : null;
+  const f = p.revenge >= 0 && G.players[p.revenge] && !G.players[p.revenge].out ? G.players[p.revenge] : null;
+  if (p.out || (!a && !f)) return '';
+  return `<div class="rel">${a ? `<span class="ally" title="跟 ${a.char.name} 結盟中">🤝${avatar(a.char)}</span>` : ''}${f ? `<span class="foe" title="被 ${f.char.name} 背刺，要報仇">🗡️${avatar(f.char)}</span>` : ''}</div>`;
 }
 function statusText(p) {
   const bits = [];
@@ -1661,7 +1822,59 @@ function sayLine(seat, line, key) {
 }
 
 const modal = $('#modal'), mbox = $('#modal-box');
+/* ---------- 觀戰卡片：別人在答題／做決定時，其他人看得到題目、選項和他選了什麼 ---------- */
+function peek(p, d) {
+  if (!p || p.isAI || NET.mode !== 'host') return;
+  const m = { s: p.seat, ...d };
+  hostFx('peek', m);
+  if (isRemote(p)) showPeek(m);   // 朋友在做決定時，房主自己也看得到
+}
+function peekDone(p, d) {
+  if (!p || NET.mode !== 'host') return;
+  const m = { s: p.seat, ...d };
+  hostFx('peekEnd', m);
+  if (isRemote(p) || p.awayCid) showPeekEnd(m);
+}
+function showPeek(d) {
+  const p = G.players[+d.s]; if (!p) return;
+  let el = $('#peeks').querySelector(`[data-s="${p.seat}"]`);
+  if (!el) { el = document.createElement('div'); el.className = 'pk'; el.dataset.s = p.seat; $('#peeks').append(el); }
+  clearTimeout(el.t); el.classList.remove('done');
+  el.style.setProperty('--c', p.char.color);
+  const opts = Array.isArray(d.opts) ? d.opts.slice(0, 8).map(o => String(o).slice(0, 40)) : [];
+  el.innerHTML = `<div class="pk-h">${avatar(p.char)}<b>👀 ${esc(p.char.name)}</b><small>${esc(String(d.title || '').slice(0, 40))}</small></div>`
+    + (d.text ? `<div class="pk-q">${esc(String(d.text).slice(0, 90))}</div>` : '')
+    + (opts.length ? `<div class="pk-o">${opts.map(o => `<span>${esc(o)}</span>`).join('')}</div>` : '')
+    + `<div class="pk-r">⏳ 思考中…</div>`;
+}
+function showPeekEnd(d) {
+  const p = G.players[+d.s]; if (!p) return;
+  let el = $('#peeks').querySelector(`[data-s="${p.seat}"]`);
+  if (!el) { showPeek({ s: d.s, title: '' }); el = $('#peeks').querySelector(`[data-s="${p.seat}"]`); }
+  const pick = String(d.pick || '').slice(0, 40);
+  el.querySelectorAll('.pk-o span').forEach(x => {
+    if (x.textContent === pick) x.classList.add(d.quiz ? (d.ok ? 'ok' : 'bad') : 'pick');
+    if (d.quiz && x.textContent === String(d.ans || '')) x.classList.add('ok');
+  });
+  el.querySelector('.pk-r').textContent = d.quiz ? `${d.ok ? '✅ 答對！' : '❌ 答錯'}　選了「${pick}」` : `👉 ${pick}`;
+  el.classList.add('done');
+  clearTimeout(el.t); el.t = setTimeout(() => el.remove(), 2800);
+}
 function ask(html, buttons, p) {
+  // 兩個以上選項的決定才給別人看；祕密任務絕對不給看
+  const show = p && !p.isAI && buttons.length >= 2 && !/祕密任務/.test(html);
+  if (!show) return ask0(html, buttons, p);
+  // 區塊之間補空白，抽出來的文字才不會黏在一起
+  const doc = new DOMParser().parseFromString(String(html).replace(/<\/(div|p|li|span|b|small|h3|td)>|<br\s*\/?>/gi, m => m + ' '), 'text/html'), h = doc.querySelector('h2');
+  const title = h ? h.textContent.trim() : ''; if (h) h.remove();
+  peek(p, { kind: 'ask', title, text: doc.body.textContent.replace(/\s+/g, ' ').trim().slice(0, 90), opts: buttons.map(b => plainText(b.label)) });
+  return ask0(html, buttons, p).then(v => {
+    const b = buttons.find(x => (x.value !== undefined ? x.value : x.label) === v);
+    peekDone(p, { pick: b ? plainText(b.label) : '' }); return v;
+  });
+}
+const plainText = h => new DOMParser().parseFromString(String(h), 'text/html').body.textContent.replace(/\s+/g, ' ').trim().slice(0, 40);
+function ask0(html, buttons, p) {
   if (viaNet(p)) {
     return req(p, 'ask', { html, buttons: buttons.map(b => ({ label: b.label, cls: b.cls || '', disabled: !!b.disabled })) })
       .then(k => { const b = buttons[k] && !buttons[k].disabled ? buttons[k] : buttons[buttons.length - 1]; return b.value !== undefined ? b.value : b.label; });
@@ -1681,7 +1894,7 @@ const info = (p, title, body) => p.isAI ? caption(title, body) : ask(`<h2>${titl
 
 /* ---------- 開場：選角 ---------- */
 let roster = [{ ci: 8, mode: 'human' }, { ci: 1, mode: 'ai' }, { ci: 2, mode: 'ai' }, { ci: 11, mode: 'ai' }];
-let maxRounds = 25, seats = 4;
+let maxRounds = 13, seats = 4;
 const MAX_SEATS = 8;
 // 依「參選人數」補電腦或刪掉多的電腦（連線朋友不會被刪）
 function fitRoster(fill) {
@@ -1730,7 +1943,7 @@ function renderSetup() {
   $('#btn-start').textContent = roster.length < seats ? `開始競選！（空位由電腦補）` : '開始競選！';
   const rounds = client && NET.lobby ? NET.lobby.rounds : maxRounds;
   // 預估時間：4 人 25 回合約 30 分鐘，人越多越久
-  $('#rounds').querySelectorAll('button').forEach(x => { x.setAttribute('aria-pressed', +x.dataset.r === rounds); x.disabled = client; const sm = x.querySelector('small'); if (sm) sm.textContent = `約 ${Math.max(10, Math.round(+x.dataset.r * Math.max(2, nSeats) * .3 / 5) * 5)} 分鐘`; });
+  $('#rounds').querySelectorAll('button').forEach(x => { x.setAttribute('aria-pressed', +x.dataset.r === rounds); x.disabled = client; const sm = x.querySelector('small'); if (sm) sm.textContent = `約 ${Math.max(10, Math.ceil(+x.dataset.r * Math.max(2, nSeats) * .35 / 5) * 5)} 分鐘`; });
   const mp = client && NET.lobby && MAPS[NET.lobby.map] ? NET.lobby.map : MAP;
   $('#maps').innerHTML = MAP_KEYS.map(k => `<button data-map="${k}" aria-pressed="${k === mp}" ${client ? 'disabled' : ''}>${MAPS[k].name}<small>${MAPS[k].blurb}</small></button>`).join('');
   $('#maps').querySelectorAll('[data-map]').forEach(b => b.onclick = () => { if (b.dataset.map !== MAP) { buildBoard(b.dataset.map); beep(700, .04); } renderSetup(); sendLobby(); });
@@ -1759,11 +1972,15 @@ function startGame(cfg) {
   const players = cfg.players.map((x, seat) => ({
     seat, char: CHARS[x.ci], ctl: x.ctl, nick: String(x.nick || '').slice(0, 10), isAI: x.ctl === 'ai', humanNo: x.ctl === 'ai' ? 0 : ++h,
     cash: START_CASH, poll: 50, pos: 0, items: [], skip: 0, where: null, turtle: 0, out: false, skillUsed: false, animQ: [],
-    ally: -1, revenge: -1, mission: '', mDone: false, mPublic: false, mExposed: false, stats: { kos: 0, stabs: 0, sends: 0, combo3: 0, hits: 0 },
+    ally: -1, revenge: -1, mission: '', mDone: false, mPublic: false, mExposed: false, stats: { kos: 0, stabs: 0, sends: 0, combo3: 0, hits: 0 }, power: '', powerAt: -9,
   }));
-  if (NET.mode !== 'client') { const ms = shuffle(MISSION_KEYS); players.forEach((p, k) => { p.mission = ms[k % ms.length]; }); }
-  G = { tiles: blankTiles(), players, turn: 0, round: 1, maxRounds: cfg.rounds, mods: [], traps: {}, npcs: [], bomb: null, fast: !h, t0: cfg.t0 || Date.now() };
+  if (NET.mode !== 'client') {
+    const ms = shuffle(MISSION_KEYS); players.forEach((p, k) => { p.mission = ms[k % ms.length]; });
+    const pw = shuffle(Object.keys(POWERS)); players.forEach((p, k) => { p.power = pw[k % pw.length]; });
+  }
+  G = { tiles: blankTiles(), players, turn: 0, round: 1, maxRounds: cfg.rounds, mods: [], traps: {}, npcs: [], bomb: null, scars: {}, fast: !h, t0: cfg.t0 || Date.now() };
   NET.started = true;
+  showChatbar();
   players.forEach(p => {
     p.mesh = makeToken(p.char); scene.add(p.mesh);
     if (players.length > 4) p.mesh.scale.setScalar(.8);   // 人多時棋子小一點，才站得下
@@ -1830,7 +2047,7 @@ async function gameLoop() {
         if (G.round === G.maxRounds - 2) { SFX.fan(); await caption('🌙 選前之夜！', '最後三回合：過路費 1.5 倍、軍火夜市半價，該背刺的快背刺！', 2600); }
         else await caption(G.round === G.maxRounds ? '最後一回合！' : `第 ${G.round} 回合`, G.round === G.maxRounds ? '最後衝刺，火力全開！' : '路人角色移動中…', 1000);
         await moveNPCs();
-        if (G.round % 3 === 0) await allQuiz();
+        if (G.round % 2 === 0) await allGame();
         else if (Math.random() < .45) await suddenEvent();
         if (alive().length <= 1 || G.instant) { ended = true; break; }
       }
@@ -1876,13 +2093,15 @@ async function takeTurn(p) {
       G.bomb = null; bombObj.visible = false;
       await explosion(p.pos);
       const lose = Math.round(p.cash * .2 / 10) * 10; p.cash -= lose;
-      say(p, 'hit'); await caption('⏰ 炸彈爆炸！', `${p.char.name} 被炸飛，損失 ${fmt(lose)}`, 1600);
+      say(p, 'hit'); await caption('⏰ 炸彈爆炸！', `${p.char.name} 被炸飛，損失 ${fmt(lose)}${by && by !== p ? `（是 ${by.char.name} 放的炸彈）` : ''}`, 1800);
+      if (by && by !== p) log(`⏰ <b>${by.char.name}</b> 的定時炸彈炸到 <b>${p.char.name}</b>，送醫院 3 回合`);
       await sendTo(p, HOSP, 3, 'hosp');
       if (by && by !== p) by.stats.sends++;
       return;
     }
     await caption(`⏰ 炸彈剩 ${G.bomb.t} 回合`, `${p.char.name}，快去碰別人把炸彈傳出去！`, 1200);
   }
+  if (p.skip > 0 && (p.where === 'hosp' || p.where === 'jail')) await buyOut(p);
   if (p.skip > 0) {
     p.skip--; updateHUD();
     say(p, p.where === 'hosp' ? 'hosp' : 'jail');
@@ -1976,6 +2195,17 @@ async function streetClash(p) {
 
 function setHint(text) { hostFx('hint', text || ''); const h = $('#turn-hint'); h.textContent = text || ''; h.hidden = !text; }
 let waiting = null;
+// 道具數字、超能力按鈕（不是自己的回合也會更新）
+function refreshSide(w) {
+  if (!G.players.length) return;
+  const me = (w && w.p) || viewer();
+  if (!w) $('#item-n').textContent = me ? me.items.filter(c => !ITEMS[c].passive).length : 0;
+  const pw = $('#btn-power'), P = me && POWERS[me.power];
+  pw.hidden = !P; if (!P) return;
+  const ready = powerReady(me), pre = w && w.kind === 'pre' && !w.busy && (w.opts ? !!w.opts.power : ready);
+  pw.textContent = ready ? `⚡ ${P.name}` : `⚡ 第 ${me.powerAt + 2} 回合可用`;
+  pw.classList.toggle('ready', !!pre);
+}
 function refreshActions() {
   let w = waiting;
   if (NET.mode === 'client') { const me = myPlayer(), pd = NET.pending; w = pd && me ? { p: me, kind: pd.kind, itemUsed: pd.itemUsed, allyUsed: pd.allyUsed, busy: false, opts: pd } : null; }
@@ -1990,7 +2220,9 @@ function refreshActions() {
   const pre = w && w.kind === 'pre';
   const nItems = w && w.opts ? w.opts.items : p ? p.items.filter(c => !ITEMS[c].passive).length : 0;
   $('#item-n').textContent = nItems;
-  $('#btn-items').disabled = !pre || w.busy || w.itemUsed || !nItems;
+  $('#btn-items').disabled = !G.players.length;   // 隨時可以按：能出牌時出牌，不能出牌時看道具
+  $('#btn-items').classList.toggle('ready', !!(pre && !w.busy && !w.itemUsed && nItems));
+  refreshSide(w);
   const sk = $('#btn-skill');
   sk.hidden = !(p && p.char.id === 'chiang');
   sk.disabled = !pre || w.busy || (w.opts ? !w.opts.skill : p.skillUsed);
@@ -2003,11 +2235,28 @@ const MAX_ITEMS = 3;
 function humanPreRoll(p) {
   if (viaNet(p)) return remotePreRoll(p);
   startGauge(p);
-  return new Promise(resolve => { waiting = { p, kind: 'pre', resolve, itemUsed: false, itemCount: 0, allyUsed: false }; refreshActions(); });
+  return new Promise(resolve => { waiting = { p, kind: 'pre', resolve, itemUsed: false, itemCount: 0, allyUsed: false }; refreshActions(); armTimer(); });
+}
+// 擲骰倒數：10 秒沒動作就自動擲（開視窗、出道具時暫停）
+let turnTimer = null;
+function armTimer() {
+  clearInterval(turnTimer);
+  let left = 10; const btn = $('#btn-roll');
+  const base = () => btn.textContent.replace(/ ⏱\d+$/, '');
+  btn.textContent = `${base()} ⏱${left}`;
+  turnTimer = setInterval(() => {
+    const active = NET.mode === 'client' ? !!NET.pending : !!waiting;
+    if (!active) { clearInterval(turnTimer); turnTimer = null; btn.textContent = base(); return; }
+    const busy = NET.mode === 'client' ? false : waiting.busy;
+    if (busy || !modal.hidden || aiming || !$('#sheet').hidden) { left = Math.max(left, 6); btn.textContent = base(); return; }
+    left--; btn.textContent = `${base()} ⏱${Math.max(0, left)}`;
+    if (left <= 3 && left > 0) beep(700, .05, 'square', .03);
+    if (left <= 0) { clearInterval(turnTimer); turnTimer = null; btn.textContent = base(); rollClick(); }
+  }, 1000);
 }
 function finishWaiting(v) { const w = waiting; if (!w) return; waiting = null; refreshActions(); w.resolve(v); }
 // 連線的朋友按下按鈕：把動作回傳給房主
-function clientAct(v) { const pd = NET.pending; if (!pd) return; NET.pending = null; if (!['items', 'skill', 'ally'].includes(v)) stopGauge(); sendRes(pd.id, v); refreshActions(); setHint(''); }
+function clientAct(v) { const pd = NET.pending; if (!pd) return; NET.pending = null; if (!['items', 'skill', 'ally', 'power'].includes(v)) stopGauge(); sendRes(pd.id, v); refreshActions(); setHint(''); }
 function rollClick() {
   if (NET.mode === 'client') {
     if (!NET.pending) return;
@@ -2063,7 +2312,7 @@ const normG = v => v && typeof v === 'object' ? { hit: !!v.hit, par: v.par === '
 function humanRoll(p) {
   if (viaNet(p)) return req(p, 'stop').then(normG);
   startGauge(p);
-  return new Promise(resolve => { waiting = { p, kind: 'stop', resolve: v => resolve(v && v.roll) }; refreshActions(); });
+  return new Promise(resolve => { waiting = { p, kind: 'stop', resolve: v => resolve(v && v.roll) }; refreshActions(); armTimer(); });
 }
 /* ---------- 控骰量表（LINE 大富翁那種）：指針停在綠區就照你選的單雙數擲 ---------- */
 const gauge = { on: false, par: 'even', n: 2, zone: [0, 0], t0: 0 };
@@ -2108,8 +2357,8 @@ async function diceBonus(p, v) {
 }
 
 $('#btn-items').onclick = async () => {
-  if (NET.mode === 'client') return clientAct('items');
-  const w = waiting; if (!w || w.kind !== 'pre' || w.itemUsed || w.busy) return;
+  if (NET.mode === 'client') { const pd = NET.pending; if (pd && pd.kind === 'pre' && !pd.itemUsed && pd.items > 0) return clientAct('items'); return openSheet(myPlayer(), 'items'); }
+  const w = waiting; if (!w || w.kind !== 'pre' || w.itemUsed || w.busy || !w.p.items.some(c => !ITEMS[c].passive)) return openSheet(viewer(), 'items');
   const p = w.p;
   w.busy = true; refreshActions();
   try {
@@ -2150,13 +2399,59 @@ $('#btn-ally').onclick = async () => {
 };
 $('#btn-rules').onclick = () => { if (modal.hidden && G.players.length) ask(winRulesHtml(), [{ label: '關閉', cls: 'primary' }]); };
 $('#btn-mission').onclick = () => {
-  if (!modal.hidden || !G.players.length) return;
-  if (NET.mode === 'client') { const me = myPlayer(); if (me && NET.myMission) ask(`<h2>🎯 你的祕密任務</h2>${missionHtml(me, NET.myMission)}`, [{ label: '關閉', cls: 'primary' }], me); return; }
-  const locals = G.players.filter(p => !p.isAI && !isRemote(p));
-  const p = waiting ? waiting.p : locals.length === 1 ? locals[0] : null;
-  if (!p || isRemote(p)) { caption('🎯 等輪到你再按', '免得被別人偷看任務', 1200); return; }
-  ask(`<h2>🎯 ${p.char.name} 的祕密任務</h2>${missionHtml(p)}`, [{ label: '關閉', cls: 'primary' }]);
+  if (!G.players.length) return;
+  const me = viewer();
+  if (!me || !canSeeMission(me)) { localCaption('🎯 等輪到你再按', '免得被別人偷看任務'); return; }
+  openSheet(me, 'mission');
 };
+$('#btn-power').onclick = async () => {
+  if (NET.mode === 'client') { const pd = NET.pending; if (pd && pd.kind === 'pre' && pd.power) return clientAct('power'); return openSheet(myPlayer(), 'power'); }
+  const w = waiting; if (!w || w.kind !== 'pre' || w.busy || !powerReady(w.p)) return openSheet(viewer(), 'power');
+  w.busy = true; refreshActions();
+  try {
+    const r = await powerFlow(w.p);
+    w.busy = false;
+    if (r && r.forced) finishWaiting({ forced: r.forced });
+    else if (w.p.skip || w.p.out) finishWaiting(null);
+  } finally { w.busy = false; if (waiting === w) refreshActions(); }
+};
+// 發動超能力：auto = 電腦直接給目標（不問）
+async function powerFlow(p, auto) {
+  const P = POWERS[p.power]; if (!P || !powerReady(p)) return null;
+  if (!auto) {
+    const ok = await ask(`<h2>⚡ 發動「${P.icon} ${P.name}」？</h2><p>${P.desc}</p><p style="font-size:13px;color:var(--muted)">用完要等 2 回合才能再用。</p>`, [{ label: '發動！', value: true, cls: 'hot' }, { label: '先不要', value: false }], p);
+    if (!ok) return null;
+  }
+  let arg = true;
+  if (P.item) { arg = auto || await chooseTarget(p, P.item); if (arg === null || arg === undefined) return null; }
+  p.powerAt = G.round; SFX.fan(); updateHUD();
+  await caption(`⚡ ${p.char.name} 發動超能力！`, `${P.icon} ${P.name}`, 1300);
+  let forced = null;
+  if (P.item) forced = await useItem(p, P.item, arg, true);
+  else if (p.power === 'donate') {
+    say(p, 'earn', '感謝各位的熱情贊助！');
+    for (const q of others(p)) { if (q.ghost > 0) continue; await charge(q, 500, p); }
+  } else if (p.power === 'viral') { addPoll(p, 10); p.cash += 1000; SFX.coin(); say(p, 'win', '大家好，我是網紅候選人！'); await caption('📢 網紅加持', `${p.char.name} 民調 +10、業配 +1,000`, 1300); }
+  updateHUD();
+  return { used: true, forced };
+}
+// 電腦用超能力時挑目標；回傳 null 代表這次不用
+function aiPowerArg(p) {
+  const P = POWERS[p.power]; if (!P) return null; if (!P.item) return true;
+  const opp = others(p).filter(q => q.seat !== p.ally && !(q.ghost > 0));
+  const leader = [...opp].sort((a, b) => score(b) - score(a))[0];
+  switch (P.item) {
+    case 'rocket': {
+      const built = G.tiles.map((st, k) => k).filter(k => { const t = G.tiles[k]; return t.owner >= 0 && t.owner !== p.seat && t.owner !== p.ally && (t.level > 0 || t.kind) && t.level < 5; }).sort((a, b) => G.tiles[b].level - G.tiles[a].level);
+      return built.length ? built[0] : leader ? leader.pos : null;
+    }
+    case 'report': case 'troll': return leader || null;
+    case 'swap': return leader && leader.pos !== p.pos ? leader : null;
+    case 'build': { const v = validTiles(p, 'build'); return v.length ? v.sort((a, b) => G.tiles[b].level - G.tiles[a].level)[0] : null; }
+    case 'dice': return 3 + rnd(9);
+    default: return true;
+  }
+}
 
 /* ---------- 結盟與背刺 ---------- */
 // 'make' = 可以找人結盟，'stab' = 已經有盟友、可以背刺，'' = 都不行
@@ -2224,7 +2519,7 @@ async function registerHit(p, t) {
 async function remotePreRoll(p) {
   let count = 0, allyUsed = false;
   while (true) {
-    const a = await req(p, 'pre', { itemUsed: count >= MAX_ITEMS, allyUsed, ally: allyOption(p), items: p.items.filter(c => !ITEMS[c].passive).length, skill: p.char.id === 'chiang' && !p.skillUsed });
+    const a = await req(p, 'pre', { itemUsed: count >= MAX_ITEMS, allyUsed, ally: allyOption(p), items: p.items.filter(c => !ITEMS[c].passive).length, skill: p.char.id === 'chiang' && !p.skillUsed, power: powerReady(p) });
     if (a === 'items' && count < MAX_ITEMS) {
       const r = await itemFlow(p, count);
       if (r.used) count++;
@@ -2232,6 +2527,10 @@ async function remotePreRoll(p) {
       if (p.skip || p.out) return null;
     } else if (a === 'skill' && p.char.id === 'chiang' && !p.skillUsed) {
       if (await skillAsk(p)) await wanAnDrill(p);
+    } else if (a === 'power' && powerReady(p)) {
+      const r = await powerFlow(p);
+      if (r && r.forced) return { forced: r.forced };
+      if (p.skip || p.out) return null;
     } else if (a === 'ally' && !allyUsed) {
       if (await allyFlow(p)) allyUsed = true;
     } else if (a && a.act === 'roll') return { roll: normG(a.g) };
@@ -2293,8 +2592,9 @@ function dropLevel(i) {
   return true;
 }
 
-async function useItem(p, id, arg) {
-  takeItem(p, id); updateHUD();
+async function useItem(p, id, arg, free) {
+  if (!free) takeItem(p, id);
+  updateHUD();
   const it = ITEMS[id];
   say(p, ['mine', 'bomb', 'rocket', 'report', 'troll', 'turtle', 'demolish', 'grab', 'expose', 'typhoon', 'magnet', 'swap', 'missiles'].includes(id) ? 'attack' : 'item');
   // 照妖鏡：打人的道具原封不動彈回去
@@ -2316,7 +2616,9 @@ async function useItem(p, id, arg) {
       SFX.whoosh(); cam.shake = .8;
       const ids = TILES.map((t, k) => k).filter(k => TILES[k].zone === arg);
       const hit = ids.filter(k => dropLevel(k));
+      hit.forEach(k => markScar(k, p));
       const owners = new Set(hit.map(k => G.players[G.tiles[k].owner]).filter(o => o && o !== p));
+      if (owners.size) log(`🌀 <b>${p.char.name}</b> 叫來颱風，吹壞 ${[...owners].map(o => o.char.name).join('、')} 家的房子`);
       owners.forEach(o => say(o, 'hit', pick(['我的屋頂飛走了！', '颱風假變颱風災！', '誰叫的颱風啦！'])));
       await caption(`🌀 颱風登陸${ZONES[arg].name}！`, hit.length ? `${hit.length} 棟房子各掉一層` : '這區沒房子，只吹倒了幾棵樹', 1800);
       for (const o of owners) await registerHit(p, o);
@@ -2342,12 +2644,23 @@ async function useItem(p, id, arg) {
     }
     case 'ghost': p.ghost = 2; SFX.fan(); await caption('👻 隱身！', `${p.char.name} 接下來 2 回合打不到`, 1300); break;
     case 'missiles': {
-      const targets = shuffle(G.tiles.map((s, k) => k).filter(k => G.tiles[k].owner >= 0 && G.tiles[k].owner !== p.seat && G.tiles[k].level > 0 && G.tiles[k].level < 5)).slice(0, 3);
-      await caption('🎆 飛彈雨！', targets.length ? `${targets.length} 枚飛彈出發！` : '沒有目標，飛彈全打到海裡', 1200);
-      const owners = new Set();
-      for (const k of targets) { owners.add(G.players[G.tiles[k].owner]); lookAtTile(k); await explosion(k); dropLevel(k); }
+      // 兩枚打對手有房子的地、一枚追著人打（被打到的人送醫院）
+      const built = shuffle(G.tiles.map((st, k) => k).filter(k => G.tiles[k].owner >= 0 && G.tiles[k].owner !== p.seat && G.tiles[k].level > 0 && G.tiles[k].level < 5));
+      const people = shuffle(others(p).filter(q => q.seat !== p.ally && !(q.ghost > 0) && q.where !== 'hosp')).map(q => q.pos);
+      const targets = [...new Set([...built.slice(0, 2), ...people.slice(0, 1), ...built.slice(2)])].slice(0, 3);
+      await caption(`🎆 ${p.char.name} 發射飛彈雨！`, targets.length ? `${targets.length} 枚飛彈出發！` : '沒有目標，飛彈全打到海裡', 1200);
+      const owners = new Set(), victims = new Set();
+      for (const k of targets) {
+        const o = G.players[G.tiles[k].owner]; lookAtTile(k); await explosion(k);
+        const dropped = dropLevel(k);
+        if (dropped) { markScar(k, p); if (o && o !== p) owners.add(o); }
+        alive().filter(q => q.pos === k && q !== p && q.where !== 'hosp').forEach(q => victims.add(q));
+        await caption(dropped && o ? `💥 炸中 ${o.char.name} 家！` : '💥 轟！', `${TILES[k].name}${dropped ? ' 房子掉一層' : ''}`, 700);
+      }
       lookBack();
-      for (const o of owners) { say(o, 'hit'); await registerHit(p, o); }
+      if (owners.size) log(`🎆 <b>${p.char.name}</b> 的飛彈雨炸了 ${[...owners].map(o => o.char.name).join('、')} 家`);
+      for (const v of victims) { say(v, 'hit'); await caption('🚑 被飛彈炸到！', `${v.char.name} 送醫院 1 回合`, 1100); await sendTo(v, HOSP, 1, 'hosp'); p.stats.sends++; }
+      for (const o of new Set([...owners, ...victims])) { say(o, 'hit'); await registerHit(p, o); }
       break;
     }
     case 'build': {
@@ -2403,8 +2716,9 @@ async function useItem(p, id, arg) {
       const st = G.tiles[arg], o = G.players[st.owner];
       if (st.kind) st.kind = null; else st.level--;
       lookAtTile(arg); await wait(300); hostFx('burst', [tilePos(arg)[0], 1, tilePos(arg)[1]]); burst(new THREE.Vector3(tilePos(arg)[0], 1, tilePos(arg)[1]), ['#8d6e63', '#bdbdbd', '#ffffff'], 24);
-      rebuild(arg); drawTile(arg); SFX.bad(); say(o, 'hit');
-      await caption('🏚️ 拆！', `${TILES[arg].name} 變成${buildingName(arg)}`, 1300); lookBack();
+      rebuild(arg); drawTile(arg); SFX.bad(); say(o, 'hit'); markScar(arg, p);
+      log(`🏚️ <b>${p.char.name}</b> 拆了 <b>${o.char.name}</b> 家的 ${TILES[arg].name}`);
+      await caption(`🏚️ ${p.char.name} 拆了 ${o.char.name} 家！`, `${TILES[arg].name} 變成${buildingName(arg)}`, 1500); lookBack();
       await registerHit(p, o);
       break;
     }
@@ -2431,15 +2745,39 @@ async function fireRocket(p, i) {
   await rocketFly(p.seat, i);
   await explosion(i);
   const st = G.tiles[i]; let note = '', owner = null;
-  if (st.owner >= 0 && (st.level > 0 || st.kind)) { owner = G.players[st.owner]; st.level = 0; st.kind = null; rebuild(i); drawTile(i); note = '房子全毀'; }
+  if (st.owner >= 0 && (st.level > 0 || st.kind)) { owner = G.players[st.owner]; st.level = 0; st.kind = null; rebuild(i); drawTile(i); note = '房子全毀'; markScar(i, p); }
   if (G.traps[i]) removeTrap(i);
-  const victims = alive().filter(q => q.pos === i && q.where !== 'hosp');
+  // 爆炸範圍：那一格加左右隔壁，站在裡面的人都送醫院
+  const zone = [(i + N - 1) % N, i, (i + 1) % N];
+  const victims = alive().filter(q => zone.includes(q.pos) && q.where !== 'hosp' && !(q !== p && q.ghost > 0));
   cam.zoom = 1;
-  await caption('🚀 轟！', [note, victims.length ? `${victims.map(v => v.char.name).join('、')} 被炸進醫院` : ''].filter(Boolean).join('，') || '炸了個空', 1400);
+  const head = owner && owner !== p ? `🚀 ${p.char.name} 炸了 ${owner.char.name} 家！` : `🚀 ${p.char.name} 的火箭：轟！`;
+  await caption(head, [owner ? `${TILES[i].name} ${note}` : '', victims.length ? `${victims.map(v => v.char.name).join('、')} 被炸進醫院` : ''].filter(Boolean).join('，') || '炸了個空', 1600);
+  if (owner && owner !== p) log(`🚀 <b>${p.char.name}</b> 用火箭炸了 <b>${owner.char.name}</b> 家的 ${TILES[i].name}`);
+  if (victims.length) log(`🚑 ${victims.map(v => v.char.name).join('、')} 被 <b>${p.char.name}</b> 的火箭炸進醫院`);
   for (const v of victims) { say(v, 'hit'); await sendTo(v, HOSP, 2, 'hosp'); if (v !== p) p.stats.sends++; }
   lookBack();
   const hurt = new Set([owner, ...victims].filter(q => q && q !== p));
   for (const q of hurt) await registerHit(p, q);
+}
+const scarMeshes = {};
+function markScar(i, p) { if (!G.scars) G.scars = {}; G.scars[i] = { by: p.seat, r: G.round }; syncScars(); }
+function syncScars() {
+  const sc = G.scars || {};
+  if (NET.mode !== 'client') Object.keys(sc).forEach(i => { if (G.round - sc[i].r >= 3) delete sc[i]; });
+  Object.keys(scarMeshes).forEach(i => { const v = sc[i], m = scarMeshes[i]; if (!v || m.userData.by !== v.by || m.userData.r !== v.r) { scene.remove(m); delete scarMeshes[i]; } });
+  Object.keys(sc).forEach(i => {
+    const v = sc[i], q = G.players[v.by]; if (scarMeshes[i] || !q || !TILES[i]) return;
+    const cv = document.createElement('canvas'); cv.width = 360; cv.height = 100; const x = cv.getContext('2d');
+    x.beginPath(); if (x.roundRect) x.roundRect(5, 5, 350, 90, 34); else x.rect(5, 5, 350, 90);
+    x.fillStyle = q.char.color; x.fill(); x.lineWidth = 8; x.strokeStyle = '#1d1633'; x.stroke();
+    x.fillStyle = '#ffffff'; x.font = 'bold 46px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText(`💥 ${q.char.name} 炸的`, 180, 53);
+    const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+    const [tx, tz] = tilePos(+i); sp.position.set(tx, 3.4, tz); sp.scale.set(3.6, 1, 1); sp.renderOrder = 5;
+    sp.userData = { by: v.by, r: v.r }; scene.add(sp); scarMeshes[i] = sp;
+  });
 }
 async function rocketFly(seat, i) {
   const p = G.players[seat]; if (!p || !p.mesh) return;
@@ -2459,6 +2797,28 @@ async function rocketFly(seat, i) {
   scene.remove(r);
 }
 
+// 花錢提早出來：醫院自費 VIP 病房、約談所找關係疏通（兩成機率被抓包）
+const buyOutCost = p => (p.where === 'hosp' ? 800 : 1000) * p.skip;
+async function buyOut(p) {
+  const cost = buyOutCost(p), hosp = p.where === 'hosp';
+  if (p.cash < cost) return false;
+  const yes = p.isAI ? (p.cash > cost * 4 && Math.random() < .6)
+    : await ask(hosp ? `<h2>🏥 還要住院 ${p.skip} 回合</h2><p>要花 <b>${fmt(cost)}</b> 住自費 VIP 病房、插隊開刀，馬上出院嗎？</p>`
+      : `<h2>☕ 還要約談 ${p.skip} 回合</h2><p>要花 <b>${fmt(cost)}</b> 找關係「疏通」一下，馬上離開嗎？<br><small>（疑似賄賂：有兩成機率被抓包，錢沒了、民調 -5，還要多待 1 回合）</small></p>`,
+      [{ label: `💸 花 ${fmt(cost)} 出來`, value: true, cls: 'hot' }, { label: '乖乖待著', value: false }], p);
+  if (!yes) return false;
+  p.cash -= cost; updateHUD();
+  if (!hosp && Math.random() < .2) {
+    p.skip += 1; addPoll(p, -5); SFX.bad(); say(p, 'lose', '這…這是政治獻金啦！');
+    log(`☕ <b>${p.char.name}</b> 疏通被抓包，再約談 1 回合`);
+    await caption('🚨 疏通被抓包！', `${p.char.name} 錢沒了、民調 -5，再多約談 1 回合`, 1700);
+    return false;
+  }
+  p.skip = 0; SFX.coin(); say(p, 'release', hosp ? '有錢就是任性！' : '我什麼都不知道。');
+  log(`💸 <b>${p.char.name}</b> 花 ${fmt(cost)} 提早${hosp ? '出院' : '離開約談所'}`);
+  await caption(hosp ? '🏥 自費 VIP 提早出院！' : '☕ 疏通成功！', `${p.char.name} 花 ${fmt(cost)} 馬上出來`, 1400);
+  return true;
+}
 async function sendTo(p, corner, turns, where) {
   if (p.items.includes('bail')) {
     takeItem(p, 'bail'); SFX.coin(); say(p, 'win', pick(['律師在這！', '我有保釋卡！', '下次請早～']));
@@ -2482,6 +2842,11 @@ async function sendTo(p, corner, turns, where) {
 /* ---------- 電腦 ---------- */
 async function aiPreRoll(p) {
   if (p.char.id === 'chiang' && !p.skillUsed && G.round >= 3 && Math.random() < .35) await wanAnDrill(p);
+  // 超能力冷卻好了：一半機率發動
+  if (powerReady(p) && Math.random() < .5) {
+    const t = aiPowerArg(p);
+    if (t !== null && t !== undefined) { const r = await powerFlow(p, t); if (r && r.forced) return r.forced; if (p.skip || p.out) return null; }
+  }
   // 腹黑電腦：有盟友就找時機背刺，沒盟友就找人結盟
   if (p.ally >= 0) {
     const a = G.players[p.ally];
@@ -2778,17 +3143,19 @@ async function payRent(p, i) {
     const use = p.isAI ? amt >= 600 : await ask(`<h2>要付 ${fmt(amt)} 過路費</h2><p>你有一張🎫免死金牌，要用掉它免付嗎？</p>`, [{ label: '免死金牌！', value: true, cls: 'primary' }, { label: '留著', value: false }], p);
     if (use) { takeItem(p, 'free'); say(p, 'item', '免死金牌在此！'); say(o, 'lose'); await caption('🎫 免死金牌', `${p.char.name} 這次不付錢`); updateHUD(); lookBack(); return; }
   }
-  const choice = p.isAI ? (amt < 400 ? 'pay' : pick(['pay', 'debate', 'tug', 'quiz']))
+  const choice = p.isAI ? (amt < 400 ? 'pay' : pick(['pay', 'debate', 'tug', 'quiz', 'react', 'mole']))
     : await ask(`<h2>${TILES[i].name} 是 ${o.char.name} 的${buildingName(i)}</h2><p>過路費 <b>${fmt(amt)}</b>。乖乖付，還是跟地主拚一場？</p>
       <div class="cardlist">
         <div class="cardrow"><span class="ic">✊</span><div><b>嗆聲對決</b><small>政見、抹黑、哭哭猜拳，靠心理戰。</small></div></div>
         <div class="cardrow"><span class="ic">🪢</span><div><b>造勢拔河</b><small>雙方狂點 8 秒，把繩子拉過來就贏，靠手速。</small></div></div>
         <div class="cardrow"><span class="ic">🎤</span><div><b>質詢對決</b><small>兩人答同一題（國學、政治、地理、數學），答對的人贏，靠腦袋。</small></div></div>
+        <div class="cardrow"><span class="ic">📸</span><div><b>閃光燈反應</b><small>閃光燈一亮就按，比反應速度；太早按算犯規。</small></div></div>
+        <div class="cardrow"><span class="ic">🔨</span><div><b>打假新聞</b><small>10 秒狂點假新聞，點到真新聞扣分，比分數。</small></div></div>
       </div>
       <p style="font-size:13px;color:var(--muted)">贏了免付、地主民調 -5；輸了付兩倍、你的民調 -5。</p>`,
-      [{ label: '乖乖付錢', value: 'pay' }, { label: '✊ 嗆聲對決', value: 'debate', cls: 'hot' }, { label: '🪢 造勢拔河', value: 'tug', cls: 'hot' }, { label: '🎤 質詢對決', value: 'quiz', cls: 'hot' }], p);
-  if (choice === 'debate' || choice === 'tug' || choice === 'quiz') {
-    const r = choice === 'debate' ? await debate(p, o) : choice === 'tug' ? await tugWar(p, o) : await quizDuel(p, o);
+      [{ label: '乖乖付錢', value: 'pay' }, { label: '✊ 嗆聲對決', value: 'debate', cls: 'hot' }, { label: '🪢 造勢拔河', value: 'tug', cls: 'hot' }, { label: '🎤 質詢對決', value: 'quiz', cls: 'hot' }, { label: '📸 閃光燈反應', value: 'react', cls: 'hot' }, { label: '🔨 打假新聞', value: 'mole', cls: 'hot' }], p);
+  if (choice && choice !== 'pay') {
+    const r = choice === 'debate' ? await debate(p, o) : choice === 'tug' ? await tugWar(p, o) : DUEL[choice] ? await miniDuel(choice, p, o) : await quizDuel(p, o);
     if (r === 'win') {
       addPoll(p, 5); addPoll(o, -5);
       if (p.char.id === 'kc' && o.items.length) { const it = o.items.splice(rnd(o.items.length), 1)[0]; giveItem(p, it); await caption('我手上有資料！', `沒收 ${o.char.name} 的 ${ITEMS[it].icon}${ITEMS[it].name}`, 1200); }
@@ -2873,6 +3240,10 @@ async function bribeTile(p) {
 }
 
 function tapGame(p) {
+  peek(p, { kind: 'tap', title: '📱 直播狂點按讚中…' });
+  return tapGame0(p).then(n => { peekDone(p, { pick: `按讚 ${n} 下` }); return n; });
+}
+function tapGame0(p) {
   if (viaNet(p)) return req(p, 'tap').then(n => clamp(+n || 0, 0, 80));
   return new Promise(res => {
     mbox.style.setProperty('--c', p.char.color);
@@ -2993,9 +3364,13 @@ function mathQ() {
 function quizQ(p, q, k, total = 3, secs = 7) { return quizQT(p, q, k, total, secs).then(r => r.ok ? 1 : 0); }
 const normQ = (v, secs) => v && typeof v === 'object' ? { ok: !!v.ok, t: clamp(+v.t || secs, 0, secs) } : { ok: !!v, t: secs };
 function quizQT(p, q, k, total = 3, secs = 7) {
-  if (viaNet(p)) return req(p, 'quiz', { q, k, total, secs }).then(v => normQ(v, secs));
+  peek(p, { kind: 'quiz', title: `${q[3] || '常識'}・第 ${k + 1} / ${total} 題`, text: q[0], opts: shuffle([q[1], ...q[2]]) });
+  return quizQT0(p, q, k, total, secs).then(r => { peekDone(p, { pick: r.pick || '（沒作答）', ok: r.ok, ans: q[1], quiz: 1 }); return r; });
+}
+function quizQT0(p, q, k, total, secs) {
+  if (viaNet(p)) return req(p, 'quiz', { q, k, total, secs }).then(v => ({ ...normQ(v, secs), pick: v && typeof v.pick === 'string' ? v.pick.slice(0, 40) : '' }));
   return new Promise(res => {
-    const text = esc(q[0]), right = esc(q[1]), opts = shuffle([q[1], ...q[2]].map(esc)), D = secs * 1000, t0 = performance.now();
+    const raw = shuffle([q[1], ...q[2]]), text = esc(q[0]), right = esc(q[1]), opts = raw.map(esc), D = secs * 1000, t0 = performance.now();
     mbox.style.setProperty('--c', p.char.color);
     mbox.innerHTML = `<span class="who">${p.char.name}（${esc(label(p))}）答題中</span>
       <div class="qhead"><span>${esc(q[3] || '常識')}・第 ${k + 1} / ${total} 題</span><span id="qsec">${secs}</span></div>
@@ -3010,7 +3385,7 @@ function quizQT(p, q, k, total = 3, secs = 7) {
       bs.forEach((b, x) => { b.disabled = true; if (opts[x] === right) b.classList.add('ok'); else if (x === j) b.classList.add('bad'); });
       const ok = j >= 0 && opts[j] === right;
       ok ? SFX.coin() : SFX.bad();
-      setTimeout(() => res({ ok, t: Math.min(secs, (performance.now() - t0) / 1000) }), 900);
+      setTimeout(() => res({ ok, t: Math.min(secs, (performance.now() - t0) / 1000), pick: j >= 0 ? String(raw[j]) : '' }), 900);
     };
     mbox.querySelectorAll('.qopts button').forEach(b => b.onclick = () => finish(+b.dataset.j));
     const tick = () => {
@@ -3083,7 +3458,38 @@ async function quizDuel(p, o) {
   return r;
 }
 
-/* ---------- 全民搶答：每 3 回合一次，所有人一起答 ---------- */
+/* ---------- 全民小遊戲：每 2 回合一次，大家同時玩（搶答、打假新聞、閃光燈、狂點輪流換） ---------- */
+const ALL_GAMES = ['quiz', 'mole', 'react', 'tap'];
+async function allGame() {
+  const kind = ALL_GAMES[(G.round / 2 - 1) % ALL_GAMES.length | 0];
+  if (kind === 'quiz') return allQuiz();
+  const meta = {
+    mole: { name: '🔨 全民打假新聞', intro: '大家同時打 10 秒，分數最高 +1,500，最低的罰 800！', play: moleGame, ai: () => 5 + rnd(10), better: (a, b) => a > b, fmt: v => `${v} 分` },
+    react: { name: '📸 全民閃光燈', intro: '閃光燈一亮就按！最快 +1,500，最慢和犯規的罰 800！', play: reactGame, ai: () => Math.random() < .1 ? 9999 : 260 + rnd(380), better: (a, b) => a < b, fmt: v => v >= 9000 ? '犯規' : `${(v / 1000).toFixed(2)} 秒` },
+    tap: { name: '📱 全民直播狂點', intro: '5 秒狂點按讚！最多 +1,500，最少的罰 800！', play: tapGame, ai: () => 18 + rnd(16), better: (a, b) => a > b, fmt: v => `${v} 讚` },
+  }[kind];
+  SFX.fan();
+  await caption(meta.name + '！', meta.intro, 2000);
+  const ps = alive(), res = new Map();
+  const remote = ps.filter(p => viaNet(p)).map(p => meta.play(p).then(v => res.set(p, v)));
+  for (const p of ps) {
+    if (p.isAI) res.set(p, meta.ai());
+    else if (!viaNet(p)) res.set(p, await meta.play(p));
+  }
+  await Promise.all(remote);
+  modal.hidden = true;
+  const rank = [...ps].sort((a, b) => meta.better(res.get(a), res.get(b)) ? -1 : meta.better(res.get(b), res.get(a)) ? 1 : 0);
+  const best = rank[0], worst = rank.length >= 3 ? rank[rank.length - 1] : null;
+  best.cash += 1500; addPoll(best, 5); say(best, 'win', '第一名就是我！');
+  rank.slice(1, worst ? -1 : undefined).forEach(p => { p.cash += 300; });
+  updateHUD();
+  log(`${meta.name}：${rank.map(p => `${p.char.name} ${meta.fmt(res.get(p))}`).join('、')}`);
+  await caption(`🏆 ${best.char.name} 第一名！`, rank.map((p, k) => `${k + 1}. ${p.char.name} ${meta.fmt(res.get(p))}`).join('　'), 2800);
+  if (worst) { addPoll(worst, -3); say(worst, 'lose', '我手機太爛了啦！'); SFX.bad(); await charge(worst, 800, null); }
+  updateHUD();
+}
+
+/* ---------- 全民搶答：所有人一起答 ---------- */
 async function allQuiz() {
   const q = Math.random() < .35 ? mathQ() : pick(QUIZ);
   SFX.fan();
@@ -3133,7 +3539,7 @@ function tugWar(p, o) {
       ${both ? '<p><b>兩個人一起搶按：</b>左邊按 A 鍵，右邊按 L 鍵，手機就各按一邊的按鈕。</p>' : '<p>電腦會跟你拚手速，鍵盤也可以按空白鍵。</p>'}`, [{ label: '預備…開始！', cls: 'hot' }]);
     mbox.style.setProperty('--c', '#1d1633');
     mbox.innerHTML = `<h2>🪢 拉！拉！拉！</h2>
-      <div class="tug" style="--lc:${p.char.color};--rc:${o.char.color}">
+      <div class="tug" style="--lc:${p.char.color};--rc:${o.char.color}"><div class="tugcd" id="tugcd">3</div>
         <div class="sides"><div><span class="av" style="--c:${p.char.color}">${p.char.glyph}</span>${p.char.name}</div><span id="tugsec">8</span><div>${o.char.name}<span class="av" style="--c:${o.char.color}">${o.char.glyph}</span></div></div>
         <div class="track"><div class="rope"></div><div class="knot" id="knot" style="left:50%"></div></div>
         <div class="timer"><i id="tugbar"></i></div>
@@ -3143,9 +3549,9 @@ function tugWar(p, o) {
         </div>
       </div>`;
     modal.hidden = false;
-    let pos = 0, done = false; const D = 8000, t0 = performance.now();
+    let pos = 0, done = false; const D = 8000, t0 = performance.now() + 3000, st = { go: false };
     const pull = (side) => {
-      if (done) return;
+      if (done || performance.now() < t0) return;
       pos += side * 4.5 * str(side < 0 ? p : o);
       $('#knot').style.left = (50 + clamp(pos, -100, 100) * .4) + '%';
       if (side < 0 && !p.isAI || side > 0 && !o.isAI) SFX.tap();
@@ -3164,6 +3570,7 @@ function tugWar(p, o) {
     const aiTimer = aiSide ? setInterval(() => pull(aiSide), rate) : null;
     const tick = () => {
       if (done) return;
+      if (tugCount(performance.now() - t0, st)) return requestAnimationFrame(tick);
       const r = 1 - (performance.now() - t0) / D;
       $('#tugbar').style.width = Math.max(0, r * 100) + '%'; $('#tugsec').textContent = Math.max(0, Math.ceil(r * 8));
       if (r <= 0) end(); else requestAnimationFrame(tick);
@@ -3185,8 +3592,94 @@ function tugWar(p, o) {
   });
 }
 
+/* ---------- 小遊戲：閃光燈反應（越快越好，太早按算犯規） ---------- */
+function reactGame(p) {
+  peek(p, { kind: 'react', title: '📸 閃光燈反應中…' });
+  return reactGame0(p).then(ms => { peekDone(p, { pick: ms >= 9000 ? '太早按，犯規！' : `${(ms / 1000).toFixed(3)} 秒` }); return ms; });
+}
+function reactGame0(p) {
+  if (viaNet(p)) return req(p, 'react').then(v => clamp(+v || 9999, 80, 9999));
+  return new Promise(res => {
+    mbox.style.setProperty('--c', p.char.color);
+    mbox.innerHTML = `<span class="who">${p.char.name}（${esc(label(p))}）</span><h2>📸 記者會閃光燈</h2><p>畫面一亮就馬上按！太早按算犯規。</p><button class="react" id="reactbtn">準備……</button>`;
+    modal.hidden = false;
+    const btn = $('#reactbtn'); let state = 'wait', t1 = 0, done = false, tm = 0, to = 0;
+    const finish = ms => {
+      if (done) return; done = true; clearTimeout(tm); clearTimeout(to); removeEventListener('keydown', onKey);
+      btn.disabled = true; btn.textContent = ms >= 9000 ? '太早了！犯規 😵' : `${(ms / 1000).toFixed(3)} 秒`;
+      ms >= 9000 ? SFX.bad() : SFX.coin();
+      setTimeout(() => { modal.hidden = true; res(ms); }, 1100);
+    };
+    const press = () => { if (state === 'wait') finish(9999); else if (state === 'go') finish(Math.round(performance.now() - t1)); };
+    btn.onpointerdown = e => { e.preventDefault(); press(); };
+    const onKey = e => { if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); press(); } };
+    addEventListener('keydown', onKey);
+    const delay = 1500 + Math.random() * 2500;
+    tm = setTimeout(() => { state = 'go'; t1 = performance.now(); btn.classList.add('flash'); btn.textContent = '📸 按！'; SFX.whoosh(); }, delay);
+    to = setTimeout(() => finish(3000), delay + 3000);
+  });
+}
+/* ---------- 小遊戲：打假新聞（10 秒，點📰 +1，點到✅真新聞 -2） ---------- */
+function moleGame(p) {
+  peek(p, { kind: 'mole', title: '🔨 打假新聞中…' });
+  return moleGame0(p).then(n => { peekDone(p, { pick: `拿到 ${n} 分` }); return n; });
+}
+function moleGame0(p) {
+  if (viaNet(p)) return req(p, 'mole').then(n => clamp(+n || 0, -20, 40));
+  return new Promise(res => {
+    mbox.style.setProperty('--c', p.char.color);
+    mbox.innerHTML = `<span class="who">${p.char.name}（${esc(label(p))}）</span><h2>🔨 打假新聞</h2><p>點 📰假新聞 +1 分，點到 ✅真新聞 -2 分！10 秒。</p>
+      <div class="mole-top"><b id="molen">0</b><div class="timer"><i id="molebar"></i></div></div>
+      <div class="moles">${Array.from({ length: 9 }, (_, k) => `<button data-k="${k}" aria-label="第 ${k + 1} 格"></button>`).join('')}</div>`;
+    modal.hidden = false;
+    const cells = [...mbox.querySelectorAll('.moles button')], D = 10000, t0 = performance.now(); let n = 0, done = false;
+    const clear = c => { delete c.dataset.v; c.textContent = ''; c.classList.remove('up'); };
+    const spawn = setInterval(() => {
+      if (done) return;
+      const free = cells.filter(c => !c.dataset.v); if (!free.length) return;
+      const c = pick(free), real = Math.random() < .25;
+      c.dataset.v = real ? 'r' : 'f'; c.textContent = real ? '✅' : '📰'; c.classList.add('up');
+      const id = c.t = setTimeout(() => { if (c.t === id && c.dataset.v) clear(c); }, 700 + Math.random() * 450);
+    }, 380);
+    cells.forEach(c => c.onpointerdown = e => {
+      e.preventDefault(); if (done || !c.dataset.v) return;
+      if (c.dataset.v === 'f') { n++; SFX.tap(); } else { n -= 2; SFX.bad(); }
+      const hitReal = c.dataset.v === 'r'; clear(c); c.textContent = hitReal ? '😱' : '💥'; c.t = 0;
+      setTimeout(() => { if (!c.dataset.v) c.textContent = ''; }, 220);
+      $('#molen').textContent = n;
+    });
+    const tick = () => { if (done) return; const r = 1 - (performance.now() - t0) / D; $('#molebar').style.width = Math.max(0, r * 100) + '%'; if (r <= 0) end(); else requestAnimationFrame(tick); };
+    function end() { if (done) return; done = true; clearInterval(spawn); cells.forEach(c => { c.disabled = true; }); setTimeout(() => { modal.hidden = true; res(n); }, 700); }
+    tick(); setTimeout(end, D + 150);
+  });
+}
+// 兩人比賽（付過路費時用）：連線朋友同時玩；同一台電腦輪流玩；電腦隨機
+const DUEL = {
+  react: { name: '📸 閃光燈反應', intro: '閃光燈一亮就按，反應快的人贏', ai: () => Math.random() < .1 ? 9999 : 260 + rnd(380), fmt: v => v >= 9000 ? '犯規' : `${(v / 1000).toFixed(3)} 秒`, better: (a, b) => a < b, play: reactGame },
+  mole: { name: '🔨 打假新聞', intro: '10 秒內分數高的人贏', ai: () => 5 + rnd(10), fmt: v => `${v} 分`, better: (a, b) => a > b, play: moleGame },
+};
+async function miniDuel(kind, p, o) {
+  const D = DUEL[kind];
+  await caption(`${D.name}！`, `${p.char.name} 對 ${o.char.name}：${D.intro}`, 1400);
+  const run = who => who.isAI ? Promise.resolve(D.ai()) : D.play(who);
+  let a, b;
+  if (viaNet(p) || viaNet(o)) [a, b] = await Promise.all([run(p), run(o)]);
+  else { a = await run(p); b = await run(o); }
+  modal.hidden = true;
+  const r = D.better(a, b) ? 'win' : D.better(b, a) ? 'lose' : 'tie';
+  log(`${D.name}：${p.char.name} ${D.fmt(a)} 對 ${o.char.name} ${D.fmt(b)}`);
+  if (r === 'win') { say(p, 'win'); SFX.fan(); setTimeout(() => say(o, 'lose'), 700); }
+  if (r === 'lose') { say(o, 'win'); SFX.bad(); setTimeout(() => say(p, 'lose'), 700); }
+  await caption(r === 'win' ? `${p.char.name} 贏了！` : r === 'lose' ? `${o.char.name} 贏了！` : '平手，照常付錢', `${p.char.name} ${D.fmt(a)}：${o.char.name} ${D.fmt(b)}${r === 'win' ? '，過路費免付' : r === 'lose' ? '，過路費變兩倍' : ''}`, 2000);
+  return r;
+}
+
 /* ---------- 小遊戲：拜票握手 ---------- */
 function handshakeGame(p) {
+  peek(p, { kind: 'hand', title: '🤝 拜票握手中…' });
+  return handshakeGame0(p).then(v => { peekDone(p, { pick: `握到 ${v[0]} 隻手${v[1] ? `、被丟 ${v[1]} 顆雞蛋` : ''}` }); return v; });
+}
+function handshakeGame0(p) {
   if (viaNet(p)) return req(p, 'hand').then(v => Array.isArray(v) ? [clamp(+v[0] || 0, 0, 40), clamp(+v[1] || 0, 0, 20)] : [0, 0]);
   return new Promise(res => {
     mbox.style.setProperty('--c', p.char.color);
@@ -3427,9 +3920,9 @@ function encodeState() {
     t: G.turn, r: G.round, ov: G.over ? 1 : 0,
     // 祕密任務只在公開後才放進來，免得朋友從資料偷看
     P: G.players.map(p => [p.cash, Math.round(p.poll), p.pos, p.items.join(','), p.skip, p.where || '', p.turtle, p.out ? 1 : 0, p.skillUsed ? 1 : 0,
-      p.ally, p.mPublic ? p.mission : '', p.mDone ? 1 : 0, p.mExposed ? 1 : 0, p.revenge, [p.stats.kos, p.stats.stabs, p.stats.sends, p.stats.combo3, p.stats.hits].join(','), p.ghost || 0]),
+      p.ally, p.mPublic ? p.mission : '', p.mDone ? 1 : 0, p.mExposed ? 1 : 0, p.revenge, [p.stats.kos, p.stats.stabs, p.stats.sends, p.stats.combo3, p.stats.hits].join(','), p.ghost || 0, p.power || '', p.powerAt]),
     T: G.tiles.map(s => (s.owner + 1) * 100 + s.level * 10 + (s.kind === 'hq' ? 1 : s.kind === 'stand' ? 2 : 0)),
-    tr: G.traps, b: G.bomb, n: G.npcs.map(n => n.pos), m: G.mods, fe: G.fest || null, iw: G.instant || null,
+    tr: G.traps, b: G.bomb, n: G.npcs.map(n => n.pos), m: G.mods, fe: G.fest || null, iw: G.instant || null, sc: G.scars || {},
   };
 }
 let stTimer = null;
@@ -3456,7 +3949,7 @@ function sendReq(r) {
   if (size(msg) > 3800 && msg.html) msg = { ...msg, html: msg.html.replace(/<div class="cardlist">[\s\S]*<\/div>/, '') };
   NET.named.emit('req', msg).catch(() => { });
 }
-const DEFAULT_ANSWER = { ask: 9999, aim: -1, tap: 0, quiz: 0, hand: [0, 0], pre: 'roll', stop: 'stop', tug: { L: 0, R: 0 } };
+const DEFAULT_ANSWER = { react: 9999, mole: 0, ask: 9999, aim: -1, tap: 0, quiz: 0, hand: [0, 0], pre: 'roll', stop: 'stop', tug: { L: 0, R: 0 } };
 function onRes(m) {
   const e = NET.reqs.get(m.data && m.data.id); if (!e) return;
   const peer = NET.named.peers().find(x => x.peer === m.peer);
@@ -3482,13 +3975,20 @@ async function onlineTug(p, o) {
   return r;
 }
 // 拔河畫面（房主本機和朋友手機共用）：自己點的次數放在 presence，畫面加總所有人的
+// 拔河開始前 3、2、1 倒數；回傳 true 表示還在倒數
+function tugCount(el, st) {
+  const cd = $('#tugcd'); if (!cd) return el < 0;
+  if (el < 0) { const n = String(Math.ceil(-el / 1000)); if (cd.textContent !== n) { cd.textContent = n; beep(520, .1, 'square', .05); } return true; }
+  if (!st.go) { st.go = true; cd.textContent = '拉！'; beep(880, .2, 'square', .06); setTimeout(() => { cd.hidden = true; }, 500); }
+  return false;
+}
 function tugUI(cfg) {
   return new Promise(res => {
     const lp = G.players[cfg.L], rp = G.players[cfg.R], mine = cfg.mine || [], both = mine.length > 1;
     const padLabel = side => mine.includes(side) ? (both ? (side < 0 ? 'A 鍵' : 'L 鍵') : '點我或空白鍵') : cfg.aiSide === side ? '電腦' : '對手';
     mbox.style.setProperty('--c', '#1d1633');
     mbox.innerHTML = `<h2>🪢 造勢拔河：拉！拉！拉！</h2>
-      <div class="tug" style="--lc:${lp.char.color};--rc:${rp.char.color}">
+      <div class="tug" style="--lc:${lp.char.color};--rc:${rp.char.color}"><div class="tugcd" id="tugcd">3</div>
         <div class="sides"><div><span class="av" style="--c:${lp.char.color}">${lp.char.glyph}</span>${lp.char.name}</div><span id="tugsec">8</span><div>${rp.char.name}<span class="av" style="--c:${rp.char.color}">${rp.char.glyph}</span></div></div>
         <div class="track"><div class="rope"></div><div class="knot" id="knot" style="left:50%"></div></div>
         <div class="timer"><i id="tugbar"></i></div>
@@ -3498,9 +3998,9 @@ function tugUI(cfg) {
         </div>
       </div>`;
     modal.hidden = false;
-    let L = 0, R = 0, done = false, lastP = 0; const D = cfg.D || 8000, t0 = performance.now();
+    let L = 0, R = 0, done = false, lastP = 0; const D = cfg.D || 8000, PRE = 3000, t0 = performance.now() + PRE, st = { go: false };
     const pres = force => { const n = performance.now(); if (NET.named && (force || n - lastP > 100)) { lastP = n; NET.named.presence({ tug: { id: cfg.id, L, R } }).catch(() => { }); } };
-    const pull = side => { if (done || !mine.includes(side)) return; side < 0 ? L++ : R++; SFX.tap(); pres(); };
+    const pull = side => { if (done || !mine.includes(side) || performance.now() < t0) return; side < 0 ? L++ : R++; SFX.tap(); pres(); };
     $('#tugL').onpointerdown = e => { e.preventDefault(); pull(-1); };
     $('#tugR').onpointerdown = e => { e.preventDefault(); pull(1); };
     const onKey = e => {
@@ -3511,7 +4011,8 @@ function tugUI(cfg) {
     addEventListener('keydown', onKey);
     const tick = () => {
       if (done) return;
-      const el = performance.now() - t0, ai = Math.floor(Math.min(el, D) / cfg.aiRate);
+      const el = performance.now() - t0; if (tugCount(el, st)) return requestAnimationFrame(tick);
+      const ai = Math.floor(Math.min(el, D) / cfg.aiRate);
       let ol = 0, or = 0;
       if (NET.named) NET.named.peers().forEach(x => { const t = x.presence && x.presence.tug; if (!x.sameTab && t && t.id === cfg.id) { ol += +t.L || 0; or += +t.R || 0; } });
       const tl = (L + ol + (cfg.aiSide < 0 ? ai : 0)) * cfg.strL, tr = (R + or + (cfg.aiSide > 0 ? ai : 0)) * cfg.strR;
@@ -3524,7 +4025,7 @@ function tugUI(cfg) {
       setTimeout(() => { modal.hidden = true; res({ L, R }); }, 600);
     };
     tick();
-    setTimeout(tick, D + 150);
+    setTimeout(tick, D + PRE + 150);
   });
 }
 
@@ -3539,10 +4040,11 @@ async function handleReq(r) {
   try {
     switch (r.kind) {
       case 'pre': case 'stop':
-        NET.pending = { id: r.id, kind: r.kind, itemUsed: !!r.itemUsed, items: +r.items || 0, skill: !!r.skill, ally: ['make', 'stab'].includes(r.ally) ? r.ally : '', allyUsed: !!r.allyUsed };
+        if (mbox.querySelector('.qopts')) modal.hidden = true;   // 保險：上一題的視窗還開著就關掉，不然會擋住擲骰子
+        NET.pending = { id: r.id, kind: r.kind, itemUsed: !!r.itemUsed, items: +r.items || 0, skill: !!r.skill, ally: ['make', 'stab'].includes(r.ally) ? r.ally : '', allyUsed: !!r.allyUsed, power: !!r.power };
         if (r.kind === 'pre') { SFX_RAW.fan(); caption('輪到你了！', '先出道具，或直接擲骰子', 1200); }
         startGauge(me);
-        refreshActions();
+        refreshActions(); armTimer();
         return;
       case 'mission':
         if (MISSIONS[r.key]) { NET.myMission = r.key; me.mission = r.key; }
@@ -3553,9 +4055,13 @@ async function handleReq(r) {
       case 'tap': v = await tapGame(me); break;
       case 'quiz': { const q = Array.isArray(r.q) ? r.q : ['', '', []]; v = await quizQT(me, [String(q[0]), String(q[1]), (Array.isArray(q[2]) ? q[2] : []).map(String), String(q[3] || '')], +r.k || 0, clamp(+r.total || 3, 1, 5), clamp(+r.secs || 7, 3, 12)); break; }
       case 'hand': v = await handshakeGame(me); break;
+      case 'react': v = await reactGame(me); break;
+      case 'mole': v = await moleGame(me); break;
       case 'tug': v = await tugUI(r.cfg || {}); break;
     }
   } catch (e) { v = null; }
+  // 答題視窗要自己關（房主那邊是呼叫的地方關；朋友這邊沒人關，會一直蓋住畫面）
+  if (r.kind === 'quiz') modal.hidden = true;
   sendRes(r.id, v);
 }
 
@@ -3580,6 +4086,8 @@ function playFx(m) {
       case 'hop': case 'jump': { const p = G.players[+d[0]]; if (p) { p.animQ.push([k, +d[1]]); if (!p.animating) runAnim(p); } break; }
       case 'rocket': rocketFly(+d[0], +d[1]); break;
       case 'end': showEnd(); break;
+      case 'peek': if (d && G.players[+d.s] && G.players[+d.s] !== myPlayer()) showPeek(d); break;
+      case 'peekEnd': if (d && G.players[+d.s] && G.players[+d.s] !== myPlayer()) showPeekEnd(d); break;
     }
   } catch (e) { }
   NET.replaying = false;
@@ -3610,6 +4118,7 @@ function applyState(s) {
     p.mDone = !!a[11]; p.mExposed = !!a[12]; p.revenge = Number.isInteger(a[13]) ? a[13] : -1;
     const st = String(a[14] || '').split(',').map(Number);
     p.ghost = +a[15] || 0;
+    p.power = POWERS[a[16]] ? a[16] : ''; p.powerAt = Number.isFinite(+a[17]) ? +a[17] : -9;
     p.stats = { kos: st[0] || 0, stabs: st[1] || 0, sends: st[2] || 0, combo3: st[3] || 0, hits: st[4] || 0 };
     if (a[7] && !p.out) {
       p.out = true; const m = p.mesh;
@@ -3643,6 +4152,8 @@ function applyState(s) {
     tween(300, k2 => n.mesh.position.set(from.x + (x - from.x) * k2, .2 + Math.sin(k2 * Math.PI) * 1.5, from.z + (z - from.z) * k2));
   });
   G.mods = Array.isArray(s.m) ? s.m : [];
+  G.scars = {};
+  if (s.sc && typeof s.sc === 'object') Object.keys(s.sc).forEach(i => { const v = s.sc[i]; if (+i >= 0 && +i < N && v && G.players[+v.by]) G.scars[i] = { by: +v.by, r: +v.r || 0 }; });
   const oldFest = G.fest ? G.fest.i : -1;
   G.fest = s.fe && Number.isInteger(s.fe.i) && TILES[s.fe.i] ? { i: s.fe.i, mult: clamp(+s.fe.mult || 2, 2, 4) } : null;
   if (oldFest >= 0) drawTile(oldFest);
@@ -3781,6 +4292,99 @@ async function copyInvite() {
   try { await navigator.clipboard.writeText(link); $('#btn-invite').textContent = '✅ 已複製，貼到 LINE 給朋友'; }
   catch (e) { $('#invite-text').hidden = false; $('#invite-text').value = link; $('#invite-text').select(); }
 }
+/* ---------- 喊話與語音：大家都看得到、聽得到 ---------- */
+const PHRASES = ['凍蒜！凍蒜！', '你給我記住！', '笑死，這也行？', '拜託放過我啦～', '要不要結盟？', '背骨仔！', '我要檢舉你！', '謝謝指教，下次改進', '快點啦，換你了！', '我只是去喝咖啡的'];
+function showChatbar() {
+  $('#chatbar').hidden = NET.mode === 'off';
+  $('#btn-talk').hidden = !(roomApi && roomApi.isRelay && window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+}
+function showChat(seat, text, voice) {
+  const p = G.players[seat]; if (!p || !p.bubble) return;
+  const b = document.createElement('b'); b.textContent = p.char.name;
+  p.bubble.replaceChildren(b, document.createTextNode(text)); p.bubble.classList.add('on');
+  clearTimeout(p.bt); p.bt = setTimeout(() => p.bubble.classList.remove('on'), 3200);
+  logLocal(`<b style="color:${p.char.color}">${p.char.name}</b>${voice ? ' 🎤' : ' 💬'}：「${esc(text)}」`);
+}
+function sendChat(k) {
+  const me = viewer(); if (!me || !NET.named || !PHRASES[k]) return;
+  const now = Date.now(); if (now - (NET.lastChat || 0) < 1500) return; NET.lastChat = now;
+  NET.named.emit('chat', { s: me.seat, k }).catch(() => { });
+  showChat(me.seat, PHRASES[k]); speak(me.char, PHRASES[k]);
+  $('#phrases').hidden = true;
+}
+$('#phrases').innerHTML = PHRASES.map((t, k) => `<button data-k="${k}">${t}</button>`).join('');
+$('#phrases').onclick = e => { const b = e.target.closest('[data-k]'); if (b) sendChat(+b.dataset.k); };
+$('#btn-chat').onclick = () => { $('#phrases').hidden = !$('#phrases').hidden; };
+// 按住說話：錄一段（最多 8 秒）透過轉發伺服器傳給大家
+let rec = null, talkHeld = false;
+async function startTalk() {
+  if (rec) return;
+  const me = viewer(); if (!me) { localCaption('還沒有你的角色', ''); return; }
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
+  catch (e) { localCaption('🎤 沒辦法錄音', '請允許使用麥克風；LINE 裡打不開的話，改用 Chrome／Safari 開', 2600); return; }
+  if (!talkHeld) { stream.getTracks().forEach(t => t.stop()); localCaption('🎤 麥克風可以用了', '再按住按鈕說話，放開就送出', 1800); return; }
+  const type = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus'].find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
+  let mr; try { mr = new MediaRecorder(stream, type ? { mimeType: type, audioBitsPerSecond: 24000 } : undefined); } catch (e) { stream.getTracks().forEach(t => t.stop()); localCaption('🎤 這個瀏覽器不能錄音', ''); return; }
+  const chunks = [], t0 = performance.now();
+  rec = { mr, timer: setTimeout(stopTalk, 8000) };
+  mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  mr.onstop = async () => {
+    stream.getTracks().forEach(t => t.stop());
+    clearTimeout(rec && rec.timer); rec = null;
+    $('#btn-talk').classList.remove('rec'); $('#btn-talk').textContent = '🎤 按住說話';
+    if (performance.now() - t0 < 600) { localCaption('🎤 要按住說話喔', '按著講，講完再放開', 1500); return; }
+    const blob = new Blob(chunks, { type: (mr.mimeType || type || 'audio/webm').split(';')[0] });
+    if (blob.size > 190000) { localCaption('🎤 太長了', '一次最多 8 秒', 1400); return; }
+    const a = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1] || ''); fr.readAsDataURL(blob); });
+    if (NET.named) NET.named.emit('voice', { s: me.seat, mime: blob.type, a }).catch(() => { });
+    showChat(me.seat, '（語音訊息）', true);
+  };
+  mr.start();
+  $('#btn-talk').classList.add('rec'); $('#btn-talk').textContent = '🔴 錄音中…放開送出';
+}
+function stopTalk() { if (rec && rec.mr.state === 'recording') rec.mr.stop(); }
+$('#btn-talk').onpointerdown = e => { e.preventDefault(); talkHeld = true; startTalk(); };
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => $('#btn-talk').addEventListener(ev, () => { talkHeld = false; stopTalk(); }));
+$('#btn-talk').oncontextmenu = e => e.preventDefault();
+const EMOS = ['👍', '🍅', '🥚', '💸', '😂'];
+// 表情飛到目前輪到的那個人頭上
+function flyEmo(e, from) {
+  const tp = G.players[G.turn]; if (!tp || !tp.bubble) return;
+  const el = document.createElement('div'); el.className = 'emofly';
+  el.style.left = (parseFloat(tp.bubble.style.left) || innerWidth / 2) + (Math.random() - .5) * 60 + 'px';
+  el.style.top = (parseFloat(tp.bubble.style.top) || innerHeight / 2) + 'px';
+  el.textContent = e;
+  if (from) { const sm = document.createElement('small'); sm.textContent = from.char.name; el.append(sm); }
+  $('#bubbles').append(el); setTimeout(() => el.remove(), 1500);
+  beep(e === '👍' || e === '💸' ? 880 : 300, .05, 'triangle', .03);
+}
+$('#emos').onclick = e => {
+  const b = e.target.closest('[data-e]'); if (!b || !NET.named) return;
+  const me = viewer(); const now = Date.now(); if (now - (NET.lastEmo || 0) < 500) return; NET.lastEmo = now;
+  NET.named.emit('emo', { e: EMOS.indexOf(b.dataset.e), s: me ? me.seat : -1 }).catch(() => { });
+  flyEmo(b.dataset.e, me);
+};
+function setupChat() {
+  const last = {};
+  const okRate = (peer, ms) => { const now = Date.now(); if (now - (last[peer] || 0) < ms) return false; last[peer] = now; return true; };
+  NET.named.on('emo', m => {
+    const d = m.data; if (m.sameTab || m.isMe || !d || !NET.started || !EMOS[d.e | 0] || !okRate(m.peer, 300)) return;
+    flyEmo(EMOS[d.e | 0], G.players[d.s | 0]);
+  });
+  NET.named.on('chat', m => {
+    const d = m.data; if (m.sameTab || m.isMe || !d || !NET.started) return;
+    const k = d.k | 0, s = d.s | 0; if (!PHRASES[k] || !G.players[s] || !okRate(m.peer, 800)) return;
+    showChat(s, PHRASES[k]); speak(G.players[s].char, PHRASES[k]);
+  });
+  NET.named.on('voice', m => {
+    const d = m.data; if (m.sameTab || m.isMe || !d || !NET.started) return;
+    const s = d.s | 0, mime = String(d.mime || '');
+    if (!G.players[s] || typeof d.a !== 'string' || d.a.length > 260000 || !/^audio\/[a-z0-9.+-]+$/i.test(mime) || !/^[A-Za-z0-9+/=]+$/.test(d.a) || !okRate(m.peer, 1500)) return;
+    try { new Audio(`data:${mime};base64,${d.a}`).play().catch(() => { }); } catch (e) { }
+    showChat(s, '🎤（語音訊息）', true);
+  });
+}
 async function hostRoom() {
   if (!roomApi || NET.mode !== 'off') return;
   const code = genCode();
@@ -3789,6 +4393,7 @@ async function hostRoom() {
   NET.mode = 'host'; NET.code = code; NET.nick = myNick();
   NET.named.presence({ cid: NET.cid, nick: NET.nick, role: 'host' }).catch(() => { });
   NET.named.on('res', onRes);
+  setupChat();
   NET.named.onPeers(ch => {
     hostPeers();
     if (NET.started && ch.joined.some(x => !x.sameTab)) { NET.named.emit('start', NET.cfg).catch(() => { }); sendState(); NET.reqs.forEach(e => sendReq(e.r)); }
@@ -3851,11 +4456,12 @@ async function joinRoom() {
   try { sessionStorage.setItem('ds-room', code); localStorage.setItem('ds-nick', NET.nick); } catch (e) { }
   try { history.replaceState(null, '', location.pathname + '?room=' + code + (roomApi.isRelay && roomApi.broker ? '&b=' + roomApi.broker : '')); } catch (e) { }
   NET.named.presence({ cid: NET.cid, nick: NET.nick, role: 'guest', pick: -1 }).catch(() => { });
-  NET.named.on('lobby', m => { if (fromHost(m) && m.data && Array.isArray(m.data.slots)) { NET.lobby = { slots: m.data.slots.slice(0, MAX_SEATS).filter(x => CHARS[x.ci]), seats: clamp(+m.data.seats || 4, 2, MAX_SEATS), rounds: +m.data.rounds || 25, map: MAPS[m.data.map] ? m.data.map : 'tpe' }; if (NET.lobby.map !== MAP) buildBoard(NET.lobby.map); renderSetup(); } });
+  NET.named.on('lobby', m => { if (fromHost(m) && m.data && Array.isArray(m.data.slots)) { NET.lobby = { slots: m.data.slots.slice(0, MAX_SEATS).filter(x => CHARS[x.ci]), seats: clamp(+m.data.seats || 4, 2, MAX_SEATS), rounds: +m.data.rounds || 13, map: MAPS[m.data.map] ? m.data.map : 'tpe' }; if (NET.lobby.map !== MAP) buildBoard(NET.lobby.map); renderSetup(); } });
   NET.named.on('start', m => { if (!fromHost(m) || NET.started || !m.data || !Array.isArray(m.data.players)) return; const cfg = { ...m.data, players: m.data.players.filter(x => CHARS[x.ci]).slice(0, MAX_SEATS) }; startGame(cfg); renderOnline(); });
   NET.named.on('state', m => { if (fromHost(m)) applyState(m.data); });
   NET.named.on('fx', m => { if (fromHost(m) && NET.started) playFx(m.data); });
   NET.named.on('req', m => { if (fromHost(m) && m.data && m.data.to === NET.cid && NET.started) handleReq(m.data); });
+  setupChat();
   let goneAt = 0;
   NET.named.onPeers(ch => {
     renderOnline();
