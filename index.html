@@ -188,6 +188,11 @@ button{touch-action:manipulation}
 #flash{position:absolute;inset:0;background:#fff3c4;opacity:0;pointer-events:none;z-index:7;transition:opacity .4s}
 
 #bubbles{position:absolute;inset:0;pointer-events:none;z-index:4}
+/* 腳下名牌：一眼看出誰是誰 */
+.ntag{position:absolute;transform:translate(-50%,6px);padding:1px 8px;border-radius:999px;background:var(--c);color:#fff;font-family:var(--display);font-weight:900;font-size:12px;border:2px solid var(--ink);white-space:nowrap;box-shadow:1px 2px 0 var(--ink);text-shadow:0 1px 0 rgba(0,0,0,.35);transition:transform .15s}
+.ntag.cur{transform:translate(-50%,6px) scale(1.25);z-index:1;box-shadow:0 0 0 3px var(--sun),1px 2px 0 var(--ink)}
+.ntag[hidden]{display:none}
+.compact .ntag{font-size:10px;padding:0 6px}
 .bubble{position:absolute;transform:translate(-50%,-100%);max-width:230px;padding:7px 12px;background:#fff;border:3px solid var(--ink);border-radius:14px;font-family:var(--display);font-weight:700;font-size:14px;line-height:1.35;box-shadow:3px 3px 0 var(--ink);opacity:0;transition:opacity .2s;text-align:center}
 .bubble::after{content:"";position:absolute;left:50%;bottom:-11px;margin-left:-8px;border:8px solid transparent;border-top-color:var(--ink);border-bottom:0}
 .bubble.on{opacity:1}
@@ -717,7 +722,7 @@ const KINDS = { hq: { name: '競選總部', mult: 4.5 }, stand: { name: '雞排�
 
 const ITEMS = {
   mine: { name: '地雷', icon: '💥', price: 800, aim: 'tile', desc: '埋在你前後 8 格內，踩到的人炸進醫院 2 回合。' },
-  bomb: { name: '定時炸彈', icon: '⏰', price: 1200, aim: 'near', desc: '黏到 6 格內的對手身上，經過誰就傳給誰，4 回合後爆炸。' },
+  bomb: { name: '定時炸彈', icon: '⏰', price: 1200, aim: 'near', desc: '黏到 6 格內的對手身上，經過誰就傳給誰；再走 12～18 步（隨機）就爆炸。' },
   rocket: { name: '火箭', icon: '🚀', price: 2000, aim: 'tile', desc: '轟炸任何一格：房子全拆，站在那格和左右隔壁的人都送醫院 2 回合。' },
   block: { name: '路障', icon: '🚧', price: 500, aim: 'tile', desc: '放在你前後 8 格內，經過的人被擋下來。' },
   dice: { name: '遙控骰子', icon: '🎲', price: 700, desc: '這次走幾步由你決定（1～12）。' },
@@ -1465,23 +1470,44 @@ const PORTRAIT = {
   kc: [235, 715, 120], '3q': [565, 695, 120], su: [890, 695, 115], chiang: [1210, 668, 118], puma: [1520, 695, 120], soong: [1805, 725, 115],
 };
 const faceURL = {}, faceRaw = {}, hairColor = {};
-const HAIR_FIX = { soong: '#3a3a46' };   // 自動抓到的頭髮色不對時，在這裡指定
+const HAIR_FIX = { soong: '#3a3a46', bian: '#1c1c1c' };   // 自動抓到的頭髮色不對時，在這裡指定
 let portraitImg = null;
+// 陳水扁不在 Q 版圖裡：用畫的卡通臉（圓眼鏡、旁分短髮、招牌大笑）
+function drawBianFace() {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
+  x.fillStyle = '#d7ecff'; x.fillRect(0, 0, 256, 256);
+  x.fillStyle = '#efbf96'; [[42, 142], [214, 142]].forEach(([ex, ey]) => { x.beginPath(); x.ellipse(ex, ey, 18, 26, 0, 0, 7); x.fill(); });
+  x.fillStyle = '#f7d1aa'; x.beginPath(); x.ellipse(128, 146, 86, 96, 0, 0, 7); x.fill(); x.lineWidth = 5; x.strokeStyle = '#3a2a20'; x.stroke();
+  x.fillStyle = '#1c1c1c'; x.beginPath(); x.moveTo(42, 126); x.quadraticCurveTo(36, 34, 132, 36); x.quadraticCurveTo(222, 38, 214, 126);
+  x.quadraticCurveTo(204, 84, 158, 74); x.quadraticCurveTo(112, 100, 64, 94); x.quadraticCurveTo(50, 104, 42, 126); x.fill();
+  x.lineCap = 'round'; x.lineWidth = 8; x.strokeStyle = '#1c1c1c'; [[78, 108, 112, 102], [144, 102, 178, 108]].forEach(([a, b, c, d]) => { x.beginPath(); x.moveTo(a, b); x.lineTo(c, d); x.stroke(); });
+  x.lineWidth = 6; [[95, 134], [161, 134]].forEach(([ex, ey]) => { x.beginPath(); x.arc(ex, ey + 6, 11, Math.PI * 1.15, Math.PI * 1.85); x.stroke(); });
+  x.strokeStyle = '#2b2b2b'; [[95, 134], [161, 134]].forEach(([ex, ey]) => { x.beginPath(); x.arc(ex, ey, 28, 0, 7); x.stroke(); });
+  x.beginPath(); x.moveTo(123, 132); x.lineTo(133, 132); x.stroke();
+  x.lineWidth = 4; x.strokeStyle = '#c98e6a'; x.beginPath(); x.moveTo(128, 146); x.quadraticCurveTo(119, 170, 133, 172); x.stroke();
+  x.fillStyle = 'rgba(255,120,120,.35)'; [[74, 174], [182, 174]].forEach(([cx, cy]) => { x.beginPath(); x.ellipse(cx, cy, 18, 11, 0, 0, 7); x.fill(); });
+  x.fillStyle = '#7a2b2b'; x.beginPath(); x.moveTo(88, 192); x.quadraticCurveTo(128, 242, 168, 192); x.closePath(); x.fill();
+  x.fillStyle = '#ffffff'; x.beginPath(); x.moveTo(94, 194); x.quadraticCurveTo(128, 210, 162, 194); x.closePath(); x.fill();
+  x.lineWidth = 4; x.strokeStyle = '#3a2a20'; x.beginPath(); x.moveTo(88, 192); x.quadraticCurveTo(128, 242, 168, 192); x.closePath(); x.stroke();
+  return cv;
+}
 function loadPortraits() {
   return portraitImg || (portraitImg = new Promise(res => {
     const img = new Image();
     img.onload = () => {
       // 先做好每個人的圓形頭像（白邊＋黑框），給 3D 大頭和玩家卡共用
-      Object.entries(PORTRAIT).forEach(([id, [cx, cy, r]]) => {
+      const bianCv = drawBianFace();
+      [...Object.entries(PORTRAIT), ['bian', [128, 128, 128]]].forEach(([id, [cx, cy, r]]) => {
+        const img0 = id === 'bian' ? bianCv : img;
         const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
         x.beginPath(); x.arc(128, 128, 122, 0, 7); x.fillStyle = '#1d1633'; x.fill();
         x.beginPath(); x.arc(128, 128, 116, 0, 7); x.fillStyle = '#ffffff'; x.fill();
         x.save(); x.beginPath(); x.arc(128, 128, 108, 0, 7); x.clip();
-        x.drawImage(img, cx - r, cy - r, r * 2, r * 2, 20, 20, 216, 216); x.restore();
+        x.drawImage(img0, cx - r, cy - r, r * 2, r * 2, 20, 20, 216, 216); x.restore();
         faceURL[id] = cv.toDataURL('image/png');
         // 3D 大頭用：先抓頭頂的頭髮顏色（跳過白邊和亮的背景），再做「中間是臉、外圈漸漸變成頭髮色」的貼圖
         const tc = document.createElement('canvas'); tc.width = tc.height = 256; const tx = tc.getContext('2d');
-        tx.drawImage(img, cx - r, cy - r, r * 2, r * 2, 0, 0, 256, 256);
+        tx.drawImage(img0, cx - r, cy - r, r * 2, r * 2, 0, 0, 256, 256);
         let hc = '#2b2d42';
         try {
           // 取頭頂一塊，依亮度排序，用偏暗的那一段（去掉黑線和反光）當頭髮色
@@ -1507,7 +1533,7 @@ function loadPortraits() {
 // 3D 大頭：前半球貼 Q 版臉（從正面平面投影），後半球是頭髮色，外面一圈黑色描邊，有光影、會跟著身體轉
 const face3DCache = {};
 async function bobbleHead(id) {
-  if (!PORTRAIT[id]) return null;
+  if (!PORTRAIT[id] && id !== 'bian') return null;
   await loadPortraits();
   if (!faceRaw[id]) return null;
   if (!face3DCache[id]) {
@@ -1648,9 +1674,19 @@ const trapMeshes = {};
 function placeTrapMesh(i, kind) {
   const [x, z] = tilePos(i), g = new THREE.Group(); g.position.set(x, .22, z); scene.add(g);
   if (kind === 'mine') {
-    cyl(.55, .65, .22, '#37474f', 0, .1, 0, g, 16);
-    const l = ball(.14, new THREE.MeshStandardMaterial({ color: '#ff1744', emissive: '#ff1744', emissiveIntensity: 1 }), 0, .27, 0, g);
-    anim.push(t => { l.visible = Math.sin(t * 6 + i) > 0; });
+    // 帶刺的水雷造型＋地上一圈會呼吸的紅色警示環（只有埋的人看得到）
+    const ring = new THREE.Mesh(new THREE.RingGeometry(.95, 1.25, 32), new THREE.MeshBasicMaterial({ color: '#ff1744', transparent: true, opacity: .6, depthWrite: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = .02; g.add(ring);
+    const body = ball(.42, new THREE.MeshStandardMaterial({ color: '#263238', metalness: .5, roughness: .35 }), 0, .4, 0, g);
+    for (let k = 0; k < 10; k++) {
+      const a = k / 10 * Math.PI * 2, up = k % 2 ? .25 : -.05;
+      const sp = cone(.07, .22, '#b0bec5', Math.cos(a) * .44, .4 + up, Math.sin(a) * .44, g, 6);
+      sp.lookAt(Math.cos(a) * 2, .4 + up * 3, Math.sin(a) * 2); sp.rotateX(Math.PI / 2);
+    }
+    cone(.07, .22, '#b0bec5', 0, .9, 0, g, 6);
+    const l = ball(.12, new THREE.MeshStandardMaterial({ color: '#ff1744', emissive: '#ff1744', emissiveIntensity: 1.4 }), 0, 1.05, 0, g);
+    const lab = textPlane('💣 你的地雷', 1.6, .4, '#ffffff', '#c62828', 120); lab.position.set(0, 1.45, 0); g.add(lab);
+    anim.push(t => { l.visible = Math.sin(t * 6 + i) > 0; const k = (t * 1.2 + i) % 1; ring.scale.setScalar(.8 + k * .5); ring.material.opacity = .7 * (1 - k); lab.rotation.y = t; });
   } else {
     box(2.6, .35, .25, '#ff9800', 0, .75, 0, g); box(2.6, .35, .26, '#ffffff', 0, .4, 0, g).scale.x = .5;
     [-1.1, 1.1].forEach(px => box(.15, .9, .5, '#455a64', px, .45, 0, g));
@@ -1671,14 +1707,30 @@ function trapVisible(t) {
 }
 
 const bombObj = new THREE.Group(); bombObj.visible = false; scene.add(bombObj);
-ball(.38, '#212121', 0, 0, 0, bombObj);
-cyl(.05, .05, .3, '#795548', .1, .4, 0, bombObj, 6).rotation.z = -.4;
-const spark = ball(.09, new THREE.MeshStandardMaterial({ color: '#ffeb3b', emissive: '#ff9800', emissiveIntensity: 1.5 }), .18, .58, 0, bombObj);
-const bombCv = document.createElement('canvas'); bombCv.width = bombCv.height = 128;
+// 卡通炸彈：亮面黑球＋金屬蓋＋彎彎的引信＋火花
+ball(.46, new THREE.MeshStandardMaterial({ color: '#1b1b1b', metalness: .45, roughness: .22 }), 0, 0, 0, bombObj);
+ball(.1, new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#ffffff', emissiveIntensity: .35 }), -.18, .2, .33, bombObj);
+cyl(.15, .17, .16, '#9e9e9e', 0, .48, 0, bombObj, 14);
+const fuse = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0, .55, 0), new THREE.Vector3(.08, .72, 0), new THREE.Vector3(.22, .78, .02), new THREE.Vector3(.3, .7, .04)]), 12, .035, 6), M('#c8a165'));
+bombObj.add(fuse);
+const spark = ball(.1, new THREE.MeshStandardMaterial({ color: '#ffeb3b', emissive: '#ff9800', emissiveIntensity: 1.8 }), .31, .72, .04, bombObj);
+// 倒數顯示器：黑底紅字的電子錶「⏰ 15 步」
+const bombCv = document.createElement('canvas'); bombCv.width = 256; bombCv.height = 112;
 const bombTex = new THREE.CanvasTexture(bombCv);
-const bombLabel = new THREE.Sprite(new THREE.SpriteMaterial({ map: bombTex, depthTest: false })); bombLabel.scale.set(.9, .9, 1); bombLabel.position.y = .95; bombObj.add(bombLabel);
-function drawBombLabel(n) { const x = bombCv.getContext('2d'); x.clearRect(0, 0, 128, 128); x.fillStyle = '#ff1744'; x.beginPath(); x.arc(64, 64, 56, 0, 7); x.fill(); x.lineWidth = 8; x.strokeStyle = '#1d1633'; x.stroke(); x.fillStyle = '#fff'; x.font = `900 72px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(n, 64, 70); bombTex.needsUpdate = true; }
-anim.push(t => { spark.scale.setScalar(.7 + Math.random() * .7); bombObj.rotation.y = Math.sin(t * 3) * .3; });
+const bombLabel = new THREE.Sprite(new THREE.SpriteMaterial({ map: bombTex, depthTest: false })); bombLabel.scale.set(1.5, .66, 1); bombLabel.position.y = 1.25; bombObj.add(bombLabel);
+function drawBombLabel(n) {
+  const x = bombCv.getContext('2d'); x.clearRect(0, 0, 256, 112);
+  x.fillStyle = '#111111'; x.beginPath(); if (x.roundRect) x.roundRect(6, 6, 244, 100, 22); else x.rect(6, 6, 244, 100); x.fill();
+  x.lineWidth = 8; x.strokeStyle = n <= 5 ? '#ff1744' : '#ffd23f'; x.stroke();
+  x.fillStyle = '#ff1744'; x.font = `900 64px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(`⏰${Math.max(0, n)}步`, 128, 60);
+  bombTex.needsUpdate = true;
+}
+anim.push(t => {
+  spark.scale.setScalar(.7 + Math.random() * .8);
+  const hurry = G.bomb && G.bomb.t <= 5;
+  bombObj.rotation.y = Math.sin(t * 3) * .3;
+  bombObj.scale.setScalar(1 + (hurry ? Math.abs(Math.sin(t * 10)) * .15 : Math.sin(t * 3) * .03));
+});
 
 const particles = [];
 function burst(pos, colors, n = 30, power = 1) {
@@ -1844,6 +1896,15 @@ const wait = ms => new Promise(r => BGT.timeout(r, ms * speed()));
 const cam = { target: new THREE.Vector3(), az: .6, userAz: 0, zoom: 1, overview: true, follow: null, spin: true, shake: 0, look: null };
 let drag = null;
 const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+// 點到哪個人物
+function playerAt(e) {
+  const r = canvas.getBoundingClientRect();
+  mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(mouse, camera);
+  const ms = G.players.filter(p => p.mesh && !p.out).map(p => p.mesh);
+  const hit = ray.intersectObjects(ms, true)[0]; if (!hit) return null;
+  return G.players.find(p => { for (let o = hit.object; o; o = o.parent) if (o === p.mesh) return true; return false; }) || null;
+}
 function tileAt(e) {
   const r = canvas.getBoundingClientRect();
   mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
@@ -1861,7 +1922,11 @@ canvas.addEventListener('pointerup', e => {
   if (d && !d.moved) {
     const i = tileAt(e);
     if (aiming) { if (i >= 0 && aiming.valid.has(i)) { const a = aiming; endAim(); a.resolve(i); } }
-    else if (i >= 0 && G.players.length) showTip(i, e.clientX, e.clientY);
+    else if (G.players.length) {
+      const pp = playerAt(e);
+      if (pp) { openSheet(pp, 'items'); return; }   // 點人物：看他是誰、有什麼道具
+      if (i >= 0) showTip(i, e.clientX, e.clientY);
+    }
   }
 });
 canvas.addEventListener('wheel', e => { e.preventDefault(); cam.zoom = clamp(cam.zoom * (e.deltaY > 0 ? 1.1 : .9), .55, 1.8); }, { passive: false });
@@ -1986,6 +2051,12 @@ function frame(now) {
     tmpV.copy(p.mesh.position); tmpV.y += 2.7; tmpV.project(camera);
     p.bubble.style.left = ((tmpV.x + 1) / 2 * innerWidth) + 'px';
     p.bubble.style.top = ((1 - tmpV.y) / 2 * innerHeight) + 'px';
+    if (p.tag) {
+      tmpV.copy(p.mesh.position); tmpV.y += .05; tmpV.project(camera);
+      p.tag.hidden = p.out || tmpV.z > 1;
+      p.tag.style.left = ((tmpV.x + 1) / 2 * innerWidth) + 'px'; p.tag.style.top = ((1 - tmpV.y) / 2 * innerHeight) + 'px';
+      p.tag.classList.toggle('cur', G.players[G.turn] === p);
+    }
   });
   requestAnimationFrame(frame);
 }
@@ -2123,7 +2194,7 @@ function statusText(p) {
   if (p.turtle) bits.push(`<b>🐢${p.turtle}</b>`);
   if (p.ghost > 0) bits.push(`<b>👻${p.ghost}</b>`);
   if (p.autoOn) bits.push('<b>🤖託管</b>');
-  if (G.bomb && G.bomb.holder === p.seat) bits.push(`<b>⏰${G.bomb.t}</b>`);
+  if (G.bomb && G.bomb.holder === p.seat) bits.push(`<b>⏰${G.bomb.t}步</b>`);
   return bits.join('・');
 }
 function log(html) { hostFx('log', html); logLocal(html); }
@@ -2329,6 +2400,8 @@ function startGame(cfg) {
     if (players.length > 4) p.mesh.scale.setScalar(.8);   // 人多時棋子小一點，才站得下
     const [x, z] = spot(p, 0); p.mesh.position.set(x, 0, z);
     p.bubble = document.createElement('div'); p.bubble.className = 'bubble'; p.bubble.style.setProperty('--bc', p.char.color); $('#bubbles').append(p.bubble);
+    p.tag = document.createElement('div'); p.tag.className = 'ntag'; p.tag.style.setProperty('--c', p.char.color);
+    p.tag.textContent = p.char.name + (p.nick ? '・' + p.nick : ''); $('#bubbles').append(p.tag);
     if (NET.mode !== 'client') shuffle(ATTACK_KEYS).slice(0, 3).forEach(id => p.items.push(id));
     upgradeToken(p);
   });
@@ -2430,22 +2503,9 @@ async function takeTurn(p) {
     await caption('📉 聲量被打下來了！', `${p.char.name} 民調掉回 ${Math.round(p.poll)}%，危機解除`, 1500);
   }
   await wait(300);
-  if (G.bomb && G.bomb.holder === p.seat) {
-    G.bomb.t--; drawBombLabel(G.bomb.t); updateHUD();
-    if (G.bomb.t <= 0) {
-      const by = G.players[G.bomb.by];
-      G.bomb = null; bombObj.visible = false;
-      await explosion(p.pos);
-      const lose = Math.round(p.cash * .2 / 10) * 10; p.cash -= lose;
-      say(p, 'hit'); await caption('⏰ 炸彈爆炸！', `${p.char.name} 被炸飛，損失 ${fmt(lose)}${by && by !== p ? `（是 ${by.char.name} 放的炸彈）` : ''}`, 1800);
-      if (by && by !== p) log(`⏰ <b>${by.char.name}</b> 的定時炸彈炸到 <b>${p.char.name}</b>，送醫院 3 回合`);
-      await sendTo(p, HOSP, 3, 'hosp');
-      if (by && by !== p) by.stats.sends++;
-      return;
-    }
-    await caption(`⏰ 炸彈剩 ${G.bomb.t} 回合`, `${p.char.name}，快去碰別人把炸彈傳出去！`, 1200);
-  }
-  if (p.skip > 0 && (p.where === 'hosp' || p.where === 'jail')) await buyOut(p);
+  if (G.bomb && G.bomb.holder === p.seat) await caption(`⏰ 炸彈剩 ${G.bomb.t} 步！`, `${p.char.name}，快去碰別人把炸彈傳出去！`, 1200);
+  if (p.where === 'jail') { const out = await interrogate(p); if (!out) { updateHUD(); return; } }
+  if (p.skip > 0 && p.where === 'hosp') await buyOut(p);
   if (p.skip > 0) {
     p.skip--; updateHUD();
     say(p, p.where === 'hosp' ? 'hosp' : 'jail');
@@ -3129,8 +3189,8 @@ async function useItem(p, id, arg, free) {
     }
     case 'rocket': await fireRocket(p, arg); break;
     case 'bomb':
-      G.bomb = { holder: arg.seat, t: 4, by: p.seat }; drawBombLabel(4); SFX.whoosh();
-      await caption(`${it.icon} 定時炸彈黏上去了！`, `${arg.char.name} 身上的炸彈 4 回合後爆炸`, 1400); say(arg, 'hit');
+      { const steps = 12 + rnd(7); G.bomb = { holder: arg.seat, t: steps, by: p.seat }; drawBombLabel(steps); SFX.whoosh();
+      await caption(`${it.icon} 定時炸彈黏上去了！`, `${arg.char.name} 身上的炸彈再走 ${steps} 步就爆炸，快去碰別人傳出去！`, 1600); say(arg, 'hit'); }
       break;
     case 'expose': {
       if (arg.mPublic) { await caption('📰 爆料失敗', `${arg.char.name} 的任務早就公開了`, 1300); break; }
@@ -3237,7 +3297,46 @@ async function rocketFly(seat, i) {
   scene.remove(r);
 }
 
-// 花錢提早出來：醫院自費 VIP 病房、約談所找關係疏通（兩成機率被抓包）
+// 檢調約談：每回合要付律師費（現金 15%，至少 1,500），再通過偵訊小遊戲才能出來；連續 3 次沒過就交保出來
+async function interrogate(p) {
+  p.jailTries = (p.jailTries || 0) + 1;
+  const fee = Math.max(1500, Math.round(p.cash * .15 / 10) * 10);
+  say(p, 'jail');
+  const pay = p.cash < fee ? false : p.isAI ? true
+    : await ask(`<h2>🕵️ 檢調約談中（第 ${p.jailTries} 次）</h2><p>想出去要先付<b>律師費 ${fmt(fee)}</b>，再通過「偵訊」小遊戲（隨機：答題、閃光燈反應或打假新聞）。</p><p style="font-size:13px;color:var(--muted)">沒過就繼續約談；連續 3 次沒過會自動交保。</p>`,
+      [{ label: `💼 付 ${fmt(fee)} 接受偵訊`, value: true, cls: 'hot' }, { label: '乖乖待著', value: false }], p);
+  let pass = false;
+  if (pay) {
+    p.cash -= fee; updateHUD(); SFX.coin();
+    log(`💼 <b>${p.char.name}</b> 付律師費 ${fmt(fee)} 接受偵訊`);
+    const kind = pick(['quiz', 'react', 'mole']);
+    if (p.char.id === 'lien') { pass = true; await caption('👴 您回來了！', '連爺爺德高望重，偵訊直接過關', 1400); }
+    else if (p.isAI) { await caption('🕵️ 偵訊中…', `${p.char.name} 正在接受檢察官問話`, 1200); pass = Math.random() < .55; }
+    else if (kind === 'quiz') {
+      await caption('🕵️ 偵訊：答題', '3 題答對 2 題就放人', 1200);
+      const qs = shuffle(QUIZ).slice(0, 3); let ok = 0;
+      for (let k = 0; k < 3; k++) ok += await quizQ(p, qs[k], k, 3, 8);
+      modal.hidden = true; pass = ok >= 2;
+    } else if (kind === 'react') {
+      await caption('🕵️ 偵訊：閃光燈', '反應 0.5 秒內就放人', 1200);
+      pass = (await reactGame(p)) < 500;
+    } else {
+      await caption('🕵️ 偵訊：打假新聞', '拿到 8 分就放人', 1200);
+      pass = (await moleGame(p)) >= 8;
+    }
+  }
+  if (pass) {
+    p.skip = 0; p.where = null; p.jailTries = 0; SFX.fan(); say(p, 'release', '我是清白的！');
+    await caption('✅ 偵訊過關，離開約談所！', `${p.char.name} 這回合照常行動`, 1400); updateHUD(); return true;
+  }
+  if (p.jailTries >= 3) {
+    p.skip = 0; p.where = null; p.jailTries = 0;
+    await caption('⚖️ 約談期滿交保', `${p.char.name} 下回合可以出來了`, 1300); updateHUD(); return false;
+  }
+  SFX.bad(); await caption(pay ? '❌ 偵訊沒過！' : '☕ 繼續約談', `${p.char.name} 還要待在約談所`, 1300);
+  return false;
+}
+// 花錢提早出來：醫院自費 VIP 病房
 const buyOutCost = p => (p.where === 'hosp' ? 800 : 1000) * p.skip;
 async function buyOut(p) {
   const cost = buyOutCost(p), hosp = p.where === 'hosp';
@@ -3357,6 +3456,17 @@ function aiPickItem(p) {
 }
 
 /* ---------- 移動 ---------- */
+// 定時炸彈爆炸（拿著炸彈的人每走一步倒數一次，到 0 就爆）
+async function bombBoom(p) {
+  const by = G.players[G.bomb.by];
+  G.bomb = null; bombObj.visible = false;
+  await explosion(p.pos);
+  const lose = Math.round(p.cash * .2 / 10) * 10; p.cash -= lose;
+  say(p, 'hit'); await caption('⏰ 炸彈爆炸！', `${p.char.name} 被炸飛，損失 ${fmt(lose)}${by && by !== p ? `（是 ${by.char.name} 放的炸彈）` : ''}`, 1800);
+  if (by && by !== p) log(`⏰ <b>${by.char.name}</b> 的定時炸彈炸到 <b>${p.char.name}</b>，送醫院 3 回合`);
+  p.moving = false; await sendTo(p, HOSP, 3, 'hosp');
+  if (by && by !== p) by.stats.sends++;
+}
 async function moveSteps(p, n) {
   p.moving = true;
   for (let s = 1; s <= n; s++) {
@@ -3366,6 +3476,12 @@ async function moveSteps(p, n) {
     SFX.step(); hostFx('hop', [p.seat, p.pos]);
     await tween(140, k => { p.mesh.position.lerpVectors(from, to, k); p.mesh.position.y = Math.sin(Math.PI * k) * .9; });
     if (p.pos === 0) await passStart(p);
+    // 炸彈：拿著的人每走一步少 1，到 0 就爆
+    if (G.bomb && G.bomb.holder === p.seat) {
+      G.bomb.t--; drawBombLabel(G.bomb.t);
+      if (G.bomb.t <= 3 && G.bomb.t > 0) beep(900, .06, 'square', .04);
+      if (G.bomb.t <= 0) { await bombBoom(p); return; }
+    }
     // 炸彈傳遞
     if (G.bomb) {
       const mates = alive().filter(q => q !== p && q.pos === p.pos);
@@ -3396,7 +3512,7 @@ async function passStart(p) {
   let pay = SALARY;
   if (p.char.id === 'soong') addPoll(p, 8);
   p.cash += pay; SFX.coin(); say(p, 'start');
-  const gift = pick(ITEM_KEYS); giveItem(p, gift); updateHUD();
+  const gift = Math.random() < .4 ? 'rocket' : pick(ITEM_KEYS); giveItem(p, gift); updateHUD();   // 四成機率送火箭
   caption('經過凍蒜廣場', `${p.char.name} 領政治獻金 ${fmt(pay)}＋${ITEMS[gift].icon}${ITEMS[gift].name}${p.char.id === 'soong' ? '，民調 +8' : ''}`, 1000);
 }
 
@@ -3422,9 +3538,10 @@ async function meetNPC(p, n) {
     await info(p, '🕵️ 撞見檢調！', `「依法搜索！」${lost ? `${ITEMS[lost].icon} ${ITEMS[lost].name}被沒收，` : '身上什麼都沒搜到，'}原地停下配合調查。`);
     relocateNPC(n); updateHUD(); return true;
   }
-  p.cash += 1000; addPoll(p, 5); giveItem(p, 'bento'); SFX.coin();
+  const gift = Math.random() < .5 ? 'rocket' : 'bento';
+  p.cash += 1000; addPoll(p, 5); giveItem(p, gift); SFX.coin();
   say(p, 'earn', '多謝阿伯！');
-  await info(p, '🧓 遇到樁腳伯', '「少年耶，阿伯挺你！」拿到 1,000 元、民調 +5，還有一個🍱發便當。');
+  await info(p, '🧓 遇到樁腳伯', `「少年耶，阿伯挺你！」拿到 1,000 元、民調 +5，還有一個${gift === 'rocket' ? '🚀火箭（阿伯說：拿去轟對手！）' : '🍱發便當'}。`);
   relocateNPC(n); updateHUD(); return false;
 }
 
@@ -3443,13 +3560,13 @@ async function resolveTile(p) {
       else await payRent(p, i);
       break;
     case 'item': {
-      const id = pick(ITEM_KEYS); const ok = giveItem(p, id); SFX.fan(); say(p, 'item');
+      const r = Math.random(), id = r < .25 ? 'rocket' : r < .35 ? 'missiles' : pick(ITEM_KEYS); const ok = giveItem(p, id); SFX.fan(); say(p, 'item');
       await info(p, ok ? `抽到 ${ITEMS[id].icon} ${ITEMS[id].name}` : '道具滿了', ok ? ITEMS[id].desc : '換成 500 元。');
       break;
     }
     case 'live': await liveTile(p); break;
     case 'news': await newsTile(p); break;
-    case 'jail': SFX.bad(); await info(p, '🕵️ 被請進檢調約談所', '說明一下最近的金流…停 1 回合。'); await sendTo(p, JAIL, 1, 'jail'); break;
+    case 'jail': SFX.bad(); await info(p, '🕵️ 被請進檢調約談所', '說明一下最近的金流…下回合起，要付律師費＋通過偵訊小遊戲才能出來。'); await sendTo(p, JAIL, 1, 'jail'); break;
     case 'hosp': addPoll(p, 3); p.cash -= 300; await info(p, '🏥 健康檢查', '花 300 元做健檢，順便跟護理師拜票，民調 +3。'); break;
     case 'fly': await flyTile(p); break;
     case 'shop': await shopTile(p); break;
@@ -3970,11 +4087,11 @@ async function allGame() {
   modal.hidden = true;
   const rank = [...ps].sort((a, b) => meta.better(res.get(a), res.get(b)) ? -1 : meta.better(res.get(b), res.get(a)) ? 1 : 0);
   const best = rank[0], worst = rank.length >= 3 ? rank[rank.length - 1] : null;
-  best.cash += 1500; addPoll(best, 5); say(best, 'win', '第一名就是我！');
+  best.cash += 1500; addPoll(best, 5); giveItem(best, 'rocket'); say(best, 'win', '第一名就是我！');
   rank.slice(1, worst ? -1 : undefined).forEach(p => { p.cash += 300; });
   updateHUD();
   log(`${meta.name}：${rank.map(p => `${p.char.name} ${meta.fmt(res.get(p))}`).join('、')}`);
-  await caption(`🏆 ${best.char.name} 第一名！`, rank.map((p, k) => `${k + 1}. ${p.char.name} ${meta.fmt(res.get(p))}`).join('　'), 2800);
+  await caption(`🏆 ${best.char.name} 第一名！`, rank.map((p, k) => `${k + 1}. ${p.char.name} ${meta.fmt(res.get(p))}`).join('　') + '（第一名加送 🚀火箭）', 2800);
   if (worst) { addPoll(worst, -3); say(worst, 'lose', '我手機太爛了啦！'); SFX.bad(); await charge(worst, 800, null); }
   updateHUD();
 }
