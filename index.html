@@ -557,15 +557,25 @@ function pickVoice(male, alt = 0) {
   const list = male ? (m.length ? m : vs.filter(x => MALE_RE.test(x.name))) : f;
   return list[alt % (list.length || 1)] || pool[0];
 }
-function speak(ch, line) {
+// 講話排隊：一次只有一個人講，講完喘口氣才換下一句，不會疊在一起
+// prio 0＝旁人的反應（有空才講、一半機率省略）；1＝輪到的人（有人在講就跳過，只顯示泡泡）；2＝玩家自己按的喊話（打斷別人馬上講）
+let speakUntil = 0;
+function speak(ch, line, prio = 1) {
   if (!voiceOn || muted || !('speechSynthesis' in window)) return;
+  const now = performance.now(), busy = now < speakUntil || speechSynthesis.speaking || speechSynthesis.pending;
+  if (prio < 2 && busy) return;
+  if (prio === 0 && Math.random() < .5) return;
   try {
     const v = VOICE[ch.id] || { p: 1, r: 1 }, text = v.q ? v.q(line) : line;
     const u = new SpeechSynthesisUtterance(text), voice = pickVoice(v.male, Object.keys(VOICE).indexOf(ch.id));
     if (voice) { u.voice = voice; u.lang = voice.lang; } else u.lang = 'zh-TW';
     u.pitch = clamp(v.p * (v.male && !(voice && MALE_RE.test(voice.name)) ? .8 : 1), 0, 2);
-    u.rate = v.r * (G && G.fast ? 1.3 : 1);
-    speechSynthesis.cancel(); speechSynthesis.speak(u);
+    u.rate = v.r * (G && G.fast ? 1.3 : 1); u.volume = .9;
+    // 估計講完的時間（有些手機不會回報講完），再多留 0.7 秒空檔
+    speakUntil = now + 700 + [...text].length * 230 / u.rate;
+    u.onend = () => { speakUntil = Math.min(speakUntil, performance.now() + 700); };
+    if (busy) speechSynthesis.cancel();
+    speechSynthesis.speak(u);
   } catch (e) { }
 }
 
@@ -851,20 +861,25 @@ function noise(d, freq = 2000, vol = .2, delay = 0, type = 'bandpass') {
 }
 // 角色出場音效：阿扁掌聲、馬英九腳踏車鈴、蔡英文貓叫、宋楚瑜喇叭、連戰銅鑼、沈伯洋熊吼、蔣萬安警報、黃國昌拍資料、柯文哲計算機、蘇巧慧叮咚、3Q 閃亮、館長使力
 const CHAR_FX = {
-  clap: () => { for (let k = 0; k < 7; k++) noise(.06, 1800 + rnd(800), .25, k * .07 + Math.random() * .03); },
+  clap: () => { for (let k = 0; k < 6; k++) noise(.06, 1800 + rnd(800), .15, k * .07 + Math.random() * .03); },
   bell: () => { beep(1568, .25, 'triangle', .05); beep(1568, .25, 'triangle', .05, .18); },
   meow: () => { sweep(600, 900, .18, 'sine', .07, 0, 9); sweep(900, 520, .3, 'sine', .07, .17, 9); },
   horn: () => { beep(370, .14, 'square', .05); beep(370, .22, 'square', .05, .2); },
   gong: () => { sweep(140, 110, 1.2, 'sine', .09); sweep(280, 220, .9, 'sine', .03); },
   growl: () => { sweep(110, 80, .5, 'sawtooth', .05, 0, 25); },
-  siren: () => { sweep(600, 1100, .35, 'sawtooth', .03); sweep(1100, 600, .35, 'sawtooth', .03, .35); },
-  slap: () => { noise(.08, 3000, .45, 0, 'highpass'); noise(.05, 1500, .3, .09); },
+  siren: () => { sweep(600, 1100, .35, 'sawtooth', .02); sweep(1100, 600, .35, 'sawtooth', .02, .35); },
+  slap: () => { noise(.08, 3000, .28, 0, 'highpass'); noise(.05, 1500, .18, .09); },
   calc: () => { [1200, 1500, 1800].forEach((f, k) => beep(f, .05, 'square', .03, k * .07)); },
   ding: () => { beep(1319, .3, 'sine', .06); beep(1047, .45, 'sine', .05, .22); },
   sparkle: () => { [1568, 2093, 2637, 3136].forEach((f, k) => beep(f, .12, 'triangle', .035, k * .05)); },
-  grunt: () => { sweep(140, 90, .25, 'square', .06); noise(.15, 400, .25, 0, 'lowpass'); },
+  grunt: () => { sweep(140, 90, .25, 'square', .045); noise(.15, 400, .18, 0, 'lowpass'); },
 };
-function charFx(id) { const v = VOICE[id]; if (v && CHAR_FX[v.fx]) CHAR_FX[v.fx](); }
+// 出場音效：至少隔 4 秒才再響一次，不然太吵
+let lastCharFx = 0;
+function charFx(id, gap = 4000) {
+  const v = VOICE[id], now = performance.now(); if (!v || !CHAR_FX[v.fx] || now - lastCharFx < gap) return false;
+  lastCharFx = now; CHAR_FX[v.fx](); return true;
+}
 const SFX = {
   step: () => beep(620 + rnd(80), .05, 'square', .025),
   coin: () => { beep(988, .08); beep(1319, .14, 'square', .04, .07); },
@@ -1949,9 +1964,11 @@ function sayLine(seat, line, key) {
   p.bubble.replaceChildren(b, document.createTextNode(line)); p.bubble.classList.add('on');
   clearTimeout(p.bt); p.bt = setTimeout(() => p.bubble.classList.remove('on'), 2800);
   logLocal(`<b style="color:${p.char.color}">${p.char.name}</b>：「${esc(line)}」`);
-  // 擲骰、出招、贏的時候先來一聲角色招牌音效
-  if (['roll', 'start', 'attack', 'win', 'champion'].includes(key)) { charFx(p.char.id); setTimeout(() => speak(p.char, line), 280); }
-  else speak(p.char, line);
+  // 誰講話的優先順序：當選感言最優先，輪到的人次之，其他人的反應有空才講
+  const prio = key === 'champion' ? 2 : G.players[G.turn] === p ? 1 : 0;
+  // 輪到的人擲骰、贏的時候先來一聲招牌音效（有冷卻）
+  if (prio && ['roll', 'win', 'champion'].includes(key) && charFx(p.char.id)) setTimeout(() => speak(p.char, line, prio), 300);
+  else speak(p.char, line, prio);
 }
 
 const modal = $('#modal'), mbox = $('#modal-box');
@@ -4540,7 +4557,7 @@ function showChatbar() {
 }
 function showChat(seat, text, voice, taunt) {
   const p = G.players[seat]; if (!p || !p.bubble) return;
-  if (taunt) { flyEmo('😤', p); charFx(p.char.id); }
+  if (taunt) { flyEmo('😤', p); charFx(p.char.id, 1500); }
   const b = document.createElement('b'); b.textContent = p.char.name;
   p.bubble.replaceChildren(b, document.createTextNode((taunt ? '🗯️ ' : '') + text)); p.bubble.classList.add('on');
   clearTimeout(p.bt); p.bt = setTimeout(() => p.bubble.classList.remove('on'), 3200);
@@ -4553,7 +4570,7 @@ function sendChat(d) {
   const text = chatText(me, d); if (!text) return;
   const now = Date.now(); if (now - (NET.lastChat || 0) < 1500) return; NET.lastChat = now;
   NET.named.emit('chat', { s: me.seat, ...d }).catch(() => { });
-  showChat(me.seat, text, false, d.t !== undefined); speak(me.char, text);
+  showChat(me.seat, text, false, d.t !== undefined); speak(me.char, text, 2);
   if (d.t !== undefined) { SFX.whoosh(); cam.shake = .25; }
   $('#phrases').hidden = true;
 }
@@ -4634,7 +4651,7 @@ function setupChat() {
     const s = d.s | 0, p = G.players[s]; if (!p || !okRate(m.peer, 800)) return;
     const text = chatText(p, d); if (!text) return;
     const taunt = d.t !== undefined && d.t !== null;
-    showChat(s, text, false, taunt); speak(p.char, text);
+    showChat(s, text, false, taunt); speak(p.char, text, 2);
     if (taunt) { SFX.whoosh(); cam.shake = .25; }
   });
   NET.named.on('voice', m => {
