@@ -109,6 +109,13 @@ button.hot{background:var(--hot);color:#fff}
 .sh-box em{font-style:normal;font-size:11px;padding:1px 7px;border-radius:999px;background:#eee;margin-left:4px}
 .sh-box em.okc{background:#b9f6ca}
 #players .pc{cursor:pointer}
+button{touch-action:manipulation}
+#btn-more{display:none}
+.compact #btn-more{display:inline-block}
+.compact #actions .opt{display:none}
+.compact #actions.more .opt:not([hidden]){display:inline-block}
+.compact #gauge small{display:none}
+.compact #chatbar:not(.open) #emos,.compact #chatbar:not(.open) #btn-talk{display:none}
 #actions button.ready{box-shadow:0 0 0 3px var(--sun),3px 3px 0 var(--ink)}
 /* 快速喊話／語音 */
 #chatbar{position:absolute;right:max(12px,env(safe-area-inset-right,0px));bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--ah,52px) + 16px);display:flex;flex-direction:column;align-items:flex-end;gap:6px;z-index:6}
@@ -139,6 +146,12 @@ button.hot{background:var(--hot);color:#fff}
 .tug{position:relative}
 .tugcd{position:absolute;inset:-4px;display:grid;place-items:center;font-family:var(--display);font-size:76px;font-weight:900;color:var(--hot);text-shadow:4px 4px 0 var(--ink);background:rgba(255,255,255,.8);border-radius:14px;z-index:2;pointer-events:none}
 .tugcd[hidden]{display:none}
+/* 觀眾接回角色 */
+#claim{position:absolute;left:50%;transform:translateX(-50%);top:calc(max(12px,env(safe-area-inset-top,0px)) + 84px);z-index:9;width:min(420px,92vw);padding:10px 12px;display:grid;gap:6px}
+#claim[hidden]{display:none}
+#claim small{color:var(--muted);font-weight:700}
+#claim div{display:flex;flex-wrap:wrap;gap:6px}
+#claim button{border-left:6px solid var(--c);font-size:14px}
 /* 觀戰卡片 */
 #peeks{position:absolute;top:calc(max(12px,env(safe-area-inset-top,0px)) + 84px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;width:min(380px,92vw);pointer-events:none;z-index:7}
 .pk{background:var(--paper);border:3px solid var(--ink);border-left:8px solid var(--c);border-radius:14px;box-shadow:3px 3px 0 var(--ink);padding:7px 10px;animation:pkin .25s ease-out}
@@ -351,14 +364,17 @@ button.hot{background:var(--hot);color:#fff}
     <button id="btn-power" hidden>⚡ 超能力</button>
     <button id="btn-skill" disabled hidden>技能</button>
     <button id="btn-ally" disabled>🤝 結盟</button>
-    <button id="btn-mission" title="偷看自己的祕密任務">🎯 任務</button>
-    <button id="btn-view" title="切換跟隨／全景視角">全景</button>
-    <button id="btn-fast" title="加快動畫速度">快轉</button>
-    <button id="btn-sound" title="音效開關">音效 開</button>
-    <button id="btn-voice" title="角色台詞語音開關">語音 開</button>
+    <button id="btn-mission" class="opt" title="偷看自己的祕密任務">🎯 任務</button>
+    <button id="btn-auto" class="opt" title="交給電腦幫你玩，再按一次拿回來" hidden>🤖 託管</button>
+    <button id="btn-view" class="opt" title="切換跟隨／全景視角">全景</button>
+    <button id="btn-fast" class="opt" title="加快動畫速度">快轉</button>
+    <button id="btn-sound" class="opt" title="音效開關">音效 開</button>
+    <button id="btn-voice" class="opt" title="角色台詞語音開關">語音 開</button>
+    <button id="btn-more" title="更多按鈕">⋯ 更多</button>
   </div>
   <div id="caption"></div>
   <div id="peeks" aria-live="polite"></div>
+  <div id="claim" class="panel" hidden></div>
   <div id="sheet" hidden><div class="sh-box" role="dialog" aria-label="玩家資料"><button class="sh-x" id="sheet-x" aria-label="關閉">✕</button><div id="sheet-body"></div></div></div>
   <div id="chatbar" hidden>
     <div id="phrases" hidden></div>
@@ -782,8 +798,12 @@ const SFX = {
 
 /* ---------- three.js 場景 ---------- */
 const canvas = $('#c');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// 手機、平板用輕量畫質（解析度、陰影降一點），比較不會因為記憶體不夠閃退
+const LITE = matchMedia('(pointer: coarse)').matches || Math.min(screen.width, screen.height) < 820;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !LITE, powerPreference: LITE ? 'low-power' : 'default' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, LITE ? 1.25 : 2));
+// 繪圖晶片被系統收回（手機常見）：朋友直接重新整理，會自動回到房間；其他情況等它恢復
+canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); if (NET.mode === 'client') setTimeout(() => location.reload(), 400); });
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -794,12 +814,21 @@ const camera = new THREE.PerspectiveCamera(45, 1, .1, 400);
 scene.add(new THREE.HemisphereLight('#ffffff', '#7fa86a', .75));
 const sun = new THREE.DirectionalLight('#fff4dd', .85);
 sun.position.set(18, 40, 22); sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(LITE ? 1024 : 2048, LITE ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 100 });
 scene.add(sun);
 
 const matCache = {};
 const M = c => matCache[c] || (matCache[c] = new THREE.MeshStandardMaterial({ color: c, roughness: .75 }));
+// 拆掉的模型要把顯示卡記憶體還回去（共用的材質留著）
+function disposeTree(o) {
+  const keep = new Set(Object.values(matCache));
+  o.traverse(c => {
+    if (c.geometry) c.geometry.dispose();
+    (Array.isArray(c.material) ? c.material : c.material ? [c.material] : []).forEach(m => { if (keep.has(m)) return; if (m.map) m.map.dispose(); m.dispose(); });
+  });
+}
+const PARTICLE_GEO = new THREE.BoxGeometry(.25, .25, .25);   // 爆炸碎片共用同一個形狀
 function mesh(geo, color, x = 0, y = 0, z = 0, parent = scene) {
   const m = new THREE.Mesh(geo, typeof color === 'string' ? M(color) : color);
   m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
@@ -1367,7 +1396,7 @@ anim.push(t => { spark.scale.setScalar(.7 + Math.random() * .7); bombObj.rotatio
 const particles = [];
 function burst(pos, colors, n = 30, power = 1) {
   for (let k = 0; k < n; k++) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(.25, .25, .25), M(pick(colors)));
+    const m = new THREE.Mesh(PARTICLE_GEO, M(pick(colors)));
     m.position.copy(pos); scene.add(m);
     particles.push({ m, v: new THREE.Vector3((Math.random() - .5) * 10 * power, (4 + Math.random() * 8) * power, (Math.random() - .5) * 10 * power), life: 1 + Math.random() * .5 });
   }
@@ -1388,7 +1417,7 @@ function confetti(pos) { hostFx('conf', [pos.x, pos.y, pos.z]); burst(pos, ['#ff
 const buildingGroups = [];
 function buildingName(i) { const s = G.tiles[i]; return s.kind ? KINDS[s.kind].name : LEVEL_NAME[s.level]; }
 function rebuild(i, pop = true) {
-  if (buildingGroups[i]) { scene.remove(buildingGroups[i]); buildingGroups[i] = null; }
+  if (buildingGroups[i]) { scene.remove(buildingGroups[i]); disposeTree(buildingGroups[i]); buildingGroups[i] = null; }
   buildingAnims[i] = [];
   const st = G.tiles[i]; if (st.owner < 0) return;
   const [x, z] = tilePos(i), [ix, iz] = tileIn(i);
@@ -1806,6 +1835,7 @@ function statusText(p) {
   if (p.skip) bits.push(`<b>${p.where === 'hosp' ? '住院' : p.where === 'jail' ? '約談' : '停'} ${p.skip}</b>`);
   if (p.turtle) bits.push(`<b>🐢${p.turtle}</b>`);
   if (p.ghost > 0) bits.push(`<b>👻${p.ghost}</b>`);
+  if (p.autoOn) bits.push('<b>🤖託管</b>');
   if (G.bomb && G.bomb.holder === p.seat) bits.push(`<b>⏰${G.bomb.t}</b>`);
   return bits.join('・');
 }
@@ -2220,6 +2250,8 @@ let waiting = null;
 // 道具數字、超能力按鈕（不是自己的回合也會更新）
 function refreshSide(w) {
   if (!G.players.length) return;
+  const ap = autoPlayer(); $('#btn-auto').hidden = !ap || G.over;
+  if (ap) { $('#btn-auto').textContent = ap.autoOn ? '🙋 取消託管' : '🤖 託管'; $('#btn-auto').classList.toggle('ready', !!ap.autoOn); }
   const me = (w && w.p) || viewer();
   if (!w) $('#item-n').textContent = me ? me.items.filter(c => !ITEMS[c].passive).length : 0;
   const pw = $('#btn-power'), P = me && POWERS[me.power];
@@ -2420,6 +2452,40 @@ $('#btn-ally').onclick = async () => {
   try { if (await allyFlow(w.p)) w.allyUsed = true; } finally { w.busy = false; if (waiting === w) refreshActions(); }
 };
 $('#btn-rules').onclick = () => { if (modal.hidden && G.players.length) ask(winRulesHtml(), [{ label: '關閉', cls: 'primary' }]); };
+// 託管：這台裝置上的玩家（託管中的也算）
+function autoPlayer() {
+  if (NET.mode === 'client') return myPlayer() || null;
+  return G.players.find(q => q.autoLocal) || viewer();
+}
+$('#btn-auto').onclick = () => {
+  const p = autoPlayer(); if (!p || G.over) return;
+  if (NET.mode === 'client') {
+    NET.named.emit('auto', { on: !p.autoOn }).catch(() => { });
+    if (!p.autoOn) { NET.pending = null; stopGauge(); refreshActions(); }
+    localCaption(p.autoOn ? '🙋 拿回控制權' : '🤖 交給電腦託管', p.autoOn ? '馬上換回你自己玩' : '再按一次「取消託管」就能拿回來');
+    return;
+  }
+  if (!p.autoOn) {
+    p.autoOn = true; p.autoLocal = true; p.isAI = true;
+    caption(`🤖 ${p.char.name} 交給電腦託管`, '再按一次就能拿回來', 1300);
+    if (waiting && waiting.p === p) { stopGauge(); finishWaiting(null); }
+  } else { p.autoOn = false; delete p.autoLocal; p.isAI = false; caption(`🙋 ${p.char.name} 拿回控制權`, '', 1100); }
+  updateHUD(); sendState();
+};
+// 房主收到朋友要託管／取消託管
+function onAuto(m) {
+  const d = m.data || {}, peer = NET.named.peers().find(x => x.peer === m.peer), cid = peer && peer.presence && peer.presence.cid; if (!cid) return;
+  const p = G.players.find(q => !q.out && cidOf(q) === cid); if (!p) return;
+  if (d.on && !p.autoOn) {
+    p.autoOn = true; p.isAI = true; p.awayCid = cid; p.ctl = 'ai';
+    NET.reqs.forEach(e => { if (e.r.to === cid) { NET.reqs.delete(e.r.id); e.resolve(DEFAULT_ANSWER[e.r.kind]); } });
+    caption(`🤖 ${p.char.name} 交給電腦託管`, `${p.nick || '朋友'} 隨時可以拿回來`, 1400);
+  } else if (!d.on && p.autoOn) {
+    p.autoOn = false; p.isAI = false; p.ctl = 'r:' + cid; delete p.awayCid;
+    caption(`🙋 ${p.char.name} 拿回控制權`, '', 1200);
+  }
+  updateHUD(); sendState();
+}
 $('#btn-mission').onclick = () => {
   if (!G.players.length) return;
   const me = viewer();
@@ -2787,7 +2853,7 @@ function markScar(i, p) { if (!G.scars) G.scars = {}; G.scars[i] = { by: p.seat,
 function syncScars() {
   const sc = G.scars || {};
   if (NET.mode !== 'client') Object.keys(sc).forEach(i => { if (G.round - sc[i].r >= 3) delete sc[i]; });
-  Object.keys(scarMeshes).forEach(i => { const v = sc[i], m = scarMeshes[i]; if (!v || m.userData.by !== v.by || m.userData.r !== v.r) { scene.remove(m); delete scarMeshes[i]; } });
+  Object.keys(scarMeshes).forEach(i => { const v = sc[i], m = scarMeshes[i]; if (!v || m.userData.by !== v.by || m.userData.r !== v.r) { scene.remove(m); m.material.map.dispose(); m.material.dispose(); delete scarMeshes[i]; } });
   Object.keys(sc).forEach(i => {
     const v = sc[i], q = G.players[v.by]; if (scarMeshes[i] || !q || !TILES[i]) return;
     const cv = document.createElement('canvas'); cv.width = 360; cv.height = 100; const x = cv.getContext('2d');
@@ -3170,7 +3236,7 @@ async function payRent(p, i) {
       <div class="cardlist">
         <div class="cardrow"><span class="ic">✊</span><div><b>嗆聲對決</b><small>政見、抹黑、哭哭猜拳，靠心理戰。</small></div></div>
         <div class="cardrow"><span class="ic">🪢</span><div><b>造勢拔河</b><small>雙方狂點 8 秒，把繩子拉過來就贏，靠手速。</small></div></div>
-        <div class="cardrow"><span class="ic">🎤</span><div><b>質詢對決</b><small>兩人答同一題（國學、政治、地理、數學），答對的人贏，靠腦袋。</small></div></div>
+        <div class="cardrow"><span class="ic">🎤</span><div><b>質詢對決</b><small>兩人答同一題（國學、政治、地理、數學），答對又答得快的人贏。</small></div></div>
         <div class="cardrow"><span class="ic">📸</span><div><b>閃光燈反應</b><small>閃光燈一亮就按，比反應速度；太早按算犯規。</small></div></div>
         <div class="cardrow"><span class="ic">🔨</span><div><b>打假新聞</b><small>10 秒狂點假新聞，點到真新聞扣分，比分數。</small></div></div>
       </div>
@@ -3464,19 +3530,22 @@ async function mathTile(p) {
 /* ---------- 質詢對決：付過路費時跟地主比答題 ---------- */
 async function quizDuel(p, o) {
   const q = Math.random() < .3 ? mathQ() : pick(QUIZ);
-  await caption('🎤 質詢對決！', `${p.char.name} 對 ${o.char.name}：同一題，答對的人贏`, 1200);
-  const answer = async who => who.isAI ? (Math.random() < .6 ? 1 : 0) : quizQ(who, q, 0, 1, 8);
+  await caption('🎤 質詢對決！', `${p.char.name} 對 ${o.char.name}：同一題，答對又答得快的人贏`, 1200);
+  // 回傳 { ok, t }：答對沒、花幾秒
+  const answer = async who => who.isAI ? (Math.random() < .6 ? { ok: true, t: 1.8 + Math.random() * 5 } : { ok: false, t: 8 }) : quizQT(who, q, 0, 1, 8);
   // 有連線朋友就同時作答；同一台電腦的兩個人輪流答
   let a, b;
   if (viaNet(p) || viaNet(o)) [a, b] = await Promise.all([answer(p), answer(o)]);
   else { a = await answer(p); b = await answer(o); }
   modal.hidden = true;
-  const r = a > b ? 'win' : a < b ? 'lose' : 'tie';
-  log(`🎤 質詢對決「${esc(q[0])}」答案：${esc(q[1])}｜${p.char.name} ${a ? '✅' : '❌'}、${o.char.name} ${b ? '✅' : '❌'}`);
+  // 只有一個答對 → 他贏；兩個都答對 → 快的贏；兩個都錯 → 平手
+  const r = a.ok && !b.ok ? 'win' : b.ok && !a.ok ? 'lose' : a.ok && b.ok ? (a.t < b.t ? 'win' : a.t > b.t ? 'lose' : 'tie') : 'tie';
+  const tm = x => x.ok ? `✅ ${x.t.toFixed(1)} 秒` : '❌';
+  log(`🎤 質詢對決「${esc(q[0])}」答案：${esc(q[1])}｜${p.char.name} ${tm(a)}、${o.char.name} ${tm(b)}`);
   if (r === 'win') { say(p, 'win'); SFX.fan(); setTimeout(() => say(o, 'lose'), 700); }
   if (r === 'lose') { say(o, 'win'); SFX.bad(); setTimeout(() => say(p, 'lose'), 700); }
-  await caption(r === 'win' ? `${p.char.name} 質詢贏了！` : r === 'lose' ? `${o.char.name} 答辯成功！` : a ? '兩個都答對，平手' : '兩個都答錯！', `答案是「${q[1]}」${!a && !b ? '；兩人民調各 -3' : ''}`, 1800);
-  if (!a && !b) { addPoll(p, -3); addPoll(o, -3); updateHUD(); }
+  await caption(r === 'win' ? `${p.char.name} 質詢贏了！` : r === 'lose' ? `${o.char.name} 答辯成功！` : a.ok ? '兩個都答對，一樣快！' : '兩個都答錯！', `答案是「${q[1]}」｜${p.char.name} ${tm(a)}：${o.char.name} ${tm(b)}${!a.ok && !b.ok ? '；兩人民調各 -3' : ''}`, 2000);
+  if (!a.ok && !b.ok) { addPoll(p, -3); addPoll(o, -3); updateHUD(); }
   return r;
 }
 
@@ -3942,7 +4011,7 @@ function encodeState() {
     t: G.turn, r: G.round, ov: G.over ? 1 : 0,
     // 祕密任務只在公開後才放進來，免得朋友從資料偷看
     P: G.players.map(p => [p.cash, Math.round(p.poll), p.pos, p.items.join(','), p.skip, p.where || '', p.turtle, p.out ? 1 : 0, p.skillUsed ? 1 : 0,
-      p.ally, p.mPublic ? p.mission : '', p.mDone ? 1 : 0, p.mExposed ? 1 : 0, p.revenge, [p.stats.kos, p.stats.stabs, p.stats.sends, p.stats.combo3, p.stats.hits].join(','), p.ghost || 0, p.power || '', p.powerAt]),
+      p.ally, p.mPublic ? p.mission : '', p.mDone ? 1 : 0, p.mExposed ? 1 : 0, p.revenge, [p.stats.kos, p.stats.stabs, p.stats.sends, p.stats.combo3, p.stats.hits].join(','), p.ghost || 0, p.power || '', p.powerAt, p.autoOn ? 1 : 0]),
     T: G.tiles.map(s => (s.owner + 1) * 100 + s.level * 10 + (s.kind === 'hq' ? 1 : s.kind === 'stand' ? 2 : 0)),
     tr: G.traps, b: G.bomb, n: G.npcs.map(n => n.pos), m: G.mods, fe: G.fest || null, iw: G.instant || null, sc: G.scars || {},
   };
@@ -3985,6 +4054,9 @@ async function onlineTug(p, o) {
   const jobs = [], local = [];
   [[p, -1], [o, 1]].forEach(([q, side]) => { if (q.isAI) return; if (isRemote(q)) jobs.push(req(q, 'tug', { cfg: { ...cfg, mine: [side] } })); else local.push(side); });
   if (local.length) jobs.push(tugUI({ ...cfg, mine: local }));
+  // 其他人也看得到拔河（觀戰）：房主自己沒參加就開觀戰畫面，朋友那邊收到 tugwatch 也開
+  hostFx('tugwatch', cfg);
+  if (!local.length) tugUI({ ...cfg, mine: [] });
   caption('🪢 造勢拔河！', `${p.char.name} 對 ${o.char.name}，狂點 8 秒！`, 1200);
   const res = await Promise.all(jobs);
   let L = 0, R = 0;
@@ -4009,7 +4081,7 @@ function tugUI(cfg) {
     const lp = G.players[cfg.L], rp = G.players[cfg.R], mine = cfg.mine || [], both = mine.length > 1;
     const padLabel = side => mine.includes(side) ? (both ? (side < 0 ? 'A 鍵' : 'L 鍵') : '點我或空白鍵') : cfg.aiSide === side ? '電腦' : '對手';
     mbox.style.setProperty('--c', '#1d1633');
-    mbox.innerHTML = `<h2>🪢 造勢拔河：拉！拉！拉！</h2>
+    mbox.innerHTML = `<h2>🪢 造勢拔河${mine.length ? '：拉！拉！拉！' : '（觀戰中）'}</h2>
       <div class="tug" style="--lc:${lp.char.color};--rc:${rp.char.color}"><div class="tugcd" id="tugcd">3</div>
         <div class="sides"><div><span class="av" style="--c:${lp.char.color}">${lp.char.glyph}</span>${lp.char.name}</div><span id="tugsec">8</span><div>${rp.char.name}<span class="av" style="--c:${rp.char.color}">${rp.char.glyph}</span></div></div>
         <div class="track"><div class="rope"></div><div class="knot" id="knot" style="left:50%"></div></div>
@@ -4033,6 +4105,8 @@ function tugUI(cfg) {
     addEventListener('keydown', onKey);
     const tick = () => {
       if (done) return;
+      // 視窗被別的畫面換掉了（例如輪到你回答別的問題）：直接結束，不要卡住
+      if (!$('#knot')) { done = true; removeEventListener('keydown', onKey); res({ L, R }); return; }
       const el = performance.now() - t0; if (tugCount(el, st)) return requestAnimationFrame(tick);
       const ai = Math.floor(Math.min(el, D) / cfg.aiRate);
       let ol = 0, or = 0;
@@ -4108,6 +4182,8 @@ function playFx(m) {
       case 'hop': case 'jump': { const p = G.players[+d[0]]; if (p) { p.animQ.push([k, +d[1]]); if (!p.animating) runAnim(p); } break; }
       case 'rocket': rocketFly(+d[0], +d[1]); break;
       case 'end': showEnd(); break;
+      case 'reseat': { const p = G.players[+d[0]]; if (p && typeof d[1] === 'string') { p.ctl = 'r:' + d[1]; updateHUD(); refreshClaim(); if (p === myPlayer()) localCaption('✅ 接回角色了！', `你是 ${p.char.name}`); } break; }
+      case 'tugwatch': { const me = myPlayer(); if (d && (!me || (me.seat !== d.L && me.seat !== d.R)) && modal.hidden && G.players[d.L] && G.players[d.R]) tugUI({ ...d, mine: [] }); break; }
       case 'peek': if (d && G.players[+d.s] && G.players[+d.s] !== myPlayer()) showPeek(d); break;
       case 'peekEnd': if (d && G.players[+d.s] && G.players[+d.s] !== myPlayer()) showPeekEnd(d); break;
     }
@@ -4140,7 +4216,7 @@ function applyState(s) {
     p.mDone = !!a[11]; p.mExposed = !!a[12]; p.revenge = Number.isInteger(a[13]) ? a[13] : -1;
     const st = String(a[14] || '').split(',').map(Number);
     p.ghost = +a[15] || 0;
-    p.power = POWERS[a[16]] ? a[16] : ''; p.powerAt = Number.isFinite(+a[17]) ? +a[17] : -9;
+    p.power = POWERS[a[16]] ? a[16] : ''; p.powerAt = Number.isFinite(+a[17]) ? +a[17] : -9; p.autoOn = !!a[18];
     p.stats = { kos: st[0] || 0, stabs: st[1] || 0, sends: st[2] || 0, combo3: st[3] || 0, hits: st[4] || 0 };
     if (a[7] && !p.out) {
       p.out = true; const m = p.mesh;
@@ -4349,7 +4425,11 @@ $('#phrases').onclick = e => {
   const b = e.target.closest('[data-k],[data-t]'); if (!b) return;
   sendChat(b.dataset.t !== undefined ? { t: +b.dataset.t } : { k: +b.dataset.k });
 };
-$('#btn-chat').onclick = () => { if ($('#phrases').hidden) buildPhrases(); $('#phrases').hidden = !$('#phrases').hidden; };
+$('#btn-chat').onclick = () => { if ($('#phrases').hidden) buildPhrases(); $('#phrases').hidden = !$('#phrases').hidden; $('#chatbar').classList.toggle('open', !$('#phrases').hidden); };
+// 手機、平板：次要按鈕收進「⋯ 更多」，喊話、表情、說話收成一顆
+function setCompact() { document.body.classList.toggle('compact', LITE || innerWidth < 900); }
+setCompact(); addEventListener('resize', setCompact);
+$('#btn-more').onclick = () => { const on = $('#actions').classList.toggle('more'); $('#btn-more').textContent = on ? '✕ 收起' : '⋯ 更多'; };
 // 按住說話：錄一段（最多 8 秒）透過轉發伺服器傳給大家
 let rec = null, talkHeld = false;
 async function startTalk() {
@@ -4431,6 +4511,8 @@ async function hostRoom() {
   NET.mode = 'host'; NET.code = code; NET.nick = myNick();
   NET.named.presence({ cid: NET.cid, nick: NET.nick, role: 'host' }).catch(() => { });
   NET.named.on('res', onRes);
+  NET.named.on('claim', onClaim);
+  NET.named.on('auto', onAuto);
   setupChat();
   NET.named.onPeers(ch => {
     hostPeers();
@@ -4456,6 +4538,26 @@ function hostPeers() {
   }
   renderSetup(); sendLobby();
 }
+const cidOf = p => p.awayCid || (isRemote(p) ? p.ctl.slice(2) : '');
+// 把某個角色交給新的連線身分（手機閃退後身分變了）
+function reseat(p, cid, why) {
+  p.ctl = 'r:' + cid; p.isAI = false; delete p.awayCid; p.autoOn = false;
+  const c = NET.cfg && NET.cfg.players[p.seat]; if (c) c.ctl = 'r:' + cid;
+  NET.lastSeen[cid] = Date.now();
+  NET.reqs.forEach(e => { if (e.p === p) { e.r.to = cid; sendReq(e.r); } });
+  hostFx('reseat', [p.seat, cid]);
+  caption(`${p.char.name} 回來了！`, why, 1600); updateHUD(); sendState();
+}
+function onClaim(m) {
+  const d = m.data || {}, peer = NET.named.peers().find(x => x.peer === m.peer), cid = peer && peer.presence && peer.presence.cid;
+  if (!cid || !NET.started || G.players.some(q => cidOf(q) === cid)) return;
+  const here = new Set(NET.named.peers().map(x => x.presence && x.presence.cid));
+  const p = G.players[d.seat | 0]; if (!p || p.out) return;
+  const pc = cidOf(p); if (!pc) return;
+  // 原本的連線剛斷，可能還沒從名單消失（最多約 30 秒）：先記下來，之後每 3 秒再試
+  if (here.has(pc)) { NET.claims = NET.claims || new Map(); NET.claims.set(cid, { seat: p.seat, at: Date.now(), nick: String(peer.presence.nick || '朋友').slice(0, 10) }); return; }
+  reseat(p, cid, `${String((peer.presence.nick || '朋友')).slice(0, 10)} 重新連線，接回角色`);
+}
 // 每 3 秒：補送大廳／狀態／還沒回覆的請求；朋友斷線太久就改由電腦代打
 function hostBeat() {
   if (!NET.started) { sendLobby(); return; }
@@ -4464,13 +4566,26 @@ function hostBeat() {
   NET.named.emit('start', NET.cfg).catch(() => { });
   sendState();
   const now = Date.now(), here = new Set(NET.named.peers().map(x => x.presence && x.presence.cid));
+  // 換了身分回來的朋友（手機閃退、LINE 清掉資料）：暱稱一樣就自動接回原本的角色
+  const owned = new Set(G.players.map(cidOf).filter(Boolean));
+  // 先處理之前按了「我是誰」、當時舊連線還沒消失的請求
+  if (NET.claims) NET.claims.forEach((c, cid) => {
+    const p = G.players[c.seat];
+    if (now - c.at > 45000 || !p || p.out || owned.has(cid) || !here.has(cid)) { if (now - c.at > 45000 || owned.has(cid)) NET.claims.delete(cid); return; }
+    const pc = cidOf(p); if (!pc || here.has(pc)) return;
+    NET.claims.delete(cid); reseat(p, cid, `${c.nick} 重新連線，接回角色`); owned.add(cid);
+  });
+  NET.named.peers().filter(x => !x.sameTab && x.presence && x.presence.role === 'guest' && x.presence.cid && !owned.has(x.presence.cid)).forEach(x => {
+    const p = G.players.find(q => !q.out && cidOf(q) && !here.has(cidOf(q)) && q.nick && q.nick === x.presence.nick);
+    if (p) { reseat(p, x.presence.cid, `${p.nick} 重新連線，自動接回角色`); owned.add(x.presence.cid); }
+  });
   G.players.forEach(p => {
     const cid = p.awayCid || (isRemote(p) ? p.ctl.slice(2) : ''); if (!cid) return;
     if (!NET.lastSeen[cid]) NET.lastSeen[cid] = now;
     if (!here.has(cid)) return;
     NET.lastSeen[cid] = now;
     // 斷線被電腦代打的朋友回來了：換回他自己操作
-    if (p.awayCid && !p.out) { p.ctl = 'r:' + cid; p.isAI = false; delete p.awayCid; caption(`${p.char.name} 回來了！`, `換回 ${p.nick || '朋友'} 自己操作`, 1500); }
+    if (p.awayCid && !p.out && !p.autoOn) { p.ctl = 'r:' + cid; p.isAI = false; delete p.awayCid; caption(`${p.char.name} 回來了！`, `換回 ${p.nick || '朋友'} 自己操作`, 1500); }
   });
   NET.reqs.forEach(e => {
     const cid = e.r.to;
@@ -4483,6 +4598,18 @@ function hostBeat() {
     } else sendReq(e.r);
   });
 }
+// 觀眾（身分對不上任何角色）：列出目前離線的連線角色，點「我是他」接回
+function refreshClaim() {
+  const el = $('#claim'); if (!el) return;
+  const show = NET.mode === 'client' && NET.started && !G.over && !myPlayer();
+  if (!show) { el.hidden = true; return; }
+  const here = new Set(NET.named.peers().map(x => x.presence && x.presence.cid));
+  const seats = G.players.filter(p => !p.out && p.ctl.startsWith('r:') && !here.has(p.ctl.slice(2)));
+  el.innerHTML = `<b>👀 你現在是觀眾</b><small>如果你是剛剛斷線的玩家，點你的角色接回來（用原本的暱稱加入會自動接回）：</small>
+    <div>${seats.length ? seats.map(p => `<button data-seat="${p.seat}" style="--c:${p.char.color}">我是 ${p.char.name}（${esc(p.nick || '朋友')}）</button>`).join('') : '<small>目前沒有可以接回的角色；剛斷線的話，大約 30 秒內會出現。</small>'}</div>`;
+  el.hidden = false;
+  el.querySelectorAll('[data-seat]').forEach(b => b.onclick = () => { NET.named.emit('claim', { seat: +b.dataset.seat }).catch(() => { }); b.disabled = true; b.textContent = '接回中…'; });
+}
 async function joinRoom() {
   if (!roomApi || NET.mode !== 'off') return;
   const code = $('#code-in').value.trim().toUpperCase();
@@ -4491,11 +4618,12 @@ async function joinRoom() {
   try { NET.named = await roomApi.join(ROOM_PREFIX + code.toLowerCase(), 'guest'); } catch (e) { $('#net-status').textContent = '加入失敗：找不到這個房間。請確認代碼正確、房主的網頁還開著，再按一次「加入房間」。'; return; }
   NET.mode = 'client'; NET.code = code; NET.nick = myNick();
   // 記住這個房間：手機切到 LINE 再回來、網頁被重新整理時，會自動回到同一局
-  try { sessionStorage.setItem('ds-room', code); localStorage.setItem('ds-nick', NET.nick); } catch (e) { }
+  try { sessionStorage.setItem('ds-room', code); localStorage.setItem('ds-nick', NET.nick); localStorage.setItem('ds-room2', code + '|' + Date.now()); } catch (e) { }
   try { history.replaceState(null, '', location.pathname + '?room=' + code + (roomApi.isRelay && roomApi.broker ? '&b=' + roomApi.broker : '')); } catch (e) { }
   NET.named.presence({ cid: NET.cid, nick: NET.nick, role: 'guest', pick: -1 }).catch(() => { });
   NET.named.on('lobby', m => { if (fromHost(m) && m.data && Array.isArray(m.data.slots)) { NET.lobby = { slots: m.data.slots.slice(0, MAX_SEATS).filter(x => CHARS[x.ci]), seats: clamp(+m.data.seats || 4, 2, MAX_SEATS), rounds: +m.data.rounds || 13, map: MAPS[m.data.map] ? m.data.map : 'tpe' }; if (NET.lobby.map !== MAP) buildBoard(NET.lobby.map); renderSetup(); } });
-  NET.named.on('start', m => { if (!fromHost(m) || NET.started || !m.data || !Array.isArray(m.data.players)) return; const cfg = { ...m.data, players: m.data.players.filter(x => CHARS[x.ci]).slice(0, MAX_SEATS) }; startGame(cfg); renderOnline(); });
+  NET.named.on('start', m => { if (!fromHost(m) || NET.started || !m.data || !Array.isArray(m.data.players)) return; const cfg = { ...m.data, players: m.data.players.filter(x => CHARS[x.ci]).slice(0, MAX_SEATS) }; startGame(cfg); renderOnline(); setTimeout(refreshClaim, 1500); });
+  setInterval(refreshClaim, 3000);
   NET.named.on('state', m => { if (fromHost(m)) applyState(m.data); });
   NET.named.on('fx', m => { if (fromHost(m) && NET.started) playFx(m.data); });
   NET.named.on('req', m => { if (fromHost(m) && m.data && m.data.to === NET.cid && NET.started) handleReq(m.data); });
@@ -4526,7 +4654,13 @@ renderOnline();
     $('#code-in').value = m[1].toUpperCase();
     $('#net-status').textContent = `朋友邀請你加入房間 ${m[1].toUpperCase()}！輸入暱稱，按「加入房間」。`;
     $('#nick').focus(); $('.online').scrollIntoView({ block: 'center' });
-    let back = ''; try { back = sessionStorage.getItem('ds-room') || ''; } catch (e) { }
+    let back = '';
+    try {
+      back = sessionStorage.getItem('ds-room') || '';
+      // 手機閃退後分頁資料可能被清掉：3 小時內加入過同一個房間，也自動回去
+      const [c2, t2] = String(localStorage.getItem('ds-room2') || '').split('|');
+      if (!back && c2 && Date.now() - +t2 < 3 * 3600e3) back = c2;
+    } catch (e) { }
     if (back === m[1].toUpperCase()) { $('#net-status').textContent = '正在回到房間 ' + back + '…'; joinRoom(); }
   }
 })();
