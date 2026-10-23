@@ -85,13 +85,20 @@ button.hot{background:var(--hot);color:#fff}
 #aimbar{position:absolute;left:50%;transform:translateX(-50%);top:calc(max(12px,env(safe-area-inset-top,0px)) + 52px);z-index:9;display:flex;gap:10px;align-items:center;padding:8px 10px 8px 16px;font-family:var(--display);font-weight:900;font-size:16px;background:var(--hot);color:#fff;max-width:calc(100vw - 24px)}
 #aimbar button{padding:5px 12px;font-size:14px}
 #gauge{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--ah,52px) + 52px);z-index:7;width:min(420px,calc(100vw - 24px));box-sizing:border-box;padding:10px 12px;display:grid;gap:6px}
-#gauge .gtop{display:flex;justify-content:space-between;align-items:center;font-family:var(--display)}
-#gauge .gpar{display:flex;gap:6px}
-#gauge .gpar button{padding:4px 12px;font-size:13px;box-shadow:2px 2px 0 var(--ink)}
-#gauge .gpar button[aria-pressed="true"]{background:var(--sun)}
-#gauge .gtrack{position:relative;height:22px;border:3px solid var(--ink);border-radius:999px;background:#ffe3e3;overflow:hidden}
-#gauge #gzone{position:absolute;top:0;bottom:0;background:#5fd38d}
-#gauge #gptr{position:absolute;top:-2px;bottom:-2px;width:6px;margin-left:-3px;background:var(--ink);border-radius:3px}
+#gauge .gtitle{font-family:var(--display);font-weight:900;font-size:15px;text-align:center}
+#gauge .dpick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+#gauge .dpick button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 4px 7px;background:#fff;border-radius:16px}
+#gauge .dpick button:hover .die,#gauge .dpick button:focus-visible .die{transform:rotate(-10deg) translateY(-2px)}
+#gauge .dpick button:active{transform:translateY(2px)}
+#gauge .dpick button:disabled{opacity:.35}
+#gauge .dpick b{font-family:var(--display);font-size:13px}
+#gauge .dpick .dice{display:flex;gap:4px;min-height:34px;align-items:center}
+.die{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);width:32px;height:32px;padding:4px;box-sizing:border-box;background:#fff;border:3px solid var(--ink);border-radius:8px;box-shadow:2px 2px 0 var(--ink);transition:transform .15s}
+.die i{width:6px;height:6px;margin:auto;border-radius:50%}
+.die i.on{background:var(--ink)}
+.die.red i.on{background:var(--hot)}
+.compact .die{width:26px;height:26px;padding:3px;border-width:2px}
+.compact .die i{width:5px;height:5px}
 #gauge small{font-size:11px;color:var(--muted);line-height:1.4}
 #tip{position:absolute;z-index:7;padding:8px 12px;font-size:13px;line-height:1.5;pointer-events:none;max-width:220px}
 #tip b{font-family:var(--display);font-size:15px}
@@ -146,6 +153,14 @@ button{touch-action:manipulation}
 .tug{position:relative}
 .tugcd{position:absolute;inset:-4px;display:grid;place-items:center;font-family:var(--display);font-size:76px;font-weight:900;color:var(--hot);text-shadow:4px 4px 0 var(--ink);background:rgba(255,255,255,.8);border-radius:14px;z-index:2;pointer-events:none}
 .tugcd[hidden]{display:none}
+/* 新手教學：把要介紹的按鈕挖亮，旁邊放說明 */
+#tut{position:absolute;inset:0;z-index:18}
+#tut[hidden]{display:none}
+#tut-hole{position:absolute;border-radius:14px;box-shadow:0 0 0 9999px rgba(29,22,51,.62),0 0 0 4px var(--sun);transition:all .25s;pointer-events:none}
+#tut-box{position:absolute;width:min(320px,88vw);box-sizing:border-box;padding:12px 14px}
+#tut-step{font-family:var(--display);font-weight:900;color:var(--hot);font-size:13px}
+#tut-text{margin:6px 0 10px;font-size:15px;line-height:1.55;font-weight:700}
+#tut .btns{display:flex;gap:8px;justify-content:flex-end}
 /* 觀眾接回角色 */
 #claim{position:absolute;left:50%;transform:translateX(-50%);top:calc(max(12px,env(safe-area-inset-top,0px)) + 84px);z-index:9;width:min(420px,92vw);padding:10px 12px;display:grid;gap:6px}
 #claim[hidden]{display:none}
@@ -354,9 +369,9 @@ button{touch-action:manipulation}
   <div id="tip" class="panel" hidden></div>
   <div id="turn-hint" hidden></div>
   <div id="gauge" class="panel" hidden>
-    <div class="gtop"><div class="gpar" role="group" aria-label="骰子顆數"><button data-n="1" aria-pressed="false">🎲×1</button><button data-n="2" aria-pressed="true">🎲×2</button><button data-n="3" aria-pressed="false">🎲×3</button></div><div class="gpar" role="group" aria-label="想擲單數還是雙數"><button data-par="odd" aria-pressed="false">單數</button><button data-par="even" aria-pressed="true">雙數</button></div></div>
-    <div class="gtrack"><i id="gzone"></i><span id="gptr"></span></div>
-    <small>選好幾顆骰子和單／雙數，指針在綠區時按「擲骰子」＝控骰成功。1 顆走得準、3 顆走得快；對子（3 顆要三個一樣）再擲一次。</small>
+    <div class="gtitle">🎲 點骰子就擲！要擲幾顆？</div>
+    <div class="dpick" role="group" aria-label="擲幾顆骰子"></div>
+    <small>1 顆走得準、3 顆走得快；擲出對子（3 顆要三個一樣）再擲一次。</small>
   </div>
   <div id="actions" hidden>
     <button id="btn-roll" disabled>擲骰子</button>
@@ -366,6 +381,7 @@ button{touch-action:manipulation}
     <button id="btn-ally" disabled>🤝 結盟</button>
     <button id="btn-mission" class="opt" title="偷看自己的祕密任務">🎯 任務</button>
     <button id="btn-auto" class="opt" title="交給電腦幫你玩，再按一次拿回來" hidden>🤖 託管</button>
+    <button id="btn-tut" class="opt" title="再看一次新手教學">📖 教學</button>
     <button id="btn-view" class="opt" title="切換跟隨／全景視角">全景</button>
     <button id="btn-fast" class="opt" title="加快動畫速度">快轉</button>
     <button id="btn-sound" class="opt" title="音效開關">音效 開</button>
@@ -375,6 +391,7 @@ button{touch-action:manipulation}
   <div id="caption"></div>
   <div id="peeks" aria-live="polite"></div>
   <div id="claim" class="panel" hidden></div>
+  <div id="tut" hidden><div id="tut-hole"></div><div id="tut-box" class="panel" role="dialog" aria-label="新手教學"><div id="tut-step"></div><p id="tut-text"></p><div class="btns"><button id="tut-skip">跳過教學</button><button id="tut-next" class="primary">下一步</button></div></div></div>
   <div id="sheet" hidden><div class="sh-box" role="dialog" aria-label="玩家資料"><button class="sh-x" id="sheet-x" aria-label="關閉">✕</button><div id="sheet-body"></div></div></div>
   <div id="chatbar" hidden>
     <div id="phrases" hidden></div>
@@ -422,7 +439,7 @@ button{touch-action:manipulation}
           <summary><b>怎麼玩？（30 秒看懂）</b></summary>
           <ul class="rules">
             <li><b>⚡ 立即凍蒜</b>：壟斷一整區（同區 5 塊地全拿）、聲量（民調）100% 撐過一輪、或其他人全部破產，當場獲勝。</li>
-            <li><b>🎲 一鍵擲骰</b>：輪到你時下方有量表，選好 <b>1～3 顆骰子</b>和單／雙數，指針在綠區時按「擲骰子」就控骰成功，擲完自動出發。<b>對子再擲一次</b>（3 顆要三個一樣；連三次會被約談）。</li>
+            <li><b>🎲 一鍵擲骰</b>：輪到你時下方會出現骰子，<b>點 1、2 或 3 顆</b>就擲，擲完自動出發；10 秒沒動作會自動擲。<b>對子再擲一次</b>（3 顆要三個一樣；連三次會被約談）。</li>
             <li><b>🎰 骰子點數特殊效果</b>：1 顆擲出 1＝一點靈（拿遙控骰子）、1 顆擲出 6＝+600、蛇眼 1-1＝拿遙控骰子、雙六＝+3,000 加特殊道具、總和 7＝幸運七 +777、總和 11＝一路發民調 +5、3 顆三個一樣＝豹子（其他人每人給你 1,000）、3 顆順子＝拿特殊道具。</li>
             <li><b>🚨 突發事件</b>：每回合開始有機會發生影響全地圖的事件，例如大地震、隕石雨、政黨輪替（大家位置洗牌）、豪雨（只能擲 1 顆）、選前大撒幣、全國大掃黑。</li>
             <li><b>📣 答題要快又要對</b>：全民搶答最快答對 +1,500，<b>最後一個答對的罰 800</b>、<b>答錯的罰 1,000</b>；質詢台、速算擂台答錯也會扣錢。</li>
@@ -515,13 +532,39 @@ function clean(html) {
 
 /* ---------- 語音（瀏覽器內建的中文朗讀） ---------- */
 let voiceOn = true;
-const VOICE = { bian: [1, 1.05], ma: [1.1, 1], tsai: [1.25, 1], soong: [.85, .95], lien: [.7, .85], puma: [1, 1.1], chiang: [1.05, 1.05], kc: [.95, 1.15], ko: [1, 1.2], su: [1.3, 1.05], '3q': [1.15, 1.2], gz: [.6, 1] };
+// 每個角色的「卡通聲線」（不是模仿本人）：音高 p、語速 r、偏好男聲、講話小習慣 q、出場音效 fx
+const VOICE = {
+  bian: { p: .95, r: 1.15, male: 1, fx: 'clap' },
+  ma: { p: 1.3, r: 1, male: 1, fx: 'bell' },
+  tsai: { p: 1, r: .82, male: 0, fx: 'meow' },
+  soong: { p: .8, r: 1.08, male: 1, fx: 'horn' },
+  lien: { p: .55, r: .68, male: 1, fx: 'gong', q: t => t.replace(/[，,]/g, '……').replace(/[。！!]?$/, '……') },
+  puma: { p: 1.05, r: 1.2, male: 1, fx: 'growl' },
+  chiang: { p: 1.15, r: 1.05, male: 1, fx: 'siren' },
+  kc: { p: 1, r: 1.45, male: 1, fx: 'slap' },
+  ko: { p: .9, r: 1.3, male: 1, fx: 'calc' },
+  su: { p: 1.4, r: 1.1, male: 0, fx: 'ding' },
+  '3q': { p: 1.55, r: 1.35, male: 1, fx: 'sparkle', q: t => /3Q/i.test(t) ? t : t + '，3Q！' },
+  gz: { p: .45, r: .95, male: 1, fx: 'grunt', q: t => t.replace(/[。！!]?$/, '！') },
+};
+const MALE_RE = /\bmale\b|男|zhiwei|yunxi|yunyang|yunjian|yunze|yunhao|kangkang/i;
+// 挑手機裡的中文語音：台灣的優先；男角色盡量用男聲，沒有男聲就用女聲壓低音高
+function pickVoice(male, alt = 0) {
+  const vs = speechSynthesis.getVoices().filter(x => /^zh/i.test(x.lang)); if (!vs.length) return null;
+  const tw = vs.filter(x => /TW|Hant/i.test(x.lang + ' ' + x.name)), pool = tw.length ? tw : vs;
+  const m = pool.filter(x => MALE_RE.test(x.name)), f = pool.filter(x => !MALE_RE.test(x.name));
+  // alt：同性別有好幾種聲音時，不同角色輪流用不同的
+  const list = male ? (m.length ? m : vs.filter(x => MALE_RE.test(x.name))) : f;
+  return list[alt % (list.length || 1)] || pool[0];
+}
 function speak(ch, line) {
   if (!voiceOn || muted || !('speechSynthesis' in window)) return;
   try {
-    const u = new SpeechSynthesisUtterance(line), v = VOICE[ch.id] || [1, 1], vs = speechSynthesis.getVoices();
-    u.lang = 'zh-TW'; u.pitch = v[0]; u.rate = v[1] * (G && G.fast ? 1.3 : 1);
-    const zh = vs.find(x => /zh[-_]TW/i.test(x.lang)) || vs.find(x => /^zh/i.test(x.lang)); if (zh) u.voice = zh;
+    const v = VOICE[ch.id] || { p: 1, r: 1 }, text = v.q ? v.q(line) : line;
+    const u = new SpeechSynthesisUtterance(text), voice = pickVoice(v.male, Object.keys(VOICE).indexOf(ch.id));
+    if (voice) { u.voice = voice; u.lang = voice.lang; } else u.lang = 'zh-TW';
+    u.pitch = clamp(v.p * (v.male && !(voice && MALE_RE.test(voice.name)) ? .8 : 1), 0, 2);
+    u.rate = v.r * (G && G.fast ? 1.3 : 1);
     speechSynthesis.cancel(); speechSynthesis.speak(u);
   } catch (e) { }
 }
@@ -553,7 +596,7 @@ const CHARS = [
     skill: '我手上有資料：嗆聲對決贏了，再沒收對方一個道具。',
     lines: { sig: ['我手上有資料！', '主席，我要質詢！', '請正面回答！'], attack: ['證據在這裡！', '資料攤開來看！'], hit: ['這不合程序！'], champion: ['資料都在這，我贏了！'] } },
   { id: 'ko', name: '柯文哲', glyph: '柯', color: '#607d8b', title: '前台北市長', look: { hair: 'thin', extra: 'coat' },
-    skill: '數學家：控骰量表的綠區大兩倍，最容易擲出想要的單雙數。',
+    skill: '數學家：骰子擲出 1 點一律當 2 點算，不會走太慢。',
     lines: { sig: ['我是算過的。', '這個邏輯很簡單。', '白色力量！'], attack: ['從數學上來看，你要倒了。'], hit: ['這不科學！'], champion: ['機率計算完畢，我贏了。'] } },
   { id: 'su', name: '蘇巧慧', glyph: '慧', color: '#9c4dcc', title: '立委', look: { hair: 'long', extra: 'mic' },
     skill: '認真問政：買地一律 9 折。',
@@ -785,6 +828,43 @@ function boom() {
     s.connect(f).connect(g).connect(A.destination); s.start();
   } catch (e) { }
 }
+// 合成音效小工具：滑音、雜訊（角色出場音效用）
+function sweep(f1, f2, d, type = 'sine', vol = .05, delay = 0, vib = 0) {
+  if (muted) return;
+  try {
+    const A = ac(), t = A.currentTime + delay, o = A.createOscillator(), g = A.createGain();
+    o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + d);
+    if (vib) { const l = A.createOscillator(), lg = A.createGain(); l.frequency.value = vib; lg.gain.value = f1 * .04; l.connect(lg).connect(o.frequency); l.start(t); l.stop(t + d); }
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .03); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g).connect(A.destination); o.start(t); o.stop(t + d + .05);
+  } catch (e) { }
+}
+function noise(d, freq = 2000, vol = .2, delay = 0, type = 'bandpass') {
+  if (muted) return;
+  try {
+    const A = ac(), t = A.currentTime + delay, len = Math.floor(A.sampleRate * d), buf = A.createBuffer(1, len, A.sampleRate), x = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) x[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+    const src = A.createBufferSource(), f = A.createBiquadFilter(), g = A.createGain();
+    src.buffer = buf; f.type = type; f.frequency.value = freq; g.gain.value = vol;
+    src.connect(f).connect(g).connect(A.destination); src.start(t);
+  } catch (e) { }
+}
+// 角色出場音效：阿扁掌聲、馬英九腳踏車鈴、蔡英文貓叫、宋楚瑜喇叭、連戰銅鑼、沈伯洋熊吼、蔣萬安警報、黃國昌拍資料、柯文哲計算機、蘇巧慧叮咚、3Q 閃亮、館長使力
+const CHAR_FX = {
+  clap: () => { for (let k = 0; k < 7; k++) noise(.06, 1800 + rnd(800), .25, k * .07 + Math.random() * .03); },
+  bell: () => { beep(1568, .25, 'triangle', .05); beep(1568, .25, 'triangle', .05, .18); },
+  meow: () => { sweep(600, 900, .18, 'sine', .07, 0, 9); sweep(900, 520, .3, 'sine', .07, .17, 9); },
+  horn: () => { beep(370, .14, 'square', .05); beep(370, .22, 'square', .05, .2); },
+  gong: () => { sweep(140, 110, 1.2, 'sine', .09); sweep(280, 220, .9, 'sine', .03); },
+  growl: () => { sweep(110, 80, .5, 'sawtooth', .05, 0, 25); },
+  siren: () => { sweep(600, 1100, .35, 'sawtooth', .03); sweep(1100, 600, .35, 'sawtooth', .03, .35); },
+  slap: () => { noise(.08, 3000, .45, 0, 'highpass'); noise(.05, 1500, .3, .09); },
+  calc: () => { [1200, 1500, 1800].forEach((f, k) => beep(f, .05, 'square', .03, k * .07)); },
+  ding: () => { beep(1319, .3, 'sine', .06); beep(1047, .45, 'sine', .05, .22); },
+  sparkle: () => { [1568, 2093, 2637, 3136].forEach((f, k) => beep(f, .12, 'triangle', .035, k * .05)); },
+  grunt: () => { sweep(140, 90, .25, 'square', .06); noise(.15, 400, .25, 0, 'lowpass'); },
+};
+function charFx(id) { const v = VOICE[id]; if (v && CHAR_FX[v.fx]) CHAR_FX[v.fx](); }
 const SFX = {
   step: () => beep(620 + rnd(80), .05, 'square', .025),
   coin: () => { beep(988, .08); beep(1319, .14, 'square', .04, .07); },
@@ -1670,7 +1750,6 @@ function frame(now) {
   }
   if (aiming) hiMat.opacity = .35 + Math.abs(Math.sin(t * 4)) * .4;
   for (const i in trapMeshes) trapMeshes[i].visible = trapVisible(G.traps[i]);
-  if (gauge.on) $('#gptr').style.left = gaugePos() * 100 + '%';
   if (G.bomb) { const h = G.players[G.bomb.holder]; bombObj.visible = !!h.mesh && !h.out; if (h.mesh) { bombObj.position.copy(h.mesh.position); bombObj.position.y += 3; } }
   G.players.forEach((p, pi) => {
     if (p.mixer) {
@@ -1870,7 +1949,9 @@ function sayLine(seat, line, key) {
   p.bubble.replaceChildren(b, document.createTextNode(line)); p.bubble.classList.add('on');
   clearTimeout(p.bt); p.bt = setTimeout(() => p.bubble.classList.remove('on'), 2800);
   logLocal(`<b style="color:${p.char.color}">${p.char.name}</b>：「${esc(line)}」`);
-  speak(p.char, line);
+  // 擲骰、出招、贏的時候先來一聲角色招牌音效
+  if (['roll', 'start', 'attack', 'win', 'champion'].includes(key)) { charFx(p.char.id); setTimeout(() => speak(p.char, line), 280); }
+  else speak(p.char, line);
 }
 
 const modal = $('#modal'), mbox = $('#modal-box');
@@ -2282,15 +2363,62 @@ function refreshActions() {
   sk.disabled = !pre || w.busy || (w.opts ? !w.opts.skill : p.skillUsed);
   sk.textContent = p && p.skillUsed ? '演習已用' : '萬安演習';
   if (NET.mode === 'client' && !w) return;
-  setHint(!w ? '' : w.kind === 'stop' ? '擲出對子！按「再擲一次」（指針在綠區＝控骰成功）' : `輪到 ${p.char.name}（${label(p)}）：出道具、結盟／背刺，或直接擲骰子（指針在綠區＝控骰成功）`);
+  setHint(!w ? '' : w.kind === 'stop' ? '擲出對子！再點一次骰子' : `輪到 ${p.char.name}（${label(p)}）：先出道具、結盟，或直接點骰子擲`);
 }
 const MAX_ITEMS = 3;
-// 出牌階段：控骰量表一直在跑，按「擲骰子」就同時停量表、擲骰、出發（一鍵）
+// 出牌階段：出現骰子選單，點 1～3 顆骰子（或按「擲骰子」）就擲、出發（一鍵）
 function humanPreRoll(p) {
   if (viaNet(p)) return remotePreRoll(p);
   startGauge(p);
-  return new Promise(resolve => { waiting = { p, kind: 'pre', resolve, itemUsed: false, itemCount: 0, allyUsed: false }; refreshActions(); armTimer(); });
+  return new Promise(resolve => { waiting = { p, kind: 'pre', resolve, itemUsed: false, itemCount: 0, allyUsed: false }; refreshActions(); armTimer(); setTimeout(() => { if (waiting && waiting.p === p) startTutorial(); }, 700); });
 }
+/* ---------- 新手教學：第一次輪到自己時跑一次，之後按「📖 教學」再看 ---------- */
+const TUT = [
+  { sel: '#players', text: '👈 這裡是所有參選人：現金、民調、道具。卡片上「🎲 輪到他」就是現在輪到誰。<b>點卡片</b>可以看他的道具、超能力和地產。' },
+  { sel: '#gauge', text: '🎲 輪到你時會出現骰子。<b>點 1、2 或 3 顆骰子</b>就直接擲：骰越多走越快，1 顆最好控制。10 秒沒動作會自動擲。' },
+  { sel: '#btn-items', text: '🎒 道具：飛彈、地雷、檢舉卡、搶地卡……擲骰前可以先出，一回合最多 3 個。' },
+  { sel: '#btn-power', text: '⚡ 超能力：每個人開局抽一個，每 2 回合可以發動一次。' },
+  { sel: '#btn-ally', text: '🤝 結盟：盟友彼此免過路費。但……盟友隨時可以背刺你！' },
+  { sel: '#btn-chat', text: '💬 喊話：用角色的招牌台詞嗆對手，還能丟番茄、雞蛋給正在玩的人。', online: true },
+  { sel: '#btn-rules', text: '🏆 怎麼贏：壟斷一整區、聲量衝到 100%，或回合結束時得票最高。忘記了就按這裡看。' },
+  { sel: null, text: '🏠 走到空地可以買地蓋房子；踩到別人的地要付過路費，也可以跟地主拚小遊戲。每 2 回合還有全民小遊戲！<br><b>準備好了，開始凍蒜吧！🎉</b>' },
+];
+let tutI = -1;
+function startTutorial(force) {
+  try { if (!force && localStorage.getItem('ds-tut')) return; } catch (e) { }
+  if (!G.players.length) return;
+  tutI = -1; $('#tut').hidden = false; tutNext();
+}
+function endTutorial() { $('#tut').hidden = true; try { localStorage.setItem('ds-tut', '1'); } catch (e) { } }
+function tutNext() {
+  tutI++;
+  // 跳過現在看不到的按鈕（例如沒有連線就沒有喊話）
+  while (tutI < TUT.length) {
+    const st = TUT[tutI], el = st.sel && $(st.sel);
+    if ((st.online && NET.mode === 'off') || (st.sel && (!el || !el.offsetParent))) { tutI++; continue; }
+    break;
+  }
+  if (tutI >= TUT.length) return endTutorial();
+  const st = TUT[tutI], el = st.sel && $(st.sel), hole = $('#tut-hole'), box = $('#tut-box');
+  $('#tut-step').textContent = `📖 新手教學 ${tutI + 1} / ${TUT.length}`;
+  $('#tut-text').innerHTML = st.text;
+  $('#tut-next').textContent = tutI === TUT.length - 1 ? '開始玩！' : '下一步 ▶';
+  const bw = Math.min(320, innerWidth * .88);
+  if (el) {
+    const r = el.getBoundingClientRect(), pad = 6;
+    Object.assign(hole.style, { display: 'block', left: r.left - pad + 'px', top: r.top - pad + 'px', width: r.width + pad * 2 + 'px', height: r.height + pad * 2 + 'px' });
+    box.style.left = clamp(r.left + r.width / 2 - bw / 2, 8, innerWidth - bw - 8) + 'px';
+    // 說明框放在目標上面或下面，哪邊空間大放哪邊
+    if (innerHeight - r.bottom > r.top) { box.style.top = Math.min(r.bottom + 14, innerHeight - 200) + 'px'; box.style.bottom = 'auto'; }
+    else { box.style.top = 'auto'; box.style.bottom = (innerHeight - r.top + 14) + 'px'; }
+  } else {
+    hole.style.display = 'none';
+    box.style.left = (innerWidth - bw) / 2 + 'px'; box.style.top = '30%'; box.style.bottom = 'auto';
+  }
+}
+$('#tut-next').onclick = tutNext;
+$('#tut-skip').onclick = endTutorial;
+$('#btn-tut').onclick = () => { $('#actions').classList.remove('more'); $('#btn-more').textContent = '⋯ 更多'; startTutorial(true); };
 // 擲骰倒數：10 秒沒動作就自動擲（開視窗、出道具時暫停）
 let turnTimer = null;
 function armTimer() {
@@ -2302,7 +2430,7 @@ function armTimer() {
     const active = NET.mode === 'client' ? !!NET.pending : !!waiting;
     if (!active) { clearInterval(turnTimer); turnTimer = null; btn.textContent = base(); return; }
     const busy = NET.mode === 'client' ? false : waiting.busy;
-    if (busy || !modal.hidden || aiming || !$('#sheet').hidden) { left = Math.max(left, 6); btn.textContent = base(); return; }
+    if (busy || !modal.hidden || aiming || !$('#sheet').hidden || !$('#tut').hidden) { left = Math.max(left, 6); btn.textContent = base(); return; }
     left--; btn.textContent = `${base()} ⏱${Math.max(0, left)}`;
     if (left <= 3 && left > 0) beep(700, .05, 'square', .03);
     if (left <= 0) { clearInterval(turnTimer); turnTimer = null; btn.textContent = base(); rollClick(); }
@@ -2334,14 +2462,25 @@ function showDice(on, n = 2) {
   dice.forEach((d, k) => { d.visible = on && k < n; if (k < n) { d.position.copy(base).addScaledVector(right, diceOffsets[n][k]); d.position.y = 4.5; } });
 }
 const isDoubles = v => v.length > 1 && v.every(x => x === v[0]);
+// 骰子從空中掉到棋盤上彈跳幾下、邊滾邊停在點數那一面（房主、朋友共用）
+function bounceDice(v) {
+  const n = v.length, ds = dice.slice(0, n), from = ds.map(d => d.position.clone());
+  const spin = ds.map(() => [4 + Math.random() * 6, 4 + Math.random() * 6]), end = v.map(x => FACE_ROT[x] || [0, 0, 0]);
+  const drift = ds.map(() => [(Math.random() - .5) * 1.8, (Math.random() - .5) * 1.8]);
+  spinning = false; SFX.dice();
+  setTimeout(() => SFX.dice(), 260 * speed()); setTimeout(() => SFX.dice(), 480 * speed());
+  return tween(950, k => ds.forEach((d, j) => {
+    const h = Math.abs(Math.cos(k * Math.PI * 2.5)) * Math.pow(1 - k, 2) * 4, w = Math.pow(1 - k, 2);
+    d.position.set(from[j].x + drift[j][0] * k, .85 + h, from[j].z + drift[j][1] * k);
+    d.rotation.set(end[j][0] + spin[j][0] * w, end[j][1] + spin[j][1] * w, end[j][2]);
+  }));
+}
 async function landDice(v) {
   hostFx('land', v);
-  spinning = false;
-  v.forEach((x, j) => dice[j].rotation.set(...FACE_ROT[x]));
-  await tween(200, k => dice.forEach(d => { d.position.y = 4.5 - Math.sin(k * Math.PI) * .5; }));
+  await bounceDice(v);
   const sum = v.reduce((a, b) => a + b, 0);
   await caption(`${v.join(' + ')}${v.length > 1 ? ' = ' + sum : ' 點'}${isDoubles(v) ? (v.length === 3 ? ' 豹子！' : ' 對子！') : ''}`, '', 800);
-  setTimeout(() => dice.forEach(d => d.visible = false), 450 * speed());
+  setTimeout(() => dice.forEach(d => d.visible = false), 900 * speed());
 }
 const rainDay = () => G.mods.some(m => m.dice1 && m.until >= G.round);
 function diceCount(g) { return rainDay() ? 1 : clamp((g && g.n) | 0, 1, 3) || 2; }
@@ -2356,6 +2495,7 @@ async function rollDice(p, g) {
   showDice(true, n); spinning = true;
   for (let k = 0; k < 6; k++) { SFX.dice(); await wait(60); }
   const v = rollWith(g);
+  if (p.char.id === 'ko' && v.includes(1)) { v.forEach((x, k) => { if (x === 1) v[k] = 2; }); caption('🧮 數學家', '1 點當 2 點算', 700); }
   if (g && g.hit) { SFX.coin(); caption('🎯 控骰成功！', `擲出${g.par === 'odd' ? '單' : '雙'}數`, 700); }
   await landDice(v);
   return v;
@@ -2368,27 +2508,28 @@ function humanRoll(p) {
   startGauge(p);
   return new Promise(resolve => { waiting = { p, kind: 'stop', resolve: v => resolve(v && v.roll) }; refreshActions(); armTimer(); });
 }
-/* ---------- 控骰量表（LINE 大富翁那種）：指針停在綠區就照你選的單雙數擲 ---------- */
+/* ---------- 選骰子：點 1／2／3 顆骰子就直接擲 ---------- */
+const DIE_PIPS = { 1: [5], 2: [1, 9], 3: [1, 5, 9], 4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9] };
+const dieHTML = (face, red) => `<span class="die${red ? ' red' : ''}">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(c => `<i class="${DIE_PIPS[face].includes(c) ? 'on' : ''}"></i>`).join('')}</span>`;
+$('#gauge .dpick').innerHTML = [[1, [1], '1 顆・準'], [2, [3, 4], '2 顆'], [3, [2, 5, 6], '3 顆・快']].map(([n, faces, t]) =>
+  `<button data-n="${n}" aria-label="擲 ${n} 顆骰子"><span class="dice">${faces.map(f => dieHTML(f, f === 1)).join('')}</span><b>${t}</b></button>`).join('');
 const gauge = { on: false, par: 'even', n: 2, zone: [0, 0], t0: 0 };
 function startGauge(p) {
-  const w = p && p.char.id === 'ko' ? .44 : .22, s = Math.random() * (1 - w);
-  Object.assign(gauge, { on: true, zone: [s, s + w], t0: performance.now() });
-  $('#gzone').style.left = s * 100 + '%'; $('#gzone').style.width = w * 100 + '%';
+  Object.assign(gauge, { on: true, t0: performance.now() });
   const rain = G.players.length && rainDay();
   $('#gauge').querySelectorAll('[data-n]').forEach(x => { x.disabled = !!rain; x.setAttribute('aria-pressed', +x.dataset.n === (rain ? 1 : gauge.n)); });
   $('#gauge').hidden = false;
 }
-const gaugePos = () => { const k = ((performance.now() - gauge.t0) / 850) % 2; return k < 1 ? k : 2 - k; };
 function stopGauge() {
   if (!gauge.on) return null;
   gauge.on = false; $('#gauge').hidden = true;
-  const x = gaugePos(); return { hit: x >= gauge.zone[0] && x <= gauge.zone[1], par: gauge.par, n: gauge.n };
+  return { hit: false, par: 'even', n: rainDay() ? 1 : gauge.n };
 }
-$('#gauge').querySelectorAll('[data-par]').forEach(b => b.onclick = () => {
-  gauge.par = b.dataset.par; $('#gauge').querySelectorAll('[data-par]').forEach(x => x.setAttribute('aria-pressed', x === b));
-});
+// 點骰子 = 選顆數＋馬上擲
 $('#gauge').querySelectorAll('[data-n]').forEach(b => b.onclick = () => {
   gauge.n = +b.dataset.n; $('#gauge').querySelectorAll('[data-n]').forEach(x => x.setAttribute('aria-pressed', x === b));
+  beep(500 + gauge.n * 120, .05);
+  rollClick();
 });
 
 /* ---------- 骰子點數的特殊功能 ---------- */
@@ -4141,6 +4282,7 @@ async function handleReq(r) {
         if (r.kind === 'pre') { SFX_RAW.fan(); caption('輪到你了！', '先出道具，或直接擲骰子', 1200); }
         startGauge(me);
         refreshActions(); armTimer();
+        if (r.kind === 'pre') setTimeout(() => { if (NET.pending) startTutorial(); }, 700);
         return;
       case 'mission':
         if (MISSIONS[r.key]) { NET.myMission = r.key; me.mission = r.key; }
@@ -4178,7 +4320,7 @@ function playFx(m) {
       case 'unlook': lookBack(); break;
       case 'hint': if (!NET.pending) setHint(String(d || '')); break;
       case 'dice': showDice(!!d, clamp(+d || 2, 1, 3)); spinning = !!d; break;
-      case 'land': spinning = false; (Array.isArray(d) ? d.slice(0, 3) : []).forEach((v, j) => { if (FACE_ROT[v]) dice[j].rotation.set(...FACE_ROT[v]); }); setTimeout(() => dice.forEach(x => x.visible = false), 1400); break;
+      case 'land': { const v = (Array.isArray(d) ? d.slice(0, 3) : []).filter(x => FACE_ROT[x]); bounceDice(v).then(() => setTimeout(() => dice.forEach(x => x.visible = false), 1500)); break; }
       case 'hop': case 'jump': { const p = G.players[+d[0]]; if (p) { p.animQ.push([k, +d[1]]); if (!p.animating) runAnim(p); } break; }
       case 'rocket': rocketFly(+d[0], +d[1]); break;
       case 'end': showEnd(); break;
@@ -4398,7 +4540,7 @@ function showChatbar() {
 }
 function showChat(seat, text, voice, taunt) {
   const p = G.players[seat]; if (!p || !p.bubble) return;
-  if (taunt) flyEmo('😤', p);
+  if (taunt) { flyEmo('😤', p); charFx(p.char.id); }
   const b = document.createElement('b'); b.textContent = p.char.name;
   p.bubble.replaceChildren(b, document.createTextNode((taunt ? '🗯️ ' : '') + text)); p.bubble.classList.add('on');
   clearTimeout(p.bt); p.bt = setTimeout(() => p.bubble.classList.remove('on'), 3200);
