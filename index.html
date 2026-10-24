@@ -268,6 +268,7 @@ button{touch-action:manipulation}
 .cardrow .ic{font-size:26px;flex:none}
 .wi{display:inline-grid;place-items:center;width:1.6em;height:1.6em;background:center/contain no-repeat;vertical-align:middle;font-style:normal}
 .wi>i{font-style:normal;font-size:.9em;line-height:1}
+.wi svg{width:100%;height:100%;display:block;overflow:visible}
 .cardrow .ic .wi{width:46px;height:46px}
 .cardpick{display:flex;flex-direction:column;gap:8px;margin:8px 0}
 .cardrow.cardbtn{cursor:pointer;box-shadow:3px 3px 0 var(--ink)}
@@ -734,7 +735,7 @@ function speak(ch, line, prio = 1, vid = '') {
 }
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
-const GAME_VER = '20261025e';   // 改角色名單、連線格式時要改這個
+const GAME_VER = '20261025f';   // 改角色名單、連線格式時要改這個
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -922,6 +923,7 @@ const ITEMS = {
   bail: { name: '保釋卡', icon: '🚑', price: 900, passive: true, desc: '被動：下次要被送進醫院或約談所時，直接保出來。' },
   missiles: { name: '飛彈雨', icon: '🎆', price: 5000, desc: '同時轟炸 3 塊對手有房子的地，每塊各掉一層。' },
   build: { name: '免費加蓋', icon: '🏗️', price: 1200, aim: 'ownLand', desc: '點一塊自己的地，免費往上蓋一層。' },
+  horn: { name: '大聲公', icon: '📣', price: 800, desc: '開宣傳車掃街喊「凍蒜！」：你的民調 +8，其他人各 -3。' },
   fakepoll: { name: '民調灌水', icon: '📈', price: 900, desc: '民調 +15；但有三成機率被抓包，反而 -10。' },
 };
 const ITEM_KEYS = Object.keys(ITEMS);
@@ -1247,6 +1249,13 @@ function fitFont(x, text, maxW, size, weight = 900) {
   let s = size;
   do { x.font = `${weight} ${s}px ${FONT}`; s -= 2; } while (x.measureText(text).width > maxW && s > 12);
 }
+const TILE_CAT = {
+  start: { bg: '#ffd23f', base: '#ffc21a', edge: '#1d1633', lw: 14 },
+  fly: { bg: '#bfe9ff', base: '#8fd4f2', edge: '#1d6fb8', lw: 14 },
+  jail: { bg: '#d3d9e3', base: '#aab3c2', edge: '#1d1633', lw: 14 },
+  hosp: { bg: '#e8f5ff', base: '#c7e5fb', edge: '#e53935', lw: 14 },
+  event: { bg: '#f3ecff', base: '#d9c8ff', edge: '#7c4dff', lw: 10 },
+};
 function drawTile(i) {
   const t = TILES[i], st = G.tiles[i], x = tileCanvases[i] && tileCanvases[i].getContext('2d');
   if (!x || !t || !st) return;
@@ -1268,14 +1277,20 @@ function drawTile(i) {
     } else {
       x.fillStyle = '#1d1633'; x.font = `900 46px ${FONT}`; x.fillText(fmt(t.price), 128, 142);
       x.fillStyle = '#6b6380'; x.font = `700 24px ${FONT}`; x.fillText(z.name, 128, 204);
-      x.lineWidth = 6; x.strokeStyle = '#1d1633'; x.strokeRect(3, 3, 250, 250);
+      x.lineWidth = 8; x.strokeStyle = '#1d1633'; x.strokeRect(4, 4, 248, 248);
     }
   } else {
-    const sp = SPECIAL[t.type];
-    x.fillStyle = sp.bg; x.fillRect(0, 0, 256, 256);
+    // 色彩編碼：凍蒜廣場＝金黃、機場＝天藍、檢調＝灰藍、醫院＝淡藍、其他事件格＝淡紫底＋彩色圓章
+    const sp = SPECIAL[t.type], ty = t.type, cat = TILE_CAT[ty] || TILE_CAT.event;
+    x.fillStyle = cat.bg; x.fillRect(0, 0, 256, 256);
+    if (ty === 'start') { for (let k = 0; k < 16; k++) { x.fillStyle = k % 2 ? '#1d1633' : '#ffffff'; x.fillRect(k * 16, 0, 16, 16); x.fillStyle = k % 2 ? '#ffffff' : '#1d1633'; x.fillRect(k * 16, 16, 16, 16); } }
+    if (ty === 'fly') { x.fillStyle = '#5a6476'; x.fillRect(96, 0, 64, 256); x.fillStyle = '#ffffff'; for (let k = 0; k < 6; k++) x.fillRect(124, 8 + k * 44, 8, 24); }
+    if (cat === TILE_CAT.event) { x.fillStyle = sp.bg; x.beginPath(); x.arc(128, 100, 62, 0, 7); x.fill(); x.lineWidth = 6; x.strokeStyle = '#1d1633'; x.stroke(); }
     x.font = `90px ${FONT}`; x.fillText(sp.icon, 128, 102);
-    x.fillStyle = '#1d1633'; fitFont(x, t.name, 230, 40); x.fillText(t.name, 128, 200);
-    x.lineWidth = 6; x.strokeStyle = '#1d1633'; x.strokeRect(3, 3, 250, 250);
+    x.fillStyle = '#1d1633'; fitFont(x, t.name, 230, 40);
+    if (ty === 'fly' || ty === 'start') { x.lineWidth = 10; x.strokeStyle = '#ffffff'; x.strokeText(t.name, 128, 206); }
+    x.fillText(t.name, 128, 206);
+    x.lineWidth = cat.lw; x.strokeStyle = cat.edge; x.strokeRect(cat.lw / 2, cat.lw / 2, 256 - cat.lw, 256 - cat.lw);
   }
   tileTex[i].needsUpdate = true;
 }
@@ -1734,7 +1749,8 @@ function buildBoard(id, seed = 0) {
   TILES.forEach((t, i) => {
     const [x, z] = tilePos(i), th = tileTheta(i);
     const lift = (i % 2) * .03;
-    const b = box(3.8, .4, 3.8, t.type === 'prop' ? ZONES[t.zone].tint : '#fbf6ea', x, lift, z, BG); b.rotation.y = th; b.userData.tile = i; tileMeshes.push(b);
+    const b = box(3.8, .4, 3.8, t.type === 'prop' ? ZONES[t.zone].tint : (TILE_CAT[t.type] || TILE_CAT.event).base, x, lift, z, BG); b.rotation.y = th; b.userData.tile = i; tileMeshes.push(b);
+    const curb = box(3.98, .34, 3.98, '#2a2540', x, lift - .06, z, BG); curb.rotation.y = th; curb.castShadow = false;   // 深色邊框，格子跟格子分得清楚
     const cv = document.createElement('canvas'); cv.width = cv.height = 256; tileCanvases.push(cv);
     const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 8; tileTex.push(tex);
     const label = new THREE.Mesh(new THREE.PlaneGeometry(3.7, 3.7), new THREE.MeshStandardMaterial({ map: tex, roughness: .8 }));
@@ -1970,20 +1986,28 @@ function loadPortraits() {
 }
 
 /* ---------- 武器卡通圖：地雷、定時炸彈、火箭（圖示＋棋盤上的 3D 看板） ---------- */
-const WIMG = { mine: ['models/w-mine.jpg', 505, 300, 265], bomb: ['models/w-bomb.jpg', 520, 290, 250], rocket: ['models/w-rocket.jpg', 545, 270, 260] };
+// 道具圖示：粗黑邊、高飽和色、白色高光（SVG，手機極小尺寸也看得懂）。3D 棋盤上的看板也用同一張圖
+const SVGI = {
+ "mine": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"64\" height=\"64\" viewBox=\"0 0 64 64\"><g stroke=\"#1d1633\" stroke-width=\"3.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"><circle cx=\"32\" cy=\"27\" r=\"9\" fill=\"#ff3b3b\" stroke=\"none\" opacity=\".35\"/><path d=\"M18 36l-6-6M46 36l6-6M13 43l-7-2M51 43l7-2\" fill=\"none\"/><path d=\"M12 50a20 20 0 0 1 40 0z\" fill=\"#4a5070\"/><path d=\"M8 50h48l-4 9H12z\" fill=\"#ffd23f\"/><path d=\"M20 50l-4 9M31 50l-4 9M42 50l-4 9M53 50l-3 7\" stroke-width=\"3\"/><circle cx=\"32\" cy=\"29\" r=\"5.5\" fill=\"#ff3b3b\"/></g><path d=\"M19 45a14 14 0 0 1 7-10\" stroke=\"#fff\" stroke-width=\"3.5\" stroke-linecap=\"round\" fill=\"none\" opacity=\".75\"/><circle cx=\"30.5\" cy=\"27.5\" r=\"1.8\" fill=\"#fff\"/></svg>",
+ "rocket": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"64\" height=\"64\" viewBox=\"0 0 64 64\"><g transform=\"rotate(40 32 32)\" stroke=\"#1d1633\" stroke-width=\"3.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"><path d=\"M25 46h14l-3 8-4 7-4-7z\" fill=\"#ffd23f\"/><path d=\"M29 47h6l-3 8z\" fill=\"#ff8a1c\" stroke=\"none\"/><path d=\"M22 34l-8 9v7l9-4zM42 34l8 9v7l-9-4z\" fill=\"#ff3b5c\"/><path d=\"M32 4c9 8 12 22 10 42H22C20 26 23 12 32 4z\" fill=\"#ffffff\"/><path d=\"M32 4c5 4 8 9 9 15H23c1-6 4-11 9-15z\" fill=\"#ff3b5c\"/><circle cx=\"32\" cy=\"29\" r=\"5.5\" fill=\"#4fc3f7\"/><path d=\"M27 40h10\" stroke-width=\"3\"/></g><circle cx=\"31\" cy=\"28\" r=\"1.8\" fill=\"#fff\" transform=\"rotate(40 32 32)\"/></svg>",
+ "bomb": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"64\" height=\"64\" viewBox=\"0 0 64 64\"><g stroke=\"#1d1633\" stroke-width=\"3.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"><path d=\"M42 18c3-6 9-8 12-4\" fill=\"none\"/><rect x=\"35\" y=\"15\" width=\"11\" height=\"9\" rx=\"2\" fill=\"#7a7f99\" transform=\"rotate(38 40 19)\"/><circle cx=\"28\" cy=\"39\" r=\"20\" fill=\"#2b2f45\"/><circle cx=\"28\" cy=\"40\" r=\"11\" fill=\"#ffffff\"/><path d=\"M28 40v-7M28 40l5 3\" stroke=\"#ff3b3b\" stroke-width=\"3\"/><path d=\"M56 3l1.8 4.6 4.7 1-3.7 3.1 1 4.8-3.8-2.7-4.2 2.4 1.4-4.6-3.6-3.3 4.9-.4z\" fill=\"#ffd23f\" stroke-width=\"2.5\"/></g><path d=\"M13 32a16 16 0 0 1 8-10\" stroke=\"#fff\" stroke-width=\"3.5\" stroke-linecap=\"round\" fill=\"none\" opacity=\".7\"/></svg>",
+ "dice": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"64\" height=\"64\" viewBox=\"0 0 64 64\"><g stroke=\"#1d1633\" stroke-width=\"3.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"><path d=\"M40 27l11-15\" fill=\"none\"/><path d=\"M55 4a10 10 0 0 1 4 9M58 0a15 15 0 0 1 5 13\" fill=\"none\" stroke=\"#3d8bff\" stroke-width=\"3\"/><circle cx=\"52\" cy=\"10\" r=\"4.5\" fill=\"#ff3b5c\"/><rect x=\"6\" y=\"22\" width=\"36\" height=\"36\" rx=\"9\" fill=\"#ffffff\"/></g><path d=\"M12 52h28\" stroke=\"#cfd8e6\" stroke-width=\"5\" stroke-linecap=\"round\"/><g fill=\"#1d1633\"><circle cx=\"15.5\" cy=\"31.5\" r=\"3.4\"/><circle cx=\"32.5\" cy=\"31.5\" r=\"3.4\"/><circle cx=\"15.5\" cy=\"48\" r=\"3.4\"/><circle cx=\"32.5\" cy=\"48\" r=\"3.4\"/></g><circle cx=\"24\" cy=\"40\" r=\"4.2\" fill=\"#ff3b5c\"/></svg>",
+ "horn": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"64\" height=\"64\" viewBox=\"0 0 64 64\"><g stroke=\"#1d1633\" stroke-width=\"3.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"><path d=\"M50 22a13 13 0 0 1 0 20M56 15a22 22 0 0 1 0 34\" fill=\"none\"/><path d=\"M21 37l-3 15h8l4-12\" fill=\"#3d8bff\"/><rect x=\"5\" y=\"25\" width=\"11\" height=\"14\" rx=\"3\" fill=\"#ff3b5c\"/><path d=\"M15 26l25-14v40L15 38z\" fill=\"#ffd23f\"/><ellipse cx=\"40\" cy=\"32\" rx=\"6\" ry=\"20\" fill=\"#ff3b5c\"/></g><ellipse cx=\"41.5\" cy=\"32\" rx=\"2.5\" ry=\"13\" fill=\"#b3203f\"/><path d=\"M19 29l16-9\" stroke=\"#fff\" stroke-width=\"3.5\" stroke-linecap=\"round\" opacity=\".8\"/></svg>"
+};
 const wTex = {};
-Object.keys(WIMG).forEach(k => { const c = document.createElement('canvas'); c.width = c.height = 4; wTex[k] = new THREE.CanvasTexture(c); wTex[k].encoding = THREE.sRGBEncoding; });
-// 圖還沒載好（或載不到）時先顯示 emoji，不會空白
-const ico = k => WIMG[k] ? `<span class="wi wi-${k}"><i>${ITEMS[k].icon}</i></span>` : ITEMS[k].icon;
-Object.entries(WIMG).forEach(([k, [u, cx, cy, r]]) => loadImg(u).then(im => {
-  if (!im) return;
-  const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
-  x.beginPath(); x.arc(128, 128, 125, 0, 7); x.fillStyle = '#1d1633'; x.fill();
-  x.beginPath(); x.arc(128, 128, 117, 0, 7); x.fillStyle = '#ffffff'; x.fill();
-  x.save(); x.beginPath(); x.arc(128, 128, 110, 0, 7); x.clip(); x.drawImage(im, cx - r, cy - r, r * 2, r * 2, 18, 18, 220, 220); x.restore();
-  const st = document.createElement('style'); st.textContent = `.wi-${k}{background-image:url(${cv.toDataURL('image/png')})}.wi-${k}>i{display:none}`; document.head.appendChild(st);
-  wTex[k].image = cv; wTex[k].needsUpdate = true;
-}));
+Object.keys(SVGI).forEach(k => { const c = document.createElement('canvas'); c.width = c.height = 4; wTex[k] = new THREE.CanvasTexture(c); wTex[k].encoding = THREE.sRGBEncoding; });
+const ico = k => SVGI[k] ? `<span class="wi">${SVGI[k]}</span>` : ITEMS[k].icon;
+Object.keys(SVGI).forEach(k => {
+  const im = new Image();
+  im.onload = () => {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
+    x.beginPath(); x.arc(128, 128, 125, 0, 7); x.fillStyle = '#1d1633'; x.fill();
+    x.beginPath(); x.arc(128, 128, 116, 0, 7); x.fillStyle = '#ffffff'; x.fill();
+    x.drawImage(im, 38, 38, 180, 180);
+    wTex[k].image = cv; wTex[k].needsUpdate = true;
+  };
+  im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(SVGI[k]);
+});
 const wSprite = (k, size) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: wTex[k], depthWrite: false, fog: false, toneMapped: false })); sp.scale.set(size, size, 1); return sp; };
 // 3D 大頭：前半球貼 Q 版臉（從正面平面投影），後半球是頭髮色，外面一圈黑色描邊，有光影、會跟著身體轉
 const face3DCache = {};
@@ -2466,6 +2490,8 @@ function rebuild(i, pop = true) {
   const [x, z] = tilePos(i), [ix, iz] = tileIn(i);
   const g = new THREE.Group(); g.position.set(x + ix * 3.1, 0, z + iz * 3.1); g.rotation.y = tileTheta(i); scene.add(g); buildingGroups[i] = g;
   const c = G.players[st.owner].char.color;
+  // 陣營色底座：一眼看出是誰的地
+  cyl(1.55, 1.62, .1, c, .2, .05, 0, g, 28); cyl(1.32, 1.32, .02, '#ffffff', .2, .11, 0, g, 28).material = M('#fffaf0');
   cyl(.05, .05, 1.6, '#ffffff', -1.4, .8, 0, g, 6);
   box(.6, .4, .04, c, -1.1, 1.4, 0, g);
   if (st.kind === 'hq') {
@@ -2486,6 +2512,19 @@ function rebuild(i, pop = true) {
   }
 }
 const buildingAnims = [];   // 每塊地自己的建築動畫（拆掉就一起清掉）
+// 競選看板：陣營色底、白框、候選人名字＋黃字「凍蒜！」
+const boardCache = {};
+function campaignBoard(ch, w, h) {
+  const tex = boardCache[ch.id] || (boardCache[ch.id] = canvasTex(256, 160, (x, W, H) => {
+    x.fillStyle = ch.color; x.fillRect(0, 0, W, H);
+    x.lineWidth = 10; x.strokeStyle = '#ffffff'; x.strokeRect(9, 9, W - 18, H - 18);
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.font = `900 64px ${FONT}`; x.lineWidth = 8; x.strokeStyle = '#1d1633'; x.strokeText(ch.name, W / 2, 62); x.fillStyle = '#ffffff'; x.fillText(ch.name, W / 2, 62);
+    x.font = `900 40px ${FONT}`; x.strokeText('凍蒜！', W / 2, 118); x.fillStyle = '#ffd23f'; x.fillText('凍蒜！', W / 2, 118);
+  }));
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: .25, side: THREE.DoubleSide }));
+  m.castShadow = true; return m;
+}
 // 立面貼圖：每種房子一種窗戶樣式
 const facadeCache = {};
 function facade(key, h, draw) {
@@ -2559,11 +2598,13 @@ function faced(w, h, d, front, side, top, x, y, z, p) {
 }
 const BUILD = [
   () => { },
-  (g, c) => {                       // 1 平房：斜屋頂、煙囪、小樹
+  (g, c, i) => {                    // 1 平房：斜屋頂、煙囪、小樹、院子的競選看板
     const f = FACADE.house(); faced(1.5, 1.1, 1.3, f, f, '#d7ccc8', .3, .55, 0, g);
     gable(1.75, .8, 1.5, c, .3, 1.1, 0, g);
     box(.22, .55, .22, '#8d6e63', .75, 1.6, -.2, g);
     cyl(.07, .09, .6, '#795548', -.75, .3, .45, g, 6); ball(.32, '#66bb6a', -.75, .8, .45, g);
+    [-.95, -.15].forEach(px => box(.06, 1.1, .06, '#5d4037', px, .55, -.55, g));
+    const bd = campaignBoard(G.players[G.tiles[i].owner].char, .95, .6); bd.position.set(-.55, .95, -.52); g.add(bd);
   },
   (g, c) => {                       // 2 透天厝：鐵捲門、雨遮、頂樓水塔、直招牌
     const f = FACADE.town(); faced(1.25, 2.8, 1.3, f, f, '#cfd8dc', .3, 1.4, 0, g);
@@ -2572,6 +2613,10 @@ const BUILD = [
     [[-.32, 0], [.92, 0]].forEach(([px]) => box(.06, .18, 1.3, '#b0bec5', px, 2.88, 0, g));
     cyl(.24, .24, .42, '#eceff1', .5, 3.15, -.25, g, 12); cyl(.25, .25, .06, '#1e88e5', .5, 3.39, -.25, g, 12);
     box(.18, 1.2, .5, c, -.42, 1.9, .3, g);
+    // 頂樓加蓋：藍色鐵皮屋＋斜鐵皮屋頂
+    const tin = facade('tin', 64, (x, w, h) => { x.fillStyle = '#5b9bd5'; x.fillRect(0, 0, w, h); x.fillStyle = '#3f7fbf'; for (let k = 0; k < w; k += 8) x.fillRect(k, 0, 3, h); x.fillStyle = '#cfe8ff'; x.fillRect(22, 18, 20, 14); });
+    faced(.66, .5, .78, tin, tin, '#3f7fbf', .02, 3.05, .18, g);
+    const tr = box(.8, .05, .92, '#2f6aa8', .02, 3.36, .18, g); tr.rotation.x = .14;
   },
   (g, c, i) => {                    // 3 公寓：Q 版公寓，會眨眼的笑臉、陽台曬衣服、屋頂有貓
     const f = FACADE.qapt(); faced(1.9, 3.3, 1.5, f, f, '#f2c98e', .3, 1.65, 0, g);
@@ -2605,6 +2650,11 @@ const BUILD = [
     cyl(.72, .72, .06, '#37474f', .3, 5.47, 0, g, 24);
     const h = textPlane('H', .8, .8, '#ffd23f', null, 300); h.rotation.x = -Math.PI / 2; h.position.set(.3, 5.51, 0); g.add(h);
     const l = ball(.08, glow('#ff1744'), .9, 5.6, .55, g); buildingAnims[i].push(t => { l.visible = Math.sin(t * 5) > 0; });
+    const bb = campaignBoard(G.players[G.tiles[i].owner].char, 1.6, 1); bb.rotation.y = Math.PI / 2; bb.position.set(1.2, 3.7, 0); g.add(bb);
+    box(.08, 1.2, 1.75, '#37474f', 1.15, 3.7, 0, g);
+    const neon = glow(c, 1.2); box(.16, 2.2, .3, neon, -.66, 2.6, .78, g); box(.22, 2.3, .36, '#1d1633', -.7, 2.6, .76, g);
+    const nb = glow('#ffd23f', 1.2); box(.17, .3, .32, nb, -.66, 3.85, .78, g);
+    buildingAnims[i].push(t => { neon.emissiveIntensity = .5 + Math.abs(Math.sin(t * 3 + i)) * 1.1; nb.emissiveIntensity = (t * 2 + i) % 1 < .5 ? 1.4 : .2; });
   },
   (g, c, i) => {                    // 5 摩天樓（地標）：Q 版玻璃圓塔，大眼睛笑臉、揮手、戴主人顏色的帽子、直升機繞圈
     const H = 8, rt = .82, rb = 1.2;
@@ -3044,6 +3094,7 @@ function sayLine(seat, line, key, vid = '') {
   const p = G.players[seat]; if (!p || !p.bubble) return;
   hostFx('say', [seat, line, key || '', vid]);
   if (KEY_ANIM[key]) play(p, KEY_ANIM[key], true);
+  if (['win', 'champion', 'earn', 'buy', 'upgrade'].includes(key)) cheer(p);
   const b = document.createElement('b'); b.textContent = p.char.name;
   p.bubble.replaceChildren(b, document.createTextNode(line)); p.bubble.classList.add('on');
   clearTimeout(p.bt); p.bt = setTimeout(() => p.bubble.classList.remove('on'), 2800);
@@ -4128,6 +4179,9 @@ async function useItem(p, id, arg, free) {
       addPoll(p, 10); SFX.coin(); await caption(`${it.icon} 發便當拜票`, `${p.char.name} 民調 +10`);
       if (Math.random() < .25) { await caption('🚨 被檢舉疑似賄選！', '便當發太大方了…', 1300); await sendTo(p, JAIL, 1, 'jail'); }
       break;
+    case 'horn':
+      addPoll(p, 8); others(p).forEach(q => addPoll(q, -3)); SFX.fan(); say(p, 'win', pick(['凍蒜！凍蒜！凍蒜！', '拜託拜託，投我一票！', '大家好～我來了！']));
+      await caption(`${it.icon} 大聲公掃街！`, `${p.char.name} 民調 +8，其他人各 -3`, 1300); break;
     case 'equal': { const ps = alive(), avg = Math.round(ps.reduce((s, q) => s + q.cash, 0) / ps.length); ps.forEach(q => q.cash = avg); await caption(`${it.icon} 均富卡！`, `每人現金都變成 ${fmt(avg)}`); break; }
   }
   if (hitTarget) await registerHit(p, hitTarget);
@@ -4313,11 +4367,7 @@ async function sendTo0(p, corner, turns, where) {
   p.where = where; p.skip = turns;
   if (where === 'jail') { p.mockJail = true; p.onIsland = true; }
   hostFx('jump', [p.seat, corner]);
-  const [x, z] = spot(p, corner);
-  await tween(350, k => { p.mesh.position.y = k * 10; });
-  p.pos = corner; p.mesh.position.set(x, 10, z); p.mesh.rotation.y = tileTheta(corner);
-  await tween(350, k => { p.mesh.position.y = 10 * (1 - k * k); });
-  p.mesh.position.y = 0;
+  p.pos = corner; await flyTo(p, corner);
   say(p, where === 'hosp' ? 'hosp' : 'jail');
   if (where === 'jail') await caption('🏝️ 押送綠島！', `${p.char.name} 被送到綠島約談，出來要自己買機票（${fmt(ISLAND_FARE)}）`, 1500);
   if (!turns) { p.where = null; say(p, 'release'); }
@@ -4391,6 +4441,7 @@ function aiPickItem(p) {
   if (!choice && has('turtle')) choice = ['turtle', leader];
   if (!choice && has('robot')) { for (let k = 1; k <= 10; k++) if (G.traps[(p.pos + k) % N]) { choice = ['robot', true]; break; } }
   if (!choice && has('bento') && p.poll < 60) choice = ['bento', true];
+  if (!choice && has('horn') && Math.random() < .6) choice = ['horn', true];
   if (!choice && has('equal')) { const avg = alive().reduce((s, q) => s + q.cash, 0) / alive().length; if (p.cash < avg * .6) choice = ['equal', true]; }
   if (!choice && has('dice')) {
     for (let n = 2; n <= 12; n++) {
@@ -4419,16 +4470,37 @@ async function bombBoom(p) {
 function hopTo(p, to, th, ms = 150) {
   const m = p.mesh, from = m.position.clone(), r0 = m.rotation.y, base = p.baseS || (p.baseS = m.scale.x || 1);
   const dr = ((th - r0 + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+  const side = p.hopSide = -(p.hopSide || 1);
   return tween(ms, k => {
     const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2, up = Math.sin(Math.PI * k);
-    m.position.lerpVectors(from, to, e); m.position.y = up * .85;
+    m.position.lerpVectors(from, to, e); m.position.y = up * 1.05;
     m.rotation.y = r0 + dr * Math.min(1, k * 2.2);
+    m.rotation.z = up * .2 * side; m.rotation.x = up * .14;   // 誇張的左右搖擺＋往前衝
     const sy = 1 + .16 * up - .16 * Math.pow(1 - up, 5);   // 起跳和落地壓扁、空中拉長
     m.scale.set(base / Math.sqrt(sy), base * sy, base / Math.sqrt(sy));
   }).then(() => {
-    m.scale.setScalar(base); m.position.y = 0;
+    m.scale.setScalar(base); m.position.y = 0; m.rotation.x = m.rotation.z = 0;
     if (!LITE) burst(new THREE.Vector3(to.x, .15, to.z), ['#efe3c8', '#ffffff'], 3, .18);
   });
+}
+// 飛到某一格：去醫院的是被炸飛（邊飛邊翻滾、冒星星），其他是被拎走；落地壓扁再彈回來
+async function flyTo(p, corner) {
+  const m = p.mesh, base = p.baseS || (p.baseS = m.scale.x || 1), [x, z] = spot(p, corner), tumble = corner === HOSP;
+  if (tumble) burst(m.position.clone().setY(1.5), ['#ffd23f', '#ff8a1c', '#ffffff'], LITE ? 6 : 12, .3);
+  await tween(380, k => { m.position.y = k * 10; if (tumble) { m.rotation.x = k * Math.PI * 3; m.rotation.z = k * Math.PI * 1.5; } else m.rotation.z = Math.sin(k * 20) * .25; });
+  m.position.set(x, 10, z); m.rotation.y = tileTheta(corner);
+  await tween(380, k => { m.position.y = 10 * (1 - k * k); if (tumble) { m.rotation.x = Math.PI * (3 + k); m.rotation.z = Math.PI * (1.5 + k * .5); } else m.rotation.z = Math.sin(k * 20) * .25 * (1 - k); });
+  m.rotation.x = m.rotation.z = 0; m.position.y = 0;
+  burst(new THREE.Vector3(x, .2, z), ['#efe3c8', '#ffffff'], LITE ? 4 : 8, .25);
+  await tween(280, k => { const q = 1 - .38 * Math.sin(Math.PI * k) * (1 - k * .4); m.scale.set(base / Math.sqrt(q), base * q, base / Math.sqrt(q)); });
+  m.scale.setScalar(base);
+}
+// 歡呼：原地轉一圈跳兩下
+function cheer(p) {
+  const m = p.mesh; if (!m || p.moving || p.animating || p.cheering || p.out) return;
+  const base = p.baseS || (p.baseS = m.scale.x || 1), r0 = m.rotation.y; p.cheering = true;
+  tween(700, k => { const up = Math.abs(Math.sin(k * Math.PI * 2)); m.position.y = up * .9; m.rotation.y = r0 + k * Math.PI * 2; const q = 1 + .12 * up; m.scale.set(base / Math.sqrt(q), base * q, base / Math.sqrt(q)); })
+    .then(() => { m.position.y = 0; m.rotation.y = r0; m.scale.setScalar(base); p.cheering = false; });
 }
 async function moveSteps(p, n, back = false) {
   p.moving = true;
@@ -6598,8 +6670,7 @@ async function runAnim(p) {
     const [type, tile, back] = p.animQ.shift(); if (!p.mesh) break;
     const [x, z] = spot(p, tile), from = p.mesh.position.clone();
     if (type === 'hop') { SFX_RAW.step(); await hopTo(p, new THREE.Vector3(x, 0, z), tileTheta(tile) + (back ? Math.PI : 0)); }
-    else {
-      p.mesh.rotation.y = tileTheta(tile); await tween(300, k => { p.mesh.position.y = k * 10; }); p.mesh.position.set(x, 10, z); await tween(300, k => { p.mesh.position.y = 10 * (1 - k * k); }); }
+    else await flyTo(p, tile);
     p.mesh.position.y = 0; p.lastAnim = performance.now();
   }
   p.animating = false;
