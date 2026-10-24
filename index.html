@@ -214,6 +214,32 @@ button{touch-action:manipulation}
 .cardrow .ic{font-size:26px;flex:none}
 .wi{display:inline-block;width:1.6em;height:1.6em;background:center/contain no-repeat;vertical-align:middle}
 .cardrow .ic .wi{width:46px;height:46px}
+/* 開票之夜 */
+#night{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;background:radial-gradient(circle at 50% 0,#24407a,#0b1230 70%);color:#fff}
+#night .nhead{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#c62828;font-family:var(--display);font-weight:900;font-size:18px;box-shadow:0 3px 0 rgba(0,0,0,.3)}
+#night .live{background:#fff;color:#c62828;border-radius:6px;padding:2px 8px;font-size:13px;animation:nblink 1s steps(2) infinite}
+#night .nskip{margin-left:auto;font-size:13px;padding:4px 10px}
+#night .nbody{flex:1;overflow:auto;width:100%;max-width:760px;margin:0 auto;padding:14px 16px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px}
+#night .prog{font-family:var(--display);font-weight:900;font-size:16px}
+#night .bars{display:flex;flex-direction:column;gap:8px}
+#night .nbar{display:grid;grid-template-columns:44px 1fr;gap:8px;align-items:center}
+#night .nbar img,#night .nbar .av{width:44px;height:44px;border-radius:50%}
+#night .track{position:relative;height:34px;background:rgba(255,255,255,.12);border-radius:10px;overflow:hidden}
+#night .fill{height:100%;width:0;background:var(--c);border-radius:10px;transition:width .2s linear;box-shadow:inset 0 -4px 0 rgba(0,0,0,.2)}
+#night .lab{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-weight:900;font-size:14px;text-shadow:0 1px 3px #000;white-space:nowrap}
+#night .tag{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-weight:900;font-size:13px;background:#ffd23f;color:#1d1633;border-radius:8px;padding:2px 8px}
+#night .tag:empty{display:none}
+#night .nbar.win .track{outline:3px solid #ffd23f}
+#night .nbar.lose .tag{background:#9e9e9e;color:#fff}
+#night .nflash{background:#ffd23f;color:#1d1633;border-radius:14px;padding:10px 14px;font-weight:900;font-size:15px;line-height:1.5;animation:pop .35s;box-shadow:4px 4px 0 rgba(0,0,0,.35)}
+#night .ticker{background:#ffd23f;color:#1d1633;font-weight:900;white-space:nowrap;overflow:hidden;padding:8px 0;font-size:14px}
+#night .ticker span{display:inline-block;animation:nscroll 40s linear infinite}
+@keyframes nscroll{to{transform:translateX(-50%)}}
+@keyframes nblink{50%{opacity:.3}}
+.end-box .epi{background:#fff3c4;border:2px solid var(--ink);border-radius:12px;padding:8px 10px;margin:8px 0;font-size:14px;font-weight:700}
+.end-box .forfeit{background:#eceff1;border:2px dashed var(--ink);border-radius:12px;padding:8px 10px;margin:8px 0;font-size:14px;animation:nshake .45s 3}
+@keyframes nshake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.end-box .awh{margin:10px 0 0;font-family:var(--display)}
 .cardrow div{flex:1;min-width:0}
 .cardrow b{font-family:var(--display);font-weight:900}
 .cardrow small{display:block;color:var(--muted);line-height:1.4}
@@ -589,6 +615,7 @@ function speak(ch, line, prio = 1) {
 }
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
+const GAME_VER = '20261024b';   // 改角色名單、連線格式時要改這個
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -1648,10 +1675,57 @@ function play(p, name, once) {
 }
 const baseAnim = p => p.moving || p.animating ? 'walk' : p.skip > 0 && p.where ? 'sit' : 'idle';
 
+// Q 版臉（透明底）：大眼睛、亮點、腮紅、笑嘴；可加眼鏡、墨鏡
+const qFaceCache = {};
+function qFaceTex(key, o = {}) {
+  if (qFaceCache[key]) return qFaceCache[key];
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 160; const x = cv.getContext('2d');
+  const sx = o.sx || 1;   // 貼在圓柱上時，橫向要壓扁一點
+  const eye = (cx) => {
+    x.fillStyle = '#2b1d16'; x.beginPath(); x.ellipse(cx, 70, 20 * sx, 26, 0, 0, 7); x.fill();
+    x.fillStyle = '#ffffff'; x.beginPath(); x.ellipse(cx + 7 * sx, 60, 8 * sx, 9, 0, 0, 7); x.fill();
+    x.beginPath(); x.ellipse(cx - 7 * sx, 82, 4 * sx, 4, 0, 0, 7); x.fill();
+  };
+  if (o.shades) { x.fillStyle = '#111111'; [86, 170].forEach(cx => { x.beginPath(); x.ellipse(cx, 70, 34 * sx, 24, 0, 0, 7); x.fill(); }); x.fillRect(110, 64, 36, 7); }
+  else { eye(128 - 42 * sx); eye(128 + 42 * sx); }
+  if (o.glasses) { x.strokeStyle = '#1d1633'; x.lineWidth = 6; [128 - 42 * sx, 128 + 42 * sx].forEach(cx => { x.beginPath(); x.ellipse(cx, 70, 34 * sx, 32, 0, 0, 7); x.stroke(); }); x.beginPath(); x.moveTo(128 - 8 * sx, 66); x.lineTo(128 + 8 * sx, 66); x.stroke(); }
+  x.fillStyle = 'rgba(255,120,140,.55)'; [128 - 78 * sx, 128 + 78 * sx].forEach(cx => { x.beginPath(); x.ellipse(cx, 108, 20 * sx, 11, 0, 0, 7); x.fill(); });
+  x.strokeStyle = '#5a2a1a'; x.lineWidth = 7; x.lineCap = 'round';
+  if (o.grin) { x.fillStyle = '#c0392b'; x.beginPath(); x.arc(128, 108, 24 * sx, 0, Math.PI); x.fill(); x.stroke(); }
+  else { x.beginPath(); x.arc(128, 104, 18 * sx, .15 * Math.PI, .85 * Math.PI); x.stroke(); }
+  const t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding;
+  return (qFaceCache[key] = new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false }));
+}
+// 平面的臉，貼在房子正面
+function facePlane(key, o, w, h, x, y, z, p) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), qFaceTex(key, o)); m.position.set(x, y, z); p.add(m); return m; }
+// Q 版小人：大頭、短手短腳，臉是貼在頭前面的一片球面
+const qFaceGeo = new THREE.SphereGeometry(.485, 24, 12, Math.PI / 2 - .85, 1.7, Math.PI / 2 - .55, 1.1);
+function qPerson(o) {
+  const g = new THREE.Group(), skin = o.skin || '#ffd9b5';
+  const leg = x => { const l = new THREE.Group(); l.position.set(x, .5, 0); g.add(l); cyl(.09, .09, .4, o.pants, 0, -.2, 0, l, 8); ball(.11, '#ffffff', 0, -.43, .04, l); return l; };
+  const legL = leg(-.13), legR = leg(.13);
+  cyl(.26, .32, .6, o.shirt, 0, .78, 0, g, 12);
+  const arm = x => { const a = new THREE.Group(); a.position.set(x, 1.02, 0); g.add(a); cyl(.07, .07, .42, o.shirt, 0, -.2, 0, a, 8); ball(.1, '#ffffff', 0, -.45, 0, a); return a; };
+  const armL = arm(-.36), armR = arm(.36);
+  const head = new THREE.Group(); head.position.y = 1.55; g.add(head);
+  ball(.48, skin, 0, 0, 0, head);
+  const face = new THREE.Mesh(qFaceGeo, qFaceTex('p-' + (o.glasses ? 'g' : '') + (o.shades ? 's' : '') + (o.grin ? 'r' : ''), o)); head.add(face);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(.51, 20, 12, 0, Math.PI * 2, 0, 1.3), M(o.hair || '#4e342e')); hair.rotation.x = -.28; head.add(hair);
+  if (o.long) box(.8, .55, .25, o.hair, 0, -.15, -.32, head);
+  if (o.tail) ball(.16, o.hair, 0, .2, -.5, head);
+  if (o.cap) { const c = new THREE.Mesh(new THREE.SphereGeometry(.52, 20, 10, 0, Math.PI * 2, 0, 1.1), M(o.cap)); c.rotation.x = -.15; head.add(c); box(.5, .05, .32, o.cap, 0, .2, .5, head).rotation.x = -.15; }
+  if (o.straw) { cone(.62, .3, '#e8d9a8', 0, .5, 0, head, 18); }
+  if (o.bag) box(.42, .5, .2, o.bag, 0, .85, -.33, g);
+  g.traverse(m => { if (m.isMesh && m !== face) m.castShadow = true; });
+  return { g, armL, armR, legL, legR, head };
+}
+// 走路／待機動作
+function qWalk(q, t, sp = 9) { const a = Math.sin(t * sp) * .55; q.legL.rotation.x = a; q.legR.rotation.x = -a; q.armL.rotation.x = -a * .8; q.armR.rotation.x = a * .8; q.g.position.y = Math.abs(Math.sin(t * sp)) * .06; }
+function qIdle(q, t) { q.armR.rotation.z = 2.4 + Math.sin(t * 6) * .35; q.head.rotation.z = Math.sin(t * 1.5) * .08; q.g.position.y = Math.abs(Math.sin(t * 2)) * .04; }
 /* ---------- NPC ---------- */
 // 路上的人：先用方塊人佔位（person 群組），之後換成 Kenney 3D 人物模型（model：哪個模型、衣服顏色、戴什麼）
 const NPCS = [
-  { id: 'chicken', name: '軍火販子', model: { name: 'male-c', shirt: '#8d6e63', hat: 'straw', at: [0, 0, -.6] }, build(g, pg) {
+  { id: 'chicken', name: '軍火販子', q: { shirt: '#5b6b2f', pants: '#3e2723', hair: '#3e2723', cap: '#33691e', shades: true, grin: true }, model: { name: 'male-c', shirt: '#8d6e63', hat: 'straw', at: [0, 0, -.6] }, build(g, pg) {
     box(1.3, .55, .85, '#a1887f', 0, .5, 0, g); box(1.4, .08, .95, '#6d4c41', 0, .8, 0, g);
     [-.45, .45].forEach(x => { const w = cyl(.24, .24, .1, '#333333', x, .24, .45, g, 12); w.rotation.x = Math.PI / 2; });
     // 攤車上擺炸彈、火箭
@@ -1665,7 +1739,7 @@ const NPCS = [
     box(.5, .35, .15, '#212121', -.5, .55, .1, g);   // 公事包
     cyl(.38, .5, 1.1, '#263238', 0, .7, 0, pg); ball(.4, '#ffd9b5', 0, 1.55, 0, pg); box(.6, .1, .05, '#111111', 0, 1.6, .38, pg);
   } },
-  { id: 'boss', name: '樁腳伯', model: { name: 'male-f', shirt: '#c62828', hat: 'straw', at: [0, 0, 0] }, build(g, pg) {
+  { id: 'boss', name: '樁腳伯', q: { shirt: '#c62828', pants: '#37474f', hair: '#bdbdbd', glasses: true, straw: true }, model: { name: 'male-f', shirt: '#c62828', hat: 'straw', at: [0, 0, 0] }, build(g, pg) {
     const m = cyl(.08, .2, .45, '#ffd23f', .5, 1.2, .3, g, 10); m.rotation.z = -1.2;
     cyl(.03, .03, 1.6, '#8d6e63', -.55, .8, .2, g, 6); const fl = box(.6, .4, .03, '#ff4f79', -.25, 1.4, .2, g);
     const ft = textPlane('凍蒜', .5, .3, '#ffffff', null, 120); ft.position.set(-.25, 1.4, .22); g.add(ft);
@@ -1673,23 +1747,56 @@ const NPCS = [
     cyl(.4, .55, 1.1, '#c62828', 0, .7, 0, pg); ball(.42, '#ffd9b5', 0, 1.58, 0, pg); cone(.55, .35, '#f5f5dc', 0, 1.95, 0, pg, 16);
   } },
 ];
-// 把路人的方塊人換成 3D 模型，播待機動畫
+// 把路人的方塊人換成 Q 版小人，待機時揮手
 async function upgradeNPC(n) {
-  const spec = n.def.model; if (!gltf || !spec) return;
-  let gl; try { gl = await loadGLB(`models/character-${spec.name}.glb`); } catch (e) { return; }
-  if (!n.mesh.parent) return;
-  const m = gl.scene, S = 2.5; m.scale.setScalar(S); m.position.set(...spec.at);
-  const shirt = new THREE.Color('#ffffff').lerp(new THREE.Color(spec.shirt), .7);
-  m.traverse(o => { if (o.isMesh) { o.castShadow = true; if (o.name === 'body-mesh') { o.material = o.material.clone(); o.material.color = shirt; } } });
-  const head = m.getObjectByName('head');
-  if (head && spec.hat === 'straw') { const h = new THREE.Mesh(new THREE.ConeGeometry(.22, .13, 16), M('#e8d9a8')); h.position.set(0, .46, 0); head.add(h); const r = new THREE.Mesh(new THREE.CylinderGeometry(.25, .25, .015, 16), M('#d7c48e')); r.position.set(0, .4, 0); head.add(r); }
-  if (head && spec.glasses) loadGLB(`models/aid-${spec.glasses}.glb`).then(x => { x.scene.position.set(0, .1, .1); head.add(x.scene); }).catch(() => { });
-  n.person.visible = false; n.mesh.add(m);
-  n.mixer = new THREE.AnimationMixer(m);
-  const idle = gl.animations.find(a => a.name === 'idle') || gl.animations[0];
-  if (idle) n.mixer.clipAction(idle).play();
-  n.clips = {}; gl.animations.forEach(a => { n.clips[a.name] = a; });
+  const spec = n.def.q; if (!spec) return;
+  const q = qPerson(spec); q.g.position.set(...n.def.model.at); q.g.scale.setScalar(1.25);
+  n.person.visible = false; n.mesh.add(q.g); n.qp = q;
+  const off = n.pos * 1.7;
+  anim.push(t => { if (n.mesh.parent) qIdle(q, t + off); });
 }
+// 棋盤外圍散步的居民（純裝飾，不會擋路）：戴帽小男孩、推嬰兒車的媽媽、牽柴犬的妹妹、看報紙的上班族
+const STROLL = [
+  { o: { shirt: '#fff3c4', pants: '#1e5aa8', hair: '#6d4c41', cap: '#ffd23f', bag: '#3f7fd6', grin: true }, off: 0, sp: .26 },
+  { o: { shirt: '#f48fb1', pants: '#5d4037', hair: '#6d4c41', long: true }, off: 9, sp: .2, extra: 'stroller' },
+  { o: { shirt: '#4fc3f7', pants: '#4fc3f7', hair: '#5d4037', tail: true, grin: true }, off: 17, sp: .24, extra: 'dog' },
+  { o: { shirt: '#37474f', pants: '#263238', hair: '#212121', glasses: true }, off: 25, sp: .18, extra: 'paper' },
+];
+const strollers = STROLL.map(d => {
+  const q = qPerson(d.o), root = new THREE.Group(); root.add(q.g); root.scale.setScalar(.85); scene.add(root);
+  if (d.extra === 'stroller') {
+    const st = new THREE.Group(); st.position.set(0, 0, .95); root.add(st);
+    box(.6, .35, .7, '#f8a5c2', 0, .55, 0, st); const hood = new THREE.Mesh(new THREE.CylinderGeometry(.33, .33, .6, 12, 1, false, 0, Math.PI), M('#e57399')); hood.rotation.z = Math.PI / 2; hood.position.set(0, .72, -.2); st.add(hood);
+    ball(.15, '#ffd9b5', 0, .8, .1, st);
+    [[-.25, .25], [.25, .25], [-.25, -.25], [.25, -.25]].forEach(([x, z]) => { const w = cyl(.09, .09, .05, '#37474f', x, .1, z, st, 10); w.rotation.z = Math.PI / 2; });
+    cyl(.02, .02, .5, '#9e9e9e', 0, .9, -.4, st, 4).rotation.x = .6;
+    q.armL.rotation.x = q.armR.rotation.x = -1.2; q.noArms = true;
+  }
+  if (d.extra === 'dog') {
+    const dg = new THREE.Group(); dg.position.set(.8, 0, .2); root.add(dg);
+    const bd = ball(.22, '#e0913a', 0, .32, 0, dg); bd.scale.set(.9, .85, 1.4); ball(.17, '#e0913a', 0, .5, .3, dg); ball(.08, '#fff3e0', 0, .46, .45, dg);
+    [-.08, .08].forEach(x => cone(.05, .1, '#e0913a', x, .67, .28, dg, 4));
+    const tl = new THREE.Mesh(new THREE.TorusGeometry(.08, .03, 6, 12, 4.5), M('#f5d7a8')); tl.position.set(0, .5, -.3); dg.add(tl);
+    [[-.1, .2], [.1, .2], [-.1, -.2], [.1, -.2]].forEach(([x, z]) => cyl(.04, .04, .2, '#e0913a', x, .1, z, dg, 5));
+    q.dog = dg;
+  }
+  if (d.extra === 'paper') { box(.4, .5, .03, '#fafafa', 0, -.45, .1, q.armR); q.armR.rotation.x = -1; q.noArmR = true; }
+  root.traverse(m => { if (m.isMesh && !m.material.transparent) m.castShadow = true; });
+  return { d, q, root };
+});
+anim.push(t => {
+  if (!BOARD || !BOARD.pos || !BOARD.pos.length) return;
+  strollers.forEach(({ d, q, root }) => {
+    const u = ((t * d.sp + d.off) % N + N) % N, i = Math.floor(u), j = (i + 1) % N, f = u - i;
+    const P = k => { const [x, z] = tilePos(k), [ix, iz] = tileIn(k); return [x - ix * 2.3, z - iz * 2.3]; };
+    const [ax, az] = P(i), [bx, bz] = P(j), x = ax + (bx - ax) * f, z = az + (bz - az) * f;
+    root.position.set(x, .2, z); root.rotation.y = Math.atan2(bx - ax, bz - az);
+    qWalk(q, t + d.off, d.extra === 'stroller' ? 7 : 9);
+    if (q.noArms) q.armL.rotation.x = q.armR.rotation.x = -1.2;
+    if (q.noArmR) q.armR.rotation.x = -1;
+    if (q.dog) q.dog.position.y = Math.abs(Math.sin(t * 12)) * .08;
+  });
+});
 function npcSpot(i) { const [x, z] = tilePos(i), [ix, iz] = tileIn(i); return [x + ix * 1.1, z + iz * 1.1]; }
 
 /* ---------- 骰子 ---------- */
@@ -1825,6 +1932,16 @@ const FACADE = {
       x.fillStyle = '#78909c'; x.fillRect(wx - 6, wy + 54, 100, 6);
     });
   }),
+  qapt: () => facade('qapt', 256, (x, w, h) => {     // Q 版公寓：奶油色牆、一樓淺藍、二樓窗戶＋花台
+    x.fillStyle = '#fde7c3'; x.fillRect(0, 0, w, h);
+    x.fillStyle = '#a9d8f2'; x.fillRect(0, h * .7, w, h * .3);
+    x.fillStyle = '#f2c98e'; x.fillRect(0, h * .69, w, 5); x.fillRect(0, h * .4, w, 5);
+    [[14, 120], [52, 120], [90, 120], [14, 196], [92, 196]].forEach(([wx, wy]) => {
+      x.fillStyle = '#ffffff'; x.fillRect(wx - 3, wy - 3, 30, 34); x.fillStyle = '#7fc8ee'; x.fillRect(wx, wy, 24, 28);
+      x.fillStyle = '#ffffff'; x.fillRect(wx + 11, wy, 2, 28);
+      if (wy < 180) { x.fillStyle = '#a1662f'; x.fillRect(wx - 4, wy + 30, 32, 7); x.fillStyle = '#5cb85c'; [4, 12, 20].forEach(d => { x.beginPath(); x.arc(wx + d, wy + 29, 5, 0, 7); x.fill(); }); }
+    });
+  }),
   apt: () => facade('apt', 256, (x, w, h) => {       // 公寓：一排排窗戶＋陽台＋冷氣
     x.fillStyle = '#ffe0b2'; x.fillRect(0, 0, w, h);
     for (let r = 0; r < 5; r++) for (let c = 0; c < 3; c++) {
@@ -1841,6 +1958,15 @@ const FACADE = {
     for (let k = 0; k <= 8; k++) { x.beginPath(); x.moveTo(k * 16, 0); x.lineTo(k * 16, h); x.stroke(); }
     for (let k = 0; k <= 16; k++) { x.beginPath(); x.moveTo(0, k * 16); x.lineTo(w, k * 16); x.stroke(); }
     x.fillStyle = 'rgba(255,255,255,.25)'; x.beginPath(); x.moveTo(0, 0); x.lineTo(50, 0); x.lineTo(0, 90); x.fill();
+  }),
+  qtower: () => facade('qtower', 512, (x, w, h) => {   // Q 版摩天樓：亮藍玻璃格子，窗裡有小圖案和閃光
+    const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#9fd8fb'); gr.addColorStop(1, '#3d8fe0'); x.fillStyle = gr; x.fillRect(0, 0, w, h);
+    x.strokeStyle = 'rgba(255,255,255,.6)'; x.lineWidth = 2;
+    for (let k = 0; k <= 16; k++) { x.beginPath(); x.moveTo(k * 8, 0); x.lineTo(k * 8, h); x.stroke(); }
+    for (let k = 0; k <= 32; k++) { x.beginPath(); x.moveTo(0, k * 16); x.lineTo(w, k * 16); x.stroke(); }
+    const cols = ['#ffe082', '#ffffff', '#ffcc80', '#b2ebf2'];
+    for (let k = 0; k < 40; k++) { const cx = rnd(16) * 8, cy = 140 + rnd(22) * 16; if (cx > 44 && cx < 84 && cy < 220) continue; x.fillStyle = cols[k % 4]; x.fillRect(cx + 1, cy + 3, 6, 10); }
+    x.fillStyle = 'rgba(255,255,255,.3)'; x.fillRect(10, 0, 10, h);
   }),
   tower: () => facade('tower', 256, (x, w, h) => {   // 摩天樓：深色玻璃＋夜景燈
     x.fillStyle = '#1a2340'; x.fillRect(0, 0, w, h);
@@ -1873,12 +1999,30 @@ const BUILD = [
     cyl(.24, .24, .42, '#eceff1', .5, 3.15, -.25, g, 12); cyl(.25, .25, .06, '#1e88e5', .5, 3.39, -.25, g, 12);
     box(.18, 1.2, .5, c, -.42, 1.9, .3, g);
   },
-  (g, c) => {                       // 3 公寓：五層樓、頂樓色帶、兩個水塔
-    const f = FACADE.apt(); faced(1.9, 3.7, 1.5, f, f, '#d7ccc8', .3, 1.85, 0, g);
-    box(1.96, .26, 1.56, c, .3, 3.62, 0, g);
-    cyl(.22, .22, .4, '#eceff1', -.2, 3.95, -.3, g, 12); cyl(.22, .22, .4, '#eceff1', .5, 3.95, -.3, g, 12);
-    box(.5, .45, .5, '#bcaaa4', .7, 3.98, .3, g);
-    box(.7, .5, .06, c, .3, .3, .79, g);
+  (g, c, i) => {                    // 3 公寓：Q 版公寓，會眨眼的笑臉、陽台曬衣服、屋頂有貓
+    const f = FACADE.qapt(); faced(1.9, 3.3, 1.5, f, f, '#f2c98e', .3, 1.65, 0, g);
+    gable(2.3, 1.05, 1.8, '#e0583a', .3, 3.3, 0, g);
+    box(2.3, .08, 1.8, '#c4472b', .3, 3.32, 0, g);
+    const rw = cyl(.16, .16, .04, '#ffffff', .3, 3.75, .91, g, 16); rw.rotation.x = Math.PI / 2;
+    const eyes = facePlane('apt', {}, 1.5, .94, .3, 2.5, .76, g);
+    // 一樓：門＋主人顏色的雨遮＋門牌
+    box(.55, .72, .05, '#cfeaf8', .3, .36, .77, g);
+    const aw = box(.8, .07, .32, c, .3, .8, .88, g); aw.rotation.x = .3;
+    const sign = textPlane('公寓', .5, .24, '#5d4037', '#fff3e0', 120); sign.position.set(.92, .55, .78); g.add(sign);
+    // 右邊兩層陽台＋曬衣服
+    [1.45, 2.45].forEach(y => {
+      box(.42, .06, 1.2, '#eeeeee', 1.46, y, 0, g); box(.04, .32, 1.2, '#ffffff', 1.66, y + .16, 0, g);
+      cyl(.012, .012, 1.1, '#9e9e9e', 1.5, y + .62, 0, g, 4).rotation.x = Math.PI / 2;
+      ['#ffd23f', '#ff8fb1', '#64b5f6'].forEach((col, k) => box(.03, .26, .2, col, 1.5, y + .48, -.35 + k * .35, g));
+      ball(.09, '#66bb6a', 1.55, y + .12, .45, g);
+    });
+    // 屋頂的天線和貓
+    cyl(.02, .02, .8, '#6d6d6d', .3, 4.6, -.55, g, 5); [4.75, 4.9].forEach((y, k) => box(.5 - k * .15, .03, .03, '#6d6d6d', .3, y, -.55, g));
+    const cat = new THREE.Group(); cat.position.set(.3, 4.35, .35); g.add(cat);
+    const cb = ball(.17, '#f4a340', 0, 0, 0, cat); cb.scale.set(1.3, .8, .9); ball(.13, '#f4a340', .2, .1, 0, cat);
+    [-.06, .06].forEach(dz => cone(.05, .09, '#f4a340', .22, .23, dz, cat, 4));
+    const tail = cyl(.03, .03, .3, '#f4a340', -.25, .1, 0, cat, 5); tail.rotation.z = .9;
+    buildingAnims[i].push(t => { eyes.scale.y = (t * .7 + i) % 4 < .12 ? .15 : 1; tail.rotation.z = .9 + Math.sin(t * 4 + i) * .4; });
   },
   (g, c, i) => {                    // 4 大樓：玻璃帷幕、雨庇、頂樓停機坪
     const f = FACADE.glass(); faced(1.75, 5.4, 1.75, f, f, '#455a64', .3, 2.7, 0, g);
@@ -1888,18 +2032,38 @@ const BUILD = [
     const h = textPlane('H', .8, .8, '#ffd23f', null, 300); h.rotation.x = -Math.PI / 2; h.position.set(.3, 5.51, 0); g.add(h);
     const l = ball(.08, glow('#ff1744'), .9, 5.6, .55, g); buildingAnims[i].push(t => { l.visible = Math.sin(t * 5) > 0; });
   },
-  (g, c, i) => {                    // 5 摩天樓（地標）：三段塔身、發光邊條、金色塔頂、閃燈、旗子
-    const f = FACADE.tower();
-    faced(2.1, 3.2, 2.1, f, f, '#263238', .3, 1.6, 0, g);
-    faced(1.6, 3.2, 1.6, f, f, '#263238', .3, 4.8, 0, g);
-    faced(1.1, 2.4, 1.1, f, f, '#263238', .3, 7.6, 0, g);
+  (g, c, i) => {                    // 5 摩天樓（地標）：Q 版玻璃圓塔，大眼睛笑臉、揮手、戴主人顏色的帽子、直升機繞圈
+    const H = 8, rt = .82, rb = 1.2;
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, H, 28, 1, false, Math.PI), FACADE.qtower());
+    body.position.set(.3, H / 2, 0); body.castShadow = true; g.add(body);
+    // 臉：貼在塔身正面（塔身是斜的，臉跟著往後倒一點）
+    const ry = 6.1, rr = rb + (rt - rb) * ry / H;
+    const fp = facePlane('tower', { sx: .9 }, 2.1, 1.3, .3, ry, rr + .03, g); fp.rotation.x = -Math.atan((rb - rt) / H);
+    // 兩隻手在揮
+    const arms = [-1, 1].map(sd => {
+      const a = new THREE.Group(); a.position.set(.3 + sd * (rr - .05), 5.2, 0); g.add(a);
+      cyl(.16, .16, 1.5, '#7cc4f2', 0, .75, 0, a, 8); ball(.28, '#ffffff', 0, 1.55, 0, a);
+      return [a, sd];
+    });
+    box(1.3, .1, .45, '#cfe8f7', .3, .9, rb + .1, g); box(.9, .8, .05, '#bfe3f5', .3, .4, rb + .02, g);
     const lm = glow(c, .9);
-    [[1.05, 1.05, 3.2, 1.6], [.8, .8, 3.2, 4.8]].forEach(([hx, hz, hh, hy]) => [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([sx, sz]) => box(.08, hh, .08, lm, .3 + sx * hx, hy, sz * hz, g)));
-    cone(.75, 1.1, '#ffca28', .3, 9.35, 0, g, 8);
-    cyl(.04, .07, 1.4, '#eceff1', .3, 10.6, 0, g, 6);
-    const b = ball(.14, glow('#ff1744'), .3, 11.35, 0, g);
+    // 主人顏色的棒球帽＋帽沿，頂上天線
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(rt + .12, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2), M(c)); cap.position.set(.3, H, 0); g.add(cap);
+    box(1.1, .08, .7, c, .3, H + .1, rt + .2, g);
+    const badge = mesh(new THREE.CircleGeometry(.22, 16), lm, .3, H + .5, rt - .02, g); badge.rotation.x = -.5;
+    cyl(.04, .07, 1.4, '#eceff1', .3, H + 1.5, 0, g, 6);
+    const b = ball(.14, glow('#ff1744'), .3, H + 2.25, 0, g);
+    // 直升機繞著塔飛
+    const heli = new THREE.Group(); g.add(heli);
+    const hb = ball(.32, '#5c8fd6', 0, 0, 0, heli); hb.scale.set(1.4, 1, 1);
+    box(.7, .08, .08, '#5c8fd6', -.55, .05, 0, heli); const rot = box(1.3, .03, .1, '#37474f', 0, .38, 0, heli);
+    buildingAnims[i].push(t => {
+      fp.scale.y = (t * .6 + i) % 5 < .12 ? .15 : 1;
+      arms.forEach(([a, sd]) => { a.rotation.z = -sd * (.5 + Math.abs(Math.sin(t * 3 + sd)) * .7); });
+      const ang = t * .6 + i; heli.position.set(.3 + Math.cos(ang) * 2.8, H + .8 + Math.sin(t * 1.3) * .3, Math.sin(ang) * 2.8); heli.rotation.y = -ang; rot.rotation.y = t * 25;
+    });
     const ring = mesh(new THREE.TorusGeometry(1.5, .06, 6, 32), glow('#ffd23f', .7), .3, .12, 0, g); ring.rotation.x = Math.PI / 2;
-    const flag = box(.7, .42, .03, c, .67, 10.9, 0, g);
+    const flag = box(.7, .42, .03, c, .67, H + 1.9, 0, g);
     buildingAnims[i].push(t => { b.visible = Math.sin(t * 4) > 0; lm.emissiveIntensity = .6 + Math.sin(t * 3) * .35; flag.rotation.y = Math.sin(t * 4) * .3; ring.scale.setScalar(1 + Math.sin(t * 2) * .05); });
   },
 ];
@@ -2132,7 +2296,7 @@ const missionBonus = p => p.mDone ? (p.mExposed ? MISSION_BONUS / 2 : MISSION_BO
 const upCost = i => Math.round(TILES[i].price * .5 / 10) * 10;
 const tileValue = i => TILES[i].price + (G.tiles[i].kind ? 3 : G.tiles[i].level) * upCost(i);
 const assets = p => G.tiles.reduce((s, st, i) => st.owner === p.seat ? s + tileValue(i) : s, 0);
-const score = p => p.cash + assets(p) + p.poll * POLL_VOTES + missionBonus(p) + (p.stats ? p.stats.kos * 5000 : 0);
+const score = p => p.cash + assets(p) + p.poll * POLL_VOTES + missionBonus(p) + (p.stats ? p.stats.kos * 5000 : 0) + (p.nightBonus || 0);
 function addPoll(p, d) { p.poll = clamp(p.poll + d); }
 function giveItem(p, id) { if (p.items.length >= 6) { p.cash += 500; return false; } p.items.push(id); return true; }
 function takeItem(p, id) { const k = p.items.indexOf(id); if (k >= 0) p.items.splice(k, 1); }
@@ -2399,7 +2563,7 @@ $('#btn-start').onclick = () => {
   if (roster.length < 2) return;
   renderSetup(); sendLobby();
   beep(660, .05);
-  const cfg = { players: roster.map(r => ({ ci: r.ci, ctl: r.mode === 'ai' ? 'ai' : r.mode === 'remote' ? 'r:' + r.cid : 'local', nick: r.nick || '' })), rounds: maxRounds, map: MAP, t0: Date.now() };
+  const cfg = { ver: GAME_VER, players: roster.map(r => ({ ci: r.ci, id: CHARS[r.ci].id, ctl: r.mode === 'ai' ? 'ai' : r.mode === 'remote' ? 'r:' + r.cid : 'local', nick: r.nick || '' })), rounds: maxRounds, map: MAP, t0: Date.now() };
   if (NET.mode === 'host') { NET.cfg = cfg; NET.started = true; NET.named.emit('start', cfg).catch(() => { }); }
   startGame(cfg);
 };
@@ -2409,7 +2573,7 @@ function startGame(cfg) {
   const players = cfg.players.map((x, seat) => ({
     seat, char: CHARS[x.ci], ctl: x.ctl, nick: String(x.nick || '').slice(0, 10), isAI: x.ctl === 'ai', humanNo: x.ctl === 'ai' ? 0 : ++h,
     cash: START_CASH, poll: 50, pos: 0, items: [], skip: 0, where: null, turtle: 0, out: false, skillUsed: false, animQ: [],
-    ally: -1, revenge: -1, mission: '', mDone: false, mPublic: false, mExposed: false, stats: { kos: 0, stabs: 0, sends: 0, combo3: 0, hits: 0 }, power: '', powerAt: -9,
+    ally: -1, revenge: -1, mission: '', mDone: false, mPublic: false, mExposed: false, stats: { kos: 0, stabs: 0, sends: 0, combo3: 0, hits: 0, boom: 0, quiz: 0, jail: 0 }, power: '', powerAt: -9,
   }));
   if (NET.mode !== 'client') {
     const ms = shuffle(MISSION_KEYS); players.forEach((p, k) => { p.mission = ms[k % ms.length]; });
@@ -2487,7 +2651,7 @@ async function gameLoop() {
         G.mods = G.mods.filter(m => m.until >= G.round);
         updateHUD();
         if (G.round === G.maxRounds - 2) { SFX.fan(); await caption('🌙 選前之夜！', '最後三回合：過路費 1.5 倍、軍火夜市半價，該背刺的快背刺！', 2600); }
-        else await caption(G.round === G.maxRounds ? '最後一回合！' : `第 ${G.round} 回合`, G.round === G.maxRounds ? '最後衝刺，火力全開！' : '路人角色移動中…', 1000);
+        else await caption(G.round === G.maxRounds ? '最後一回合！' : `第 ${G.round} 回合`, G.round === G.maxRounds ? '這回合結束就開票，火力全開！' : `距離開票還有 ${G.maxRounds - G.round + 1} 回合`, 1000);
         await moveNPCs();
         if (G.round % 2 === 0) await allGame();
         else if (Math.random() < .45) await suddenEvent();
@@ -3188,7 +3352,7 @@ async function useItem(p, id, arg, free) {
       }
       lookBack();
       if (owners.size) log(`🎆 <b>${p.char.name}</b> 的飛彈雨炸了 ${[...owners].map(o => o.char.name).join('、')} 家`);
-      for (const v of victims) { say(v, 'hit'); await caption('🚑 被飛彈炸到！', `${v.char.name} 送醫院 1 回合`, 1100); await sendTo(v, HOSP, 1, 'hosp'); p.stats.sends++; }
+      for (const v of victims) { say(v, 'hit'); await caption('🚑 被飛彈炸到！', `${v.char.name} 送醫院 1 回合`, 1100); await sendTo(v, HOSP, 1, 'hosp'); p.stats.sends++; p.stats.boom++; }
       for (const o of new Set([...owners, ...victims])) { say(o, 'hit'); await registerHit(p, o); }
       break;
     }
@@ -3292,7 +3456,7 @@ async function fireRocket(p, i) {
   await caption(head, [owner ? `${TILES[i].name} ${note}` : '', victims.length ? `${victims.map(v => v.char.name).join('、')} 被炸進醫院` : ''].filter(Boolean).join('，') || '炸了個空', 1600);
   if (owner && owner !== p) log(`🚀 <b>${p.char.name}</b> 用火箭炸了 <b>${owner.char.name}</b> 家的 ${TILES[i].name}`);
   if (victims.length) log(`🚑 ${victims.map(v => v.char.name).join('、')} 被 <b>${p.char.name}</b> 的火箭炸進醫院`);
-  for (const v of victims) { say(v, 'hit'); await sendTo(v, HOSP, 2, 'hosp'); if (v !== p) p.stats.sends++; }
+  for (const v of victims) { say(v, 'hit'); await sendTo(v, HOSP, 2, 'hosp'); if (v !== p) { p.stats.sends++; p.stats.boom++; } }
   lookBack();
   const hurt = new Set([owner, ...victims].filter(q => q && q !== p));
   for (const q of hurt) await registerHit(p, q);
@@ -3393,11 +3557,30 @@ async function buyOut(p) {
   await caption(hosp ? '🏥 自費 VIP 提早出院！' : '☕ 疏通成功！', `${p.char.name} 花 ${fmt(cost)} 馬上出來`, 1400);
   return true;
 }
+// 三進三出：第 3 次被約談直接收押出局；名下的地被查封，房子拆掉，變成半價法拍屋
+async function detain(p) {
+  SFX.bad(); cam.shake = .5; say(p, 'jail', pick(['我是冤枉的！', '我要找律師！', '我會還自己清白！']));
+  const lands = G.tiles.map((s, i) => i).filter(i => G.tiles[i].owner === p.seat);
+  lands.forEach(i => { Object.assign(G.tiles[i], { owner: -1, level: 0, kind: null, auction: true }); if (G.fest && G.fest.i === i) G.fest = null; rebuild(i); drawTile(i); });
+  p.out = true; p.where = null; p.skip = 0;
+  if (G.bomb && G.bomb.holder === p.seat) { G.bomb = null; bombObj.visible = false; }
+  if (p.ally >= 0 && G.players[p.ally]) G.players[p.ally].ally = -1;
+  p.ally = -1;
+  await tween(700, k => { p.mesh.rotation.x = k * Math.PI / 2; p.mesh.position.y = -k * .3; });
+  log(`🔒 <b>${p.char.name}</b> 第 3 次被約談，收押出局${lands.length ? `；名下 ${lands.length} 塊地變成法拍屋` : ''}`);
+  await caption('🔒 三進三出，收押出局！', `${p.char.name} 第 3 次被約談，直接收押禁見${lands.length ? `；名下 ${lands.length} 塊地被查封，變成半價法拍屋` : ''}`, 2600);
+  scene.remove(p.mesh); updateHUD();
+}
 async function sendTo(p, corner, turns, where) {
   if (p.items.includes('bail')) {
     takeItem(p, 'bail'); SFX.coin(); say(p, 'win', pick(['律師在這！', '我有保釋卡！', '下次請早～']));
     await caption('🚑 保釋卡！', `${p.char.name} 當場被保出來，不用${where === 'hosp' ? '住院' : '約談'}`, 1400);
     updateHUD(); return;
+  }
+  if (where === 'jail') {
+    p.stats.jail = (p.stats.jail || 0) + 1;
+    if (p.stats.jail >= 3) { await detain(p); return; }
+    if (p.stats.jail === 2) { SFX.bad(); await caption('⚠️ 第 2 次被約談！', `${p.char.name} 再被約談一次，就會被收押出局`, 1600); }
   }
   if (p.char.id === 'lai' && where === 'hosp') turns = Math.max(0, turns - 1);
   if (p.char.id === 'gz' && where === 'hosp') turns = Math.ceil(turns / 2);
@@ -3500,7 +3683,7 @@ async function bombBoom(p) {
   say(p, 'hit'); await caption('⏰ 炸彈爆炸！', `${p.char.name} 被炸飛，損失 ${fmt(lose)}${by && by !== p ? `（是 ${by.char.name} 放的炸彈）` : ''}`, 1800);
   if (by && by !== p) log(`⏰ <b>${by.char.name}</b> 的定時炸彈炸到 <b>${p.char.name}</b>，送醫院 3 回合`);
   p.moving = false; await sendTo(p, HOSP, 3, 'hosp');
-  if (by && by !== p) by.stats.sends++;
+  if (by && by !== p) { by.stats.sends++; by.stats.boom++; }
 }
 async function moveSteps(p, n) {
   p.moving = true;
@@ -3530,7 +3713,7 @@ async function moveSteps(p, n) {
       const planter = G.players[trap.o];
       removeTrap(p.pos); await explosion(p.pos); say(p, 'hit');
       await caption('💥 踩到地雷！', planter && planter !== p ? `是 ${planter.char.name} 埋的！${p.char.name} 被炸進醫院` : `${p.char.name} 踩到自己埋的地雷…`, 1500);
-      if (planter && planter !== p) { say(planter, 'win', pick(['嘿嘿，正中下懷。', '我早就算好了。', '歡迎光臨～'])); planter.stats.sends++; planter.stats.hits++; }
+      if (planter && planter !== p) { say(planter, 'win', pick(['嘿嘿，正中下懷。', '我早就算好了。', '歡迎光臨～'])); planter.stats.sends++; planter.stats.hits++; planter.stats.boom++; }
       p.moving = false; await sendTo(p, HOSP, 2, 'hosp'); return;
     }
     if (tk === 'block') {
@@ -3614,18 +3797,19 @@ async function resolveTile(p) {
 // 買地：像 LINE 大富翁一樣，買下來當場就能一次蓋到公寓
 async function offerBuy(p, i) {
   const t = TILES[i];
-  const price = p.char.id === 'su' ? Math.round(t.price * .9 / 10) * 10 : t.price;
+  const auc = G.tiles[i].auction ? .5 : 1;
+  const price = Math.round((p.char.id === 'su' ? t.price * .9 : t.price) * auc / 10) * 10;
   if (p.cash < price) { if (!p.isAI) await info(p, t.name, `要價 ${fmt(price)}，錢不夠買。`); return; }
   const cost = upCost(i), total = L => price + L * cost;
   let L;
   if (p.isAI) { await wait(400); L = -1; for (let k = 3; k >= 0; k--) if (p.cash - total(k) >= 3000 || (k === 0 && p.cash - total(0) >= 800)) { L = k; break; } }
   else {
     const btns = [0, 1, 2, 3].map(k => ({ label: `${k ? '買地＋' + LEVEL_NAME[k] : '只買地'}・過路 ${fmt(rentPreview(i, k, p.seat))}（共 ${fmt(total(k))}）`, value: k, cls: k === 3 ? 'hot' : 'primary', disabled: p.cash < total(k) }));
-    L = await ask(`<h2>買下 ${t.name}？</h2><dl class="stat"><dt>地區</dt><dd>${ZONES[t.zone].name}</dd><dt>地價</dt><dd>${fmt(price)}${price < t.price ? '（9 折）' : ''}，每蓋一層 ${fmt(cost)}</dd><dt>你的現金</dt><dd>${fmt(p.cash)}</dd></dl>
+    L = await ask(`<h2>買下 ${t.name}？</h2><dl class="stat"><dt>地區</dt><dd>${ZONES[t.zone].name}</dd><dt>地價</dt><dd>${fmt(price)}${auc < 1 ? '（法拍屋半價）' : price < t.price ? '（9 折）' : ''}，每蓋一層 ${fmt(cost)}</dd><dt>你的現金</dt><dd>${fmt(p.cash)}</dd></dl>
       <p style="font-size:13px">蓋越高，別人踩到付越多；蓋到摩天樓就變<b>地標</b>，別人收購不走。</p>`, [...btns, { label: '不買', value: -1 }], p);
   }
   if (!(L >= 0)) return;
-  p.cash -= total(L); Object.assign(G.tiles[i], { owner: p.seat, level: L, kind: null }); SFX.coin();
+  p.cash -= total(L); Object.assign(G.tiles[i], { owner: p.seat, level: L, kind: null, auction: false }); SFX.coin();
   lookAtTile(i); rebuild(i); drawTile(i); say(p, L ? 'upgrade' : 'buy'); updateHUD();
   const [x, z] = tilePos(i); confetti(new THREE.Vector3(x, 1, z));
   await caption(`買下 ${t.name}${L ? '，蓋好' + LEVEL_NAME[L] : ''}！`, `花了 ${fmt(total(L))}，過路費 ${fmt(rentOf(i))}`, 1300);
@@ -4050,7 +4234,7 @@ async function quizTile(p) {
     modal.hidden = true;
   }
   const wrong = 3 - right, dp = right * 3 - wrong * 2;
-  p.cash += right * 800; addPoll(p, dp);
+  p.cash += right * 800; addPoll(p, dp); p.stats.quiz += right;
   let extra = '';
   if (right === 3) { const it = pick(ITEM_KEYS); giveItem(p, it); extra = `全對！加送 ${ITEMS[it].icon}${ITEMS[it].name}。`; SFX.fan(); }
   updateHUD();
@@ -4071,7 +4255,7 @@ async function mathTile(p) {
     modal.hidden = true;
   }
   const wrong = 5 - right;
-  p.cash += right * 500;
+  p.cash += right * 500; p.stats.quiz += right;
   let extra = '';
   if (right === 5) { addPoll(p, 8); const it = pick(ITEM_KEYS); giveItem(p, it); extra = `全對！民調 +8，加送 ${ITEMS[it].icon}${ITEMS[it].name}。`; SFX.fan(); }
   updateHUD();
@@ -4457,7 +4641,24 @@ async function newsTile(p) {
   else await ask(`<h2>📺 ${n.t}</h2><p>${d}</p>`, [{ label: '知道了', cls: 'primary' }], p);
 }
 
+const FLEE_CASH = 50000;   // 落跑門檻
+async function fleeAbroad(p) {
+  say(p, 'win', pick(['先走一步，大家保重！', '我去國外考察一下～', '機票早就買好了！']));
+  SFX.whoosh(); cam.follow = p;
+  const y0 = p.mesh.position.y;
+  await tween(1400, k => { p.mesh.position.y = y0 + k * 30; p.mesh.rotation.y += .25; });
+  G.instant = { seat: p.seat, why: `帶著 ${fmt(p.cash)} 搭機落跑，說要出國考察`, fled: 1 };
+  log(`✈️ <b>${p.char.name}</b> 帶著 ${fmt(p.cash)} 落跑了！`);
+  await caption('✈️ 落跑成功！', `${p.char.name} 帶著 ${fmt(p.cash)} 出國考察，再也沒有回來…`, 2600);
+}
 async function flyTile(p) {
+  // 落跑結局：現金超過門檻（第 3 回合起），可以直接搭機落跑，特殊勝利結束這局
+  if (p.cash >= FLEE_CASH && G.round >= 3 && !G.instant) {
+    const go = p.isAI ? Math.random() < .5
+      : await ask(`<h2>✈️ 落跑的機會來了</h2><p>你手上有 <b>${fmt(p.cash)}</b>，已經超過 ${fmt(FLEE_CASH)}。要不要直接<b>搭機落跑</b>，說是出國考察，然後再也不回來？</p><p style="font-size:13px;color:var(--muted)">選了就以「落跑成功」特殊勝利，直接結束這一局！</p>`,
+        [{ label: '✈️ 帶錢落跑！', value: true, cls: 'hot' }, { label: '留下來繼續選', value: false }], p);
+    if (go) return fleeAbroad(p);
+  }
   // 環遊世界：花 500 元飛到任何一格（機場本身除外）
   if (p.cash < 500) return;
   const valid = TILES.map((t, k) => k).filter(k => k !== 16);
@@ -4504,14 +4705,121 @@ async function shopTile(p) {
   if (bought.size) say(p, 'item', '火力補滿！');
 }
 
+/* ---------- 開票之夜：電視台開票直播，中間會有 1～2 個突發事件 ---------- */
+const NIGHT_UP = [
+  (n, d) => `🗳️ 廢票太多，重新驗票！${n} 多驗出一整箱，+${d} 票`,
+  (n, d) => `📱 ${n} 的催票影片半夜爆紅，+${d} 票`,
+  (n, d) => `🚌 ${n} 的支持者包遊覽車返鄉投票，+${d} 票`,
+  (n, d) => `🐔 ${n} 的雞排攤請全場吃，選民好感動，+${d} 票`,
+  (n, d) => `👵 菜市場阿嬤集體改投 ${n}：「這個少年仔乖」，+${d} 票`,
+];
+const NIGHT_DOWN = [
+  (n, d) => `⚡ ${n} 的大票倉突然停電，摸黑重新計票，-${d} 票`,
+  (n, d) => `👻 選務人員抓到一箱幽靈人口的票，${n} 那箱作廢，-${d} 票`,
+  (n, d) => `🌧️ 突然下大雨，${n} 的支持者懶得出門，-${d} 票`,
+  (n, d) => `🎤 ${n} 開票開一半就發表勝選感言，選民反感，-${d} 票`,
+];
+function planNight() {
+  const ps = alive(), base = {}, exp = {}, tw = [];
+  ps.forEach(p => { base[p.seat] = Math.max(0, Math.round(score(p))); exp[p.seat] = +(.6 + Math.random()).toFixed(2); });
+  const sorted = [...ps].sort((a, b) => base[b.seat] - base[a.seat]), top = base[sorted[0].seat] || 10000;
+  const n = Math.random() < .5 ? 1 : 2;
+  for (let k = 0; k < n; k++) {
+    const up = Math.random() < .6;   // 六成是落後的人加票，四成是領先的人被扣票
+    const who = up ? pick(sorted.slice(1)) : sorted[0];
+    const d = Math.round(top * (up ? .06 + Math.random() * .1 : -(.05 + Math.random() * .08)) / 10) * 10;
+    tw.push({ at: k ? .74 : .42, s: who.seat, d, txt: pick(up ? NIGHT_UP : NIGHT_DOWN)(who.char.name, Math.abs(d).toLocaleString('zh-TW')) });
+  }
+  return { base, tw, exp };
+}
+function applyNight(E) { if (G.nightApplied) return; G.nightApplied = true; E.tw.forEach(x => { const p = G.players[x.s]; if (p) p.nightBonus = (p.nightBonus || 0) + x.d; }); }
+const nap = ms => new Promise(r => BGT.timeout(r, ms));
+async function electionNight(E) {
+  G.nightRun = true;
+  const ps = Object.keys(E.base).map(k => G.players[+k]).filter(Boolean);
+  const names = ps.map(p => p.char.name).join('、');
+  const tick = ['📺 凍蒜新聞台開票直播', `${names} 激烈拉鋸中`, '中選會：請大家耐心等候', '某競選總部的雞排已經吃完了', '投票率創新高，鄉民說是因為放假', '開票所阿伯：我在這裡唱票三十年了', '記者現場連線：現場非常熱鬧'].join('　｜　');
+  const el = document.createElement('div'); el.id = 'night';
+  el.innerHTML = `<div class="nhead"><span class="live">● 直播中</span>📺 凍蒜新聞台・開票之夜<button class="nskip">跳過 ▶</button></div>
+    <div class="nbody"><div class="prog">開票率 <b class="pct">0</b>%</div><div class="nflash" hidden></div>
+      <div class="bars">${ps.map(p => `<div class="nbar" data-s="${p.seat}" style="--c:${p.char.color}">${faceURL[p.char.id] ? `<img src="${faceURL[p.char.id]}" alt="">` : `<div class="av" style="--c:${p.char.color}">${p.char.glyph}</div>`}<div class="track"><div class="fill"></div><span class="lab">${p.char.name}　<b>0</b> 票</span><span class="tag"></span></div></div>`).join('')}</div></div>
+    <div class="ticker"><span>${tick}　｜　${tick}　｜　</span></div>`;
+  document.body.appendChild(el);
+  let skip = false; el.querySelector('.nskip').onclick = () => { skip = true; };
+  const target = (sv, k) => (E.base[sv] || 0) + E.tw.filter(x => x.s === sv && k >= x.at).reduce((a, x) => a + x.d, 0);
+  const maxV = Math.max(1, ...ps.map(p => Math.max(target(p.seat, 0), target(p.seat, 1)))) * 1.08;
+  const fl = el.querySelector('.nflash'), seen = new Set(), STEPS = 70;
+  let order = [];
+  for (let st = 0; st <= STEPS; st++) {
+    const k = skip ? 1 : st / STEPS;
+    for (const x of E.tw) if (k >= x.at && !seen.has(x)) {
+      seen.add(x); fl.hidden = false; fl.style.animation = 'none'; void fl.offsetWidth; fl.style.animation = '';
+      fl.innerHTML = `⚡ 突發快訊！<br>${esc(x.txt)}`; (x.d > 0 ? SFX_RAW.coin : SFX_RAW.bad)();
+      if (!skip) await nap(1800);
+    }
+    order = ps.map(p => [p, Math.max(0, Math.round(target(p.seat, k) * Math.pow(k, E.exp[p.seat] || 1)))]).sort((a, b) => b[1] - a[1]);
+    order.forEach(([p, v], r) => {
+      const row = el.querySelector(`[data-s="${p.seat}"]`); row.style.order = r;
+      row.querySelector('.fill').style.width = (v / maxV * 100) + '%'; row.querySelector('.lab b').textContent = v.toLocaleString('zh-TW');
+    });
+    el.querySelector('.pct').textContent = Math.round(k * 100);
+    if (st % 7 === 0) beep(700 + st * 6, .04, 'square', .025);
+    if (k >= 1) break;
+    await nap(210);
+  }
+  const win = order[0] && order[0][0], last = order.length >= 2 ? order[order.length - 1][0] : null;
+  if (win) { const r = el.querySelector(`[data-s="${win.seat}"]`); r.classList.add('win'); r.querySelector('.tag').textContent = '🏆 當選'; }
+  if (last) { const r = el.querySelector(`[data-s="${last.seat}"]`); r.classList.add('lose'); r.querySelector('.tag').textContent = '💸 保證金沒收'; }
+  SFX_RAW.fan();
+  await nap(skip ? 1200 : 2800);
+  el.remove(); G.nightRun = false;
+}
+
 async function endGame() {
-  if (G.instant && G.players[G.instant.seat]) { SFX.fan(); cam.shake = .6; await caption(`⚡ 立即凍蒜！`, `${G.players[G.instant.seat].char.name} ${G.instant.why}`, 2400); }
+  if (G.instant && G.instant.fled) { /* 落跑已經演過了 */ }
+  else if (G.instant && G.players[G.instant.seat]) { SFX.fan(); cam.shake = .6; await caption(`⚡ 立即凍蒜！`, `${G.players[G.instant.seat].char.name} ${G.instant.why}`, 2400); }
   G.over = true; waiting = null; refreshActions();
   G.players.forEach(p => { p.mPublic = true; });   // 結算時公開所有人的祕密任務
-  sendState(); hostFx('end');
-  NET.quiet = true; try { showEnd(); } finally { NET.quiet = false; }
+  // 回合打完才開票；立即凍蒜、落跑、只剩一個人就直接結算
+  const E = !G.instant && alive().length > 1 ? planNight() : null;
+  if (E) { applyNight(E); hostFx('night', E); }
+  sendState();
+  NET.quiet = true;
+  try { if (E) await electionNight(E); showEnd(); } finally { NET.quiet = false; }
+  hostFx('end');
 }
-// 結算的特別獎：誰最會背刺、誰出手最兇、誰最會埋伏
+// 頒獎典禮：每個人都拿到一個搞笑稱號（先頒特別獎給最高的人，其他人依狀況給）
+const highRise = p => G.tiles.filter(s => s.owner === p.seat && s.level >= 3).length;
+const TITLES = [
+  ['🔪', '背刺之鬼', p => p.stats.stabs, 1, n => `背刺盟友 ${n} 次，盟友聽到名字就發抖`],
+  ['🏗️', '違章建築王', highRise, 2, n => `手上 ${n} 棟公寓以上的高樓，建管處已經在路上了`],
+  ['💣', '地雷專家', p => p.stats.boom, 1, n => `炸傷對手 ${n} 次，醫院院長親自頒發感謝狀`],
+  ['🎤', '通告名嘴', p => p.stats.quiz, 4, n => `質詢、速算答對 ${n} 題，下週開始上政論節目`],
+  ['🚑', '送醫專業戶', p => p.stats.sends, 2, n => `把人送進醫院、約談所 ${n} 次`],
+  ['🕵️', '約談常客', p => p.stats.jail || 0, 2, n => `被約談 ${n} 次，檢調的咖啡集點卡快集滿了`],
+];
+const PLAIN_TITLES = [['🪑', '陪榜專業戶', '每次都差一點點，下次一定'], ['🌱', '路過的候選人', '大家記得他的臉，忘了他的名字'], ['📸', '看板很上相', '競選看板比本人還帥']];
+function titlesHtml(ranked) {
+  const got = new Map();
+  TITLES.forEach(([ic, name, f, min, line]) => {
+    const c = ranked.filter(p => p.stats && !got.has(p)).map(p => [p, f(p) || 0]).sort((a, b) => b[1] - a[1])[0];
+    if (c && c[1] >= min) got.set(c[0], [ic, name, line(c[1])]);
+  });
+  const live = ranked.filter(p => !p.out);
+  const rich = [...live].sort((a, b) => b.cash - a.cash)[0], loud = [...live].sort((a, b) => b.poll - a.poll)[0];
+  ranked.forEach(p => {
+    if (got.has(p)) return;
+    if (p.stats && p.stats.jail >= 3) got.set(p, ['🔒', '收押禁見中', '三進三出，律師說一定會上訴']);
+    else if (p.out) got.set(p, ['💀', '提早退選', '資金燒光，競選看板拿去資源回收']);
+    else if (p === rich) got.set(p, ['💰', '人肉提款機', `手上還有 ${fmt(p.cash)}，大家都想跟他借錢`]);
+    else if (p === loud) got.set(p, ['📈', '網路聲量王', `民調 ${Math.round(p.poll)}%，留言區都是他的粉絲`]);
+    else got.set(p, PLAIN_TITLES[(p.seat + Math.floor(G.t0 / 1000)) % PLAIN_TITLES.length]);
+  });
+  return `<h3 class="awh">🏅 頒獎典禮</h3><div class="cardlist" style="margin:6px 0 8px">${ranked.map(p => { const [ic, n, c] = got.get(p); return `<div class="cardrow"><span class="ic">${ic}</span><div><b>${p.char.name}：「${n}」</b><small>${c}</small></div></div>`; }).join('')}</div>`;
+}
+// 當選後續：給贏家一句諷刺的新聞
+const EPILOGUE = ['就職三個月，就面臨大罷免', '選前承諾全部跳票，市民在門口抗議中', '上任第一天就出國考察', '「全民發雞排」政見的預算被議會砍光', '當選隔天手機號碼就換了', '辦公室裝了按摩椅被爆料，說是「腰不好」', '捷運蓋到一半，才發現沒有編預算', '謝票遊行太長，造成全市大塞車被罵翻'];
+// 舊的特別獎（保留給別的地方用）
 function awardsHtml() {
   const ps = G.players.filter(p => p.stats);
   const top = (k, min) => { const b = [...ps].sort((a, c) => c.stats[k] - a.stats[k])[0]; return b && b.stats[k] >= min ? b : null; };
@@ -4526,25 +4834,29 @@ function showEnd() {
   if (G.endShown) return; G.endShown = true; G.over = true;
   const iw = G.instant && G.players[G.instant.seat];
   const ranked = [...G.players].sort((a, b) => (b === iw) - (a === iw) || (a.out - b.out) || score(b) - score(a));
-  const w = ranked[0];
+  const w = ranked[0], fled = !!(iw && G.instant.fled);
+  const live = ranked.filter(p => !p.out), loser = live.length >= 2 && live[live.length - 1] !== w ? live[live.length - 1] : null;
+  const epi = fled ? '目前人在國外，說等風頭過了再回來' : EPILOGUE[(w.seat + Math.floor(G.t0 / 1000)) % EPILOGUE.length];
   cam.follow = w; cam.overview = false; lookBack();
   say(w, 'champion'); SFX.fan(); confetti(w.mesh.position.clone().add(new THREE.Vector3(0, 2, 0)));
   const mins = Math.round((Date.now() - G.t0) / 60000);
   const el = $('#end');
   el.innerHTML = `<div class="end-box panel">
-    <span class="stamp">當選</span>
-    <h2 style="font-family:var(--display);font-size:30px;margin:10px 0 4px">${w.char.name} 凍蒜！</h2>
-    <p style="margin:0 0 4px;font-family:var(--display);font-weight:900">${iw ? `⚡ 立即凍蒜：${esc(G.instant.why)}` : alive().length <= 1 ? '⚡ 其他人全部退選' : '🗳️ 回合結束，得票最高'}</p>
+    <span class="stamp">${fled ? '落跑' : '當選'}</span>
+    <h2 style="font-family:var(--display);font-size:30px;margin:10px 0 4px">${w.char.name} ${fled ? '落跑成功！' : '凍蒜！'}</h2>
+    <p style="margin:0 0 4px;font-family:var(--display);font-weight:900">${fled ? `✈️ 特殊勝利：${esc(G.instant.why)}` : iw ? `⚡ 立即凍蒜：${esc(G.instant.why)}` : alive().length <= 1 ? '⚡ 其他人全部退選' : '🗳️ 回合結束，得票最高'}</p>
     <p style="margin:0;color:var(--muted)">「${pick(w.char.lines.champion)}」・第 ${Math.min(G.round, G.maxRounds)} / ${G.maxRounds} 回合結束，花了約 ${mins} 分鐘</p>
+    <div class="epi">📰 ${fled ? '後續' : '當選後續'}：${w.char.name}${epi}</div>
     <div class="rank">${ranked.map((p, k) => `
       <div class="row ${k === 0 ? 'win' : ''}">
         <span class="no">${k + 1}</span><div class="av" style="--c:${p.char.color}">${p.char.glyph}</div>
-        <div><b>${p.char.name}</b><small>${p.out ? '退選（破產）' : `現金 ${fmt(p.cash)}・地產 ${fmt(assets(p))}・民調 ${Math.round(p.poll)}%`}</small>
-          <small>🎯 ${p.mission && MISSIONS[p.mission] ? `${MISSIONS[p.mission].name}：${p.mDone ? `✅ 達成 +${(missionBonus(p)).toLocaleString('zh-TW')} 票${p.mExposed ? '（被爆料，減半）' : ''}` : '❌ 沒完成'}` : '（不明）'}${p.stats && p.stats.kos ? `・擊倒 ${p.stats.kos} 人 +${(p.stats.kos * 5000).toLocaleString('zh-TW')} 票` : ''}</small></div>
+        <div><b>${p.char.name}</b><small>${p.out ? (p.stats && p.stats.jail >= 3 ? '🔒 收押出局' : '退選（破產）') : `現金 ${fmt(p.cash)}・地產 ${fmt(assets(p))}・民調 ${Math.round(p.poll)}%`}</small>
+          <small>🎯 ${p.mission && MISSIONS[p.mission] ? `${MISSIONS[p.mission].name}：${p.mDone ? `✅ 達成 +${(missionBonus(p)).toLocaleString('zh-TW')} 票${p.mExposed ? '（被爆料，減半）' : ''}` : '❌ 沒完成'}` : '（不明）'}${p.stats && p.stats.kos ? `・擊倒 ${p.stats.kos} 人 +${(p.stats.kos * 5000).toLocaleString('zh-TW')} 票` : ''}${p.nightBonus ? `・開票之夜 ${p.nightBonus > 0 ? '+' : ''}${p.nightBonus.toLocaleString('zh-TW')} 票` : ''}</small></div>
         <b>${p.out ? '—' : Math.round(score(p)).toLocaleString('zh-TW') + ' 票'}</b>
       </div>`).join('')}</div>
-    ${awardsHtml()}
-    <p style="font-size:12px;color:var(--muted)">得票數 = 現金 + 地產價值 + 民調 × ${POLL_VOTES} + 祕密任務 + 擊倒對手</p>
+    ${loser ? `<div class="forfeit">💸 <b>保證金沒收！</b>${loser.char.name} 得票墊底，20 萬保證金被沒收，還要自己去把競選看板拆下來 🪧😭</div>` : ''}
+    ${titlesHtml(ranked)}
+    <p style="font-size:12px;color:var(--muted)">得票數 = 現金 + 地產價值 + 民調 × ${POLL_VOTES} + 祕密任務 + 擊倒對手 + 開票之夜突發事件</p>
     <div style="display:flex;gap:8px"><button class="primary" id="btn-again" style="flex:1">再選一次</button></div>
   </div>`;
   setTimeout(() => { el.hidden = false; $('#btn-again').onclick = () => location.reload(); }, 1800);
@@ -4564,7 +4876,7 @@ function encodeState() {
     t: G.turn, r: G.round, ov: G.over ? 1 : 0,
     // 祕密任務只在公開後才放進來，免得朋友從資料偷看
     P: G.players.map(p => [p.cash, Math.round(p.poll), p.pos, p.items.join(','), p.skip, p.where || '', p.turtle, p.out ? 1 : 0, p.skillUsed ? 1 : 0,
-      p.ally, p.mPublic ? p.mission : '', p.mDone ? 1 : 0, p.mExposed ? 1 : 0, p.revenge, [p.stats.kos, p.stats.stabs, p.stats.sends, p.stats.combo3, p.stats.hits].join(','), p.ghost || 0, p.power || '', p.powerAt, p.autoOn ? 1 : 0]),
+      p.ally, p.mPublic ? p.mission : '', p.mDone ? 1 : 0, p.mExposed ? 1 : 0, p.revenge, [p.stats.kos, p.stats.stabs, p.stats.sends, p.stats.combo3, p.stats.hits, p.stats.boom || 0, p.stats.quiz || 0, p.stats.jail || 0].join(','), p.ghost || 0, p.power || '', p.powerAt, p.autoOn ? 1 : 0]),
     T: G.tiles.map(s => (s.owner + 1) * 100 + s.level * 10 + (s.kind === 'hq' ? 1 : s.kind === 'stand' ? 2 : 0)),
     tr: G.traps, b: G.bomb, n: G.npcs.map(n => n.pos), m: G.mods, fe: G.fest || null, iw: G.instant || null, sc: G.scars || {},
   };
@@ -4574,7 +4886,7 @@ function scheduleState() { if (stTimer) return; stTimer = setTimeout(() => { stT
 function sendState() { if (NET.mode === 'host' && NET.named && NET.started) NET.named.emit('state', encodeState()).catch(() => { }); }
 function sendLobby() {
   if (NET.mode !== 'host' || !NET.named || NET.started) return;
-  NET.named.emit('lobby', { slots: roster.map(r => ({ ci: r.ci, mode: r.mode, nick: r.nick || '', cid: r.cid || '' })), rounds: maxRounds, map: MAP, seats }).catch(() => { });
+  NET.named.emit('lobby', { ver: GAME_VER, slots: roster.map(r => ({ ci: r.ci, id: CHARS[r.ci].id, mode: r.mode, nick: r.nick || '', cid: r.cid || '' })), rounds: maxRounds, map: MAP, seats }).catch(() => { });
 }
 
 // ---- 房主：請某位連線玩家做決定 ----
@@ -4735,7 +5047,12 @@ function playFx(m) {
       case 'land': { const v = (Array.isArray(d) ? d.slice(0, 3) : []).filter(x => FACE_ROT[x]); bounceDice(v).then(() => setTimeout(() => dice.forEach(x => x.visible = false), 1500)); break; }
       case 'hop': case 'jump': { const p = G.players[+d[0]]; if (p) { p.animQ.push([k, +d[1]]); if (!p.animating) runAnim(p); } break; }
       case 'rocket': rocketFly(+d[0], +d[1]); break;
-      case 'end': showEnd(); break;
+      case 'end': if (!G.nightRun) showEnd(); break;
+      case 'night': if (d && d.base && Array.isArray(d.tw) && !G.endShown && !G.nightRun) {
+        const E = { base: {}, exp: {}, tw: d.tw.slice(0, 3).map(x => ({ at: clamp(+x.at || .5, 0, 1), s: +x.s, d: Math.round(+x.d || 0), txt: String(x.txt || '') })) };
+        Object.keys(d.base).forEach(k => { if (G.players[+k]) { E.base[k] = +d.base[k] || 0; E.exp[k] = clamp(+(d.exp || {})[k] || 1, .3, 3); } });
+        applyNight(E); electionNight(E).then(() => showEnd());
+      } break;
       case 'reseat': { const p = G.players[+d[0]]; if (p && typeof d[1] === 'string') { p.ctl = 'r:' + d[1]; updateHUD(); refreshClaim(); if (p === myPlayer()) localCaption('✅ 接回角色了！', `你是 ${p.char.name}`); } break; }
       case 'tugwatch': { const me = myPlayer(); if (d && (!me || (me.seat !== d.L && me.seat !== d.R)) && modal.hidden && G.players[d.L] && G.players[d.R]) tugUI({ ...d, mine: [] }); break; }
       case 'peek': if (d && G.players[+d.s] && G.players[+d.s] !== myPlayer()) showPeek(d); break;
@@ -4771,7 +5088,7 @@ function applyState(s) {
     const st = String(a[14] || '').split(',').map(Number);
     p.ghost = +a[15] || 0;
     p.power = POWERS[a[16]] ? a[16] : ''; p.powerAt = Number.isFinite(+a[17]) ? +a[17] : -9; p.autoOn = !!a[18];
-    p.stats = { kos: st[0] || 0, stabs: st[1] || 0, sends: st[2] || 0, combo3: st[3] || 0, hits: st[4] || 0 };
+    p.stats = { kos: st[0] || 0, stabs: st[1] || 0, sends: st[2] || 0, combo3: st[3] || 0, hits: st[4] || 0, boom: st[5] || 0, quiz: st[6] || 0, jail: st[7] || 0 };
     if (a[7] && !p.out) {
       p.out = true; const m = p.mesh;
       tween(700, k => { m.rotation.x = k * Math.PI / 2; m.position.y = -k * .3; }).then(() => scene.remove(m));
@@ -4809,12 +5126,20 @@ function applyState(s) {
   const oldFest = G.fest ? G.fest.i : -1;
   G.fest = s.fe && Number.isInteger(s.fe.i) && TILES[s.fe.i] ? { i: s.fe.i, mult: clamp(+s.fe.mult || 2, 2, 4) } : null;
   if (oldFest >= 0) drawTile(oldFest);
-  G.instant = s.iw && G.players[s.iw.seat] ? { seat: s.iw.seat, why: String(s.iw.why || '') } : null;
+  G.instant = s.iw && G.players[s.iw.seat] ? { seat: s.iw.seat, why: String(s.iw.why || ''), fled: s.iw.fled ? 1 : 0 } : null;
   cam.follow = G.players[G.turn] || cam.follow;
   updateHUD();
-  if (s.ov && !G.endShown) showEnd();
+  // 結束了：等一下開票之夜的訊息（可能比狀態晚到），沒來才直接結算
+  if (s.ov && !G.endShown && !G.nightRun) setTimeout(() => { if (!G.endShown && !G.nightRun) showEnd(); }, 1500);
 }
 
+// 角色用 id 對回自己這邊的編號（兩邊版本不同時，才不會把郭台銘看成別人）
+const fixCi = x => { if (x && x.id) { const k = CHARS.findIndex(c => c.id === x.id); return { ...x, ci: k }; } return x; };
+let verWarned = false;
+function verCheck(v) {
+  if (verWarned || v === GAME_VER) return; verWarned = true;
+  localCaption('⚠️ 遊戲版本不一樣', '你和房主的網頁版本不同，角色可能對不上。請兩邊都重新整理（手機請關掉分頁重開）', 6000);
+}
 // ---- 開房間／加入房間 ----
 const fromHost = m => {
   const h = NET.named && NET.named.peers().find(x => x.presence && x.presence.role === 'host');
@@ -5175,8 +5500,8 @@ async function joinRoom() {
   try { sessionStorage.setItem('ds-room', code); localStorage.setItem('ds-nick', NET.nick); localStorage.setItem('ds-room2', code + '|' + Date.now()); } catch (e) { }
   try { history.replaceState(null, '', location.pathname + '?room=' + code + (roomApi.isRelay && roomApi.broker ? '&b=' + roomApi.broker : '')); } catch (e) { }
   NET.named.presence({ cid: NET.cid, nick: NET.nick, role: 'guest', pick: -1 }).catch(() => { });
-  NET.named.on('lobby', m => { if (fromHost(m) && m.data && Array.isArray(m.data.slots)) { NET.lobby = { slots: m.data.slots.slice(0, MAX_SEATS).filter(x => CHARS[x.ci]), seats: clamp(+m.data.seats || 4, 2, MAX_SEATS), rounds: +m.data.rounds || 13, map: MAPS[m.data.map] ? m.data.map : 'tpe' }; if (NET.lobby.map !== MAP) buildBoard(NET.lobby.map); renderSetup(); } });
-  NET.named.on('start', m => { if (!fromHost(m) || NET.started || !m.data || !Array.isArray(m.data.players)) return; const cfg = { ...m.data, players: m.data.players.filter(x => CHARS[x.ci]).slice(0, MAX_SEATS) }; startGame(cfg); renderOnline(); setTimeout(refreshClaim, 1500); });
+  NET.named.on('lobby', m => { if (fromHost(m) && m.data && Array.isArray(m.data.slots)) { verCheck(m.data.ver); NET.lobby = { slots: m.data.slots.slice(0, MAX_SEATS).map(fixCi).filter(x => CHARS[x.ci]), seats: clamp(+m.data.seats || 4, 2, MAX_SEATS), rounds: +m.data.rounds || 13, map: MAPS[m.data.map] ? m.data.map : 'tpe' }; if (NET.lobby.map !== MAP) buildBoard(NET.lobby.map); renderSetup(); } });
+  NET.named.on('start', m => { if (!fromHost(m) || NET.started || !m.data || !Array.isArray(m.data.players)) return; verCheck(m.data.ver); const cfg = { ...m.data, players: m.data.players.map(fixCi).filter(x => CHARS[x.ci]).slice(0, MAX_SEATS) }; startGame(cfg); renderOnline(); setTimeout(refreshClaim, 1500); });
   setInterval(refreshClaim, 3000);
   NET.named.on('state', m => { if (fromHost(m)) applyState(m.data); });
   NET.named.on('fx', m => { if (fromHost(m) && NET.started) playFx(m.data); });
