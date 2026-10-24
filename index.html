@@ -279,6 +279,8 @@ button{touch-action:manipulation}
 .cardrow div{flex:1;min-width:0}
 .cardrow b{font-family:var(--display);font-weight:900}
 .cardrow small{display:block;color:var(--muted);line-height:1.4}
+.mbar{display:block;height:8px;border:2px solid var(--ink);border-radius:999px;background:#fff;margin-top:4px;overflow:hidden}
+.mbar i{display:block;height:100%;background:var(--sun)}
 .cardrow .pr{font-family:var(--display);font-weight:900;flex:none}
 .tapzone{display:grid;place-items:center;gap:8px;margin:10px 0}
 .tapbtn{font-size:30px;padding:22px 40px;background:var(--hot);color:#fff;border-radius:20px;user-select:none;touch-action:manipulation}
@@ -888,16 +890,21 @@ $('#players').onclick = e => { const el = e.target.closest('.pc'); const p = el 
 
 /* ---------- 祕密任務（勝利條件） ---------- */
 const MISSION_BONUS = 25000;
+// 祕密任務：難度拉近（都是有心做、玩到一半左右能完成），prog 回傳 [目前, 目標] 給畫面顯示進度
 const MISSIONS = {
-  killer: { name: '政壇殺手', desc: '讓任何一位對手破產退選', check: p => p.stats.kos >= 1 },
-  tycoon: { name: '炒地皮大亨', desc: '同時擁有 2 棟摩天樓', check: p => G.tiles.filter(s => s.owner === p.seat && s.level === 5).length >= 2 },
-  idol: { name: '民調天王', desc: '民調衝到 90% 以上', check: p => p.poll >= 90 },
-  snake: { name: '背骨仔', desc: '背刺盟友 1 次', check: p => p.stats.stabs >= 1 },
-  lord: { name: '大地主', desc: '同時擁有 6 塊地', check: p => G.tiles.filter(s => s.owner === p.seat).length >= 6 },
-  bomber: { name: '爆破專家', desc: '用道具或地雷把對手送進醫院、約談所 4 次', check: p => p.stats.sends >= 4 },
-  rich: { name: '黑金帝國', desc: '手上現金達到 40,000', check: p => p.cash >= 40000 },
-  combo: { name: '連段大師', desc: '打出一次 3 連擊', check: p => p.stats.combo3 >= 1 },
+  killer: { name: '政壇殺手', desc: '用道具、地雷、炸彈打中對手 6 次', prog: p => [p.stats.hits, 6] },
+  tycoon: { name: '炒地皮大亨', desc: '蓋出 1 棟摩天樓地標', prog: p => [G.tiles.filter(s => s.owner === p.seat && s.level === 5).length, 1] },
+  idol: { name: '民調天王', desc: '民調衝到 80% 以上', prog: p => [Math.round(p.poll), 80] },
+  snake: { name: '背骨仔', desc: '背刺盟友 2 次（可以是同一個人）', prog: p => [p.stats.stabs, 2] },
+  lord: { name: '大地主', desc: '同時擁有 5 塊地', prog: p => [G.tiles.filter(s => s.owner === p.seat).length, 5] },
+  bomber: { name: '爆破專家', desc: '把對手送進醫院、約談所 3 次', prog: p => [p.stats.sends, 3] },
+  rich: { name: '黑金帝國', desc: '手上現金達到 35,000', prog: p => [p.cash, 35000] },
+  combo: { name: '連段大師', desc: '同一回合連續打同一個人 2 下（連擊），做到 2 次', prog: p => [p.stats.combo2 || 0, 2] },
+  quizking: { name: '名嘴之路', desc: '質詢搶答、速算擂台累積答對 8 題', prog: p => [p.stats.quiz || 0, 8] },
+  traveler: { name: '台灣走透透', desc: '經過起點 3 次', prog: p => [p.stats.laps || 0, 3] },
+  builder: { name: '工程包商', desc: '累積蓋房子 6 層（買地時順便蓋也算）', prog: p => [p.stats.built || 0, 6] },
 };
+Object.values(MISSIONS).forEach(m => { m.check = p => { const [a, b] = m.prog(p); return a >= b; }; });
 const MISSION_KEYS = Object.keys(MISSIONS);
 
 /* ---------- 音效 ---------- */
@@ -2513,7 +2520,8 @@ function updateHUD() {
 // 任務一達成就公開（大家知道你快贏了，會一起圍剿你）
 function missionHtml(p, key) {
   const m = MISSIONS[key || p.mission]; if (!m) return '<p>還沒拿到任務。</p>';
-  return `<div class="cardrow"><span class="ic">🎯</span><div><b>${m.name}</b><small>${m.desc}</small></div></div>
+  const [a, b] = p.stats ? m.prog(p) : [0, 1], pct = Math.max(0, Math.min(100, Math.round(a / b * 100)));
+  return `<div class="cardrow"><span class="ic">🎯</span><div><b>${m.name}</b><small>${m.desc}</small><small>進度：<b>${b >= 1000 ? fmt(Math.min(a, b)) : Math.min(a, b)} / ${b >= 1000 ? fmt(b) : b}</b>（${pct}%）</small><span class="mbar"><i style="width:${pct}%"></i></span></div></div>
     <p style="font-size:13px;margin-top:10px">完成就 +25,000 票，但任務會公開，大家會一起圍剿你。被別人用📰爆料卡提早揭穿的話，獎勵減半。</p>`;
 }
 // 立即凍蒜：壟斷一整區，或聲量 100%（回合結束時由 gameLoop 收尾）
@@ -2778,7 +2786,7 @@ function startGame(cfg) {
   const players = cfg.players.map((x, seat) => ({
     seat, char: CHARS[x.ci], ctl: x.ctl, nick: String(x.nick || '').slice(0, 10), isAI: x.ctl === 'ai', humanNo: x.ctl === 'ai' ? 0 : ++h,
     cash: START_CASH, poll: 50, pos: 0, items: [], skip: 0, where: null, turtle: 0, out: false, skillUsed: false, animQ: [],
-    ally: -1, revenge: -1, mission: '', mDone: false, mPublic: false, mExposed: false, stats: { kos: 0, stabs: 0, sends: 0, combo3: 0, hits: 0, boom: 0, quiz: 0, jail: 0 }, power: '', powerAt: -9,
+    ally: -1, revenge: -1, mission: '', mDone: false, mPublic: false, mExposed: false, stats: { kos: 0, stabs: 0, sends: 0, combo3: 0, hits: 0, boom: 0, quiz: 0, jail: 0, combo2: 0, laps: 0, built: 0 }, power: '', powerAt: -9,
   }));
   if (NET.mode !== 'client') {
     const ms = shuffle(MISSION_KEYS); players.forEach((p, k) => { p.mission = ms[k % ms.length]; });
@@ -3415,6 +3423,7 @@ async function registerHit(p, t) {
     await caption('💥 2 連擊！', `${p.char.name} 追打 ${t.char.name}：偷 ${fmt(s)}、民調 -5`, 1300);
   } else if (n >= 3) {
     const s = Math.max(0, Math.round(t.cash * .1 / 10) * 10); t.cash -= s; p.cash += s;
+    if (n === 2) p.stats.combo2 = (p.stats.combo2 || 0) + 1;
     if (n === 3) p.stats.combo3++;
     SFX.fan(); cam.shake = 1; updateHUD();
     say(t, 'hit', pick(['不要再打了啦！', '我要叫救命了！', '欺負人喔！']));
@@ -3986,6 +3995,7 @@ async function moveSteps(p, n, back = false) {
 
 async function passStart(p) {
   let pay = (SALARY + (p.char.id === 'gou' ? 1000 : 0)) * (lawOn('salary2') ? 2 : 1);
+  p.stats.laps = (p.stats.laps || 0) + 1;
   if (p.char.id === 'han') addPoll(p, 8);
   p.cash += pay; SFX.coin(); say(p, 'start');
   const gift = Math.random() < .35 ? pick(['bomb', 'mine', 'rocket']) : pick(ITEM_KEYS.filter(k => !['rocket', 'missiles'].includes(k))); giveItem(p, gift); updateHUD();   // 三成五送武器，火箭不要太多
@@ -4079,6 +4089,7 @@ async function offerBuy(p, i) {
   }
   if (!(L >= 0)) return;
   p.cash -= total(L); Object.assign(G.tiles[i], { owner: p.seat, level: L, kind: null, auction: false }); SFX.coin();
+  p.stats.built = (p.stats.built || 0) + L;
   lookAtTile(i); rebuild(i); drawTile(i); say(p, L ? 'upgrade' : 'buy'); updateHUD();
   const [x, z] = tilePos(i); confetti(new THREE.Vector3(x, 1, z));
   await caption(`買下 ${t.name}${L ? '，蓋好' + LEVEL_NAME[L] : ''}！`, `花了 ${fmt(total(L))}，過路費 ${fmt(rentOf(i))}`, 1300);
@@ -4114,7 +4125,7 @@ async function offerUpgrade(p, i) {
   const spend = typeof choice === 'number' ? (choice - st.level) * cost : cost * 2;
   if (p.cash < spend) return;
   p.cash -= spend;
-  if (typeof choice === 'number') st.level = choice; else st.kind = choice;
+  if (typeof choice === 'number') { p.stats.built = (p.stats.built || 0) + (choice - st.level); st.level = choice; } else st.kind = choice;
   SFX.fan(); lookAtTile(i); await wait(250);
   rebuild(i); drawTile(i); say(p, 'upgrade'); updateHUD();
   const [x, z] = tilePos(i), [ix, iz] = tileIn(i); confetti(new THREE.Vector3(x + ix * 3, 2, z + iz * 3));
@@ -5293,7 +5304,7 @@ function encodeState() {
     t: G.turn, r: G.round, ov: G.over ? 1 : 0,
     // 祕密任務只在公開後才放進來，免得朋友從資料偷看
     P: G.players.map(p => [p.cash, Math.round(p.poll), p.pos, p.items.join(','), p.skip, p.where || '', p.turtle, p.out ? 1 : 0, p.skillUsed ? 1 : 0,
-      p.ally, p.mPublic ? p.mission : '', p.mDone ? 1 : 0, p.mExposed ? 1 : 0, p.revenge, [p.stats.kos, p.stats.stabs, p.stats.sends, p.stats.combo3, p.stats.hits, p.stats.boom || 0, p.stats.quiz || 0, p.stats.jail || 0].join(','), p.ghost || 0, p.power || '', p.powerAt, p.autoOn ? 1 : 0]),
+      p.ally, p.mPublic ? p.mission : '', p.mDone ? 1 : 0, p.mExposed ? 1 : 0, p.revenge, [p.stats.kos, p.stats.stabs, p.stats.sends, p.stats.combo3, p.stats.hits, p.stats.boom || 0, p.stats.quiz || 0, p.stats.jail || 0, p.stats.combo2 || 0, p.stats.laps || 0, p.stats.built || 0].join(','), p.ghost || 0, p.power || '', p.powerAt, p.autoOn ? 1 : 0]),
     T: G.tiles.map(s => (s.owner + 1) * 100 + s.level * 10 + (s.kind === 'hq' ? 1 : s.kind === 'stand' ? 2 : 0)),
     tr: G.traps, b: G.bomb, n: G.npcs.map(n => n.pos), m: G.mods, fe: G.fest || null, iw: G.instant || null, sc: G.scars || {},
   };
@@ -5510,7 +5521,7 @@ function applyState(s) {
     const st = String(a[14] || '').split(',').map(Number);
     p.ghost = +a[15] || 0;
     p.power = POWERS[a[16]] ? a[16] : ''; p.powerAt = Number.isFinite(+a[17]) ? +a[17] : -9; p.autoOn = !!a[18];
-    p.stats = { kos: st[0] || 0, stabs: st[1] || 0, sends: st[2] || 0, combo3: st[3] || 0, hits: st[4] || 0, boom: st[5] || 0, quiz: st[6] || 0, jail: st[7] || 0 };
+    p.stats = { kos: st[0] || 0, stabs: st[1] || 0, sends: st[2] || 0, combo3: st[3] || 0, hits: st[4] || 0, boom: st[5] || 0, quiz: st[6] || 0, jail: st[7] || 0, combo2: st[8] || 0, laps: st[9] || 0, built: st[10] || 0 };
     if (a[7] && !p.out) {
       p.out = true; const m = p.mesh;
       tween(700, k => { m.rotation.x = k * Math.PI / 2; m.position.y = -k * .3; }).then(() => scene.remove(m));
