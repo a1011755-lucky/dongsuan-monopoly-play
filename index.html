@@ -214,6 +214,20 @@ button{touch-action:manipulation}
 .cardrow .ic{font-size:26px;flex:none}
 .wi{display:inline-block;width:1.6em;height:1.6em;background:center/contain no-repeat;vertical-align:middle}
 .cardrow .ic .wi{width:46px;height:46px}
+.cardpick{display:flex;flex-direction:column;gap:8px;margin:8px 0}
+.cardrow.cardbtn{cursor:pointer;box-shadow:3px 3px 0 var(--ink)}
+.cardrow.cardbtn:hover:not(:disabled){background:#fff8d6}
+.cardrow .cd{flex:1;min-width:0}
+.cardrow .go{flex:none;font-family:var(--display);font-weight:900;font-size:13px;background:var(--sun);border:2px solid var(--ink);border-radius:999px;padding:3px 10px}
+/* 機會／命運卡 */
+.fate{border:3px solid var(--ink);border-radius:16px;padding:14px;text-align:center;box-shadow:4px 4px 0 var(--ink);animation:fateflip .5s ease-out;margin:6px 0}
+.fate.good{background:linear-gradient(160deg,#fff8d6,#ffd54f)}
+.fate.bad{background:linear-gradient(160deg,#ffe3e3,#ff8a80)}
+.fate .fh{display:inline-block;font-family:var(--display);font-weight:900;font-size:15px;padding:2px 14px;border-radius:999px;background:#1d1633;color:#fff}
+.fate .fi{font-size:54px;line-height:1.25;margin:6px 0 2px}
+.fate .ft{font-family:var(--display);font-weight:900;font-size:21px}
+.fate p{margin:6px 0 0;font-size:15px}
+@keyframes fateflip{0%{transform:perspective(600px) rotateY(90deg) scale(.8);opacity:0}100%{transform:none;opacity:1}}
 /* 開票之夜 */
 #night{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;background:radial-gradient(circle at 50% 0,#24407a,#0b1230 70%);color:#fff}
 #night .nhead{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#c62828;font-family:var(--display);font-weight:900;font-size:18px;box-shadow:0 3px 0 rgba(0,0,0,.3)}
@@ -398,7 +412,7 @@ button{touch-action:manipulation}
   <div id="mods"></div>
   <div id="players"></div>
   <div id="log" class="panel" hidden><h3>政壇快訊</h3><div id="log-list"></div></div>
-  <div id="aimbar" class="panel" hidden><span id="aim-text">點一格</span><button id="aim-cancel">取消</button></div>
+  <div id="aimbar" class="panel" hidden><span id="aim-text">點一格</span><button id="aim-cancel">✖ 取消</button></div>
   <div id="tip" class="panel" hidden></div>
   <div id="turn-hint" hidden></div>
   <div id="gauge" class="panel" hidden>
@@ -2200,7 +2214,7 @@ function showTip(i, x, y) {
   let html = `<b>${t.name}</b><br>`;
   if (t.type === 'prop') {
     html += st.owner >= 0 ? `地主：${G.players[st.owner].char.name}<br>${buildingName(i)}・過路費 ${fmt(rentOf(i))}` : `空地・售價 ${fmt(t.price)}`;
-  } else html += ({ fest: '選一塊自己的地辦造勢晚會，過路費翻倍', math: '5 題心算，答對有錢拿', quiz: '質詢搶答，答對有錢拿', start: '經過領 2,000 元，剛好停下有拜票握手',item: '抽一個道具', live: '直播狂點賺抖內', news: '隨機新聞事件', jail: '停在這裡要被約談 1 回合', fly: '花 500 元飛到別區', shop: '買地雷、火箭、炸彈', bribe: '被檢舉疑似賄選', hosp: '健康檢查，民調 +3' })[t.type];
+  } else html += ({ fest: '選一塊自己的地辦造勢晚會，過路費翻倍', math: '5 題心算，答對有錢拿', quiz: '質詢搶答，答對有錢拿', start: '經過領 2,000 元，剛好停下有拜票握手',item: '抽一個道具', live: '直播狂點賺抖內', news: '抽機會／命運卡，或發生新聞事件', jail: '停在這裡要被約談 1 回合', fly: '花 500 元飛到別區', shop: '買地雷、火箭、炸彈', bribe: '被檢舉疑似賄選', hosp: '健康檢查，民調 +3' })[t.type];
   if (G.traps[i] && trapVisible(G.traps[i])) html += `<br>⚠️ 這格有${G.traps[i].k === 'mine' ? '你埋的地雷' : '路障'}`;
   const npc = G.npcs.find(n => n.pos === i); if (npc) html += `<br>🧍 ${npc.def.name}在這裡`;
   tip.innerHTML = html; tip.hidden = false;
@@ -2552,13 +2566,15 @@ function ask(html, buttons, p) {
 const plainText = h => new DOMParser().parseFromString(String(h), 'text/html').body.textContent.replace(/\s+/g, ' ').trim().slice(0, 40);
 function ask0(html, buttons, p) {
   if (viaNet(p)) {
-    return req(p, 'ask', { html, buttons: buttons.map(b => ({ label: b.label, cls: b.cls || '', disabled: !!b.disabled })) })
+    return req(p, 'ask', { html, buttons: buttons.map(b => ({ label: b.label, cls: b.cls || '', disabled: !!b.disabled, card: b.card || null })) })
       .then(k => { const b = buttons[k] && !buttons[k].disabled ? buttons[k] : buttons[buttons.length - 1]; return b.value !== undefined ? b.value : b.label; });
   }
   return new Promise(res => {
     mbox.style.setProperty('--c', p ? p.char.color : '#1d1633');
+    const cards = buttons.map((b, k) => [b, k]).filter(([b]) => b.card), plain = buttons.map((b, k) => [b, k]).filter(([b]) => !b.card);
     mbox.innerHTML = (p ? `<span class="who">${p.char.name}（${esc(label(p))}）的決定</span>` : '') + html +
-      `<div class="btns">${buttons.map((b, k) => `<button data-k="${k}" class="${b.cls || ''}" ${b.disabled ? 'disabled' : ''}>${b.label}</button>`).join('')}</div>`;
+      (cards.length ? `<div class="cardpick">${cards.map(([b, k]) => `<button data-k="${k}" class="cardrow cardbtn" ${b.disabled ? 'disabled' : ''}><span class="ic">${b.card.ic}</span><span class="cd"><b>${b.card.name}</b><small>${b.card.desc}</small></span><span class="go">使用 ▶</span></button>`).join('')}</div>` : '') +
+      `<div class="btns">${plain.map(([b, k]) => `<button data-k="${k}" class="${b.cls || ''}" ${b.disabled ? 'disabled' : ''}>${b.label}</button>`).join('')}</div>`;
     modal.hidden = false;
     mbox.querySelectorAll('[data-k]').forEach(el => el.onclick = () => {
       const b = buttons[+el.dataset.k]; modal.hidden = true; res(b.value !== undefined ? b.value : b.label);
@@ -3105,16 +3121,17 @@ $('#btn-items').onclick = async () => {
 };
 // 選道具 → 選目標 → 使用；回傳 {used, forced}
 async function itemFlow(p, used = 0) {
-  const usable = [...new Set(p.items)].filter(c => !ITEMS[c].passive);
-  if (!usable.length) return {};
-  const btns = usable.map(c => ({ label: `${ITEMS[c].icon} ${ITEMS[c].name} ×${p.items.filter(x => x === c).length}`, value: c, cls: 'primary' }));
-  const desc = usable.map(c => `<div class="cardrow"><span class="ic">${ico(c)}</span><div><b>${ITEMS[c].name}</b><small>${ITEMS[c].desc}</small></div></div>`).join('');
-  const id = await ask(`<h2>出哪個道具？（這回合第 ${used + 1} / ${MAX_ITEMS} 個）</h2><p>同一回合連續打同一個人會「連擊」：第 2 下多偷 500 元，第 3 下直接搶走他 10% 現金！</p><div class="cardlist">${desc}</div>`, [...btns, { label: '先不用', value: null }], p);
-  if (!id) return {};
-  const arg = await chooseTarget(p, id);
-  if (arg === null) return {};
-  const forced = await useItem(p, id, arg);
-  return { used: true, forced };
+  while (true) {
+    const usable = [...new Set(p.items)].filter(c => !ITEMS[c].passive);
+    if (!usable.length) return {};
+    const btns = usable.map(c => ({ label: `${ITEMS[c].icon} ${ITEMS[c].name}`, value: c, card: { ic: ico(c), name: `${ITEMS[c].name} ×${p.items.filter(x => x === c).length}`, desc: ITEMS[c].desc } }));
+    const id = await ask(`<h2>出哪個道具？（這回合第 ${used + 1} / ${MAX_ITEMS} 個）</h2><p style="font-size:13px">👆 <b>直接點卡片</b>就能使用。同一回合連續打同一個人會「連擊」：第 2 下多偷 500 元，第 3 下搶走他 10% 現金！</p>`, [...btns, { label: '✖ 先不用', value: null }], p);
+    if (!id) return {};
+    const arg = await chooseTarget(p, id);
+    if (arg === null) continue;   // 取消：回到道具清單重選
+    const forced = await useItem(p, id, arg);
+    return { used: true, forced };
+  }
 }
 const skillAsk = p => ask('<h2>發動萬安演習？</h2><p>每局只能用一次。其他所有人原地停一回合。</p>', [{ label: '拉警報！', value: true, cls: 'hot' }, { label: '先不要', value: false }], p);
 $('#btn-skill').onclick = async () => {
@@ -3318,16 +3335,16 @@ async function wanAnDrill(p) {
 async function chooseTarget(p, id) {
   const it = ITEMS[id];
   if (id === 'dice') {
-    const n = await ask(`<h2>🎲 遙控骰子</h2><p>想走幾步？</p>`, [...Array.from({ length: 12 }, (_, k) => ({ label: String(k + 1), value: k + 1 })), { label: '取消', value: 0 }], p);
+    const n = await ask(`<h2>🎲 遙控骰子</h2><p>想走幾步？</p>`, [...Array.from({ length: 12 }, (_, k) => ({ label: String(k + 1), value: k + 1 })), { label: '✖ 取消', value: 0 }], p);
     return n || null;
   }
   if (it.aim === 'player' || it.aim === 'near') {
     const opts = others(p).filter(q => it.aim !== 'near' || near(p.pos, q.pos) <= 6);
     if (!opts.length) { await ask(`<h2>${it.icon} ${it.name}</h2><p>${it.aim === 'near' ? '6 格內沒有對手，炸彈黏不上去。' : '沒有可以用的對象。'}</p>`, [{ label: '好吧', cls: 'primary' }], p); return null; }
-    return await ask(`<h2>${it.icon} ${it.name}</h2><p>要對誰用？</p>`, [...opts.map(q => ({ label: q.char.name, value: q, cls: 'primary' })), { label: '取消', value: null }], p);
+    return await ask(`<h2>${it.icon} ${it.name}</h2><p>要對誰用？</p>`, [...opts.map(q => ({ label: q.char.name, value: q, cls: 'primary' })), { label: '✖ 取消', value: null }], p);
   }
   if (it.aim === 'zone') {
-    return await ask(`<h2>${it.icon} ${it.name}</h2><p>要讓哪一區颳颱風？</p>`, [...ZKEYS.map(z => ({ label: ZONES[z].name, value: z, cls: 'primary' })), { label: '取消', value: null }], p);
+    return await ask(`<h2>${it.icon} ${it.name}</h2><p>要讓哪一區颳颱風？</p>`, [...ZKEYS.map(z => ({ label: ZONES[z].name, value: z, cls: 'primary' })), { label: '✖ 取消', value: null }], p);
   }
   if (it.aim === 'tile' || it.aim === 'enemyLand' || it.aim === 'enemyBuilt' || it.aim === 'ownLand') {
     const valid = validTiles(p, id);
@@ -3336,7 +3353,7 @@ async function chooseTarget(p, id) {
     const i = await aimTile(valid, text, p);
     return i >= 0 ? i : null;
   }
-  return true;
+  return await ask(`<h2>${it.icon} ${it.name}</h2><p>${it.desc}</p>`, [{ label: `✅ 使用${it.name}`, value: true, cls: 'hot' }, { label: '✖ 取消', value: null }], p);
 }
 function validTiles(p, id) {
   const out = [];
@@ -3811,6 +3828,11 @@ async function passStart(p) {
 
 async function meetNPC(p, n) {
   const id = n.def.id;
+  if (id === 'chicken' && Math.random() < .65) {
+    say(p, 'roll', '老闆，今天有什麼好貨？');
+    await drawFate(p, null, '<p style="font-size:13px;margin:0 0 6px">🧨 軍火販子今天沒貨，拉著你在路邊聊八卦，結果…</p>');
+    relocateNPC(n); updateHUD(); return false;
+  }
   if (id === 'chicken') {
     // 軍火販子：隨機 3 種武器打 4 折，挑一個
     const pool = shuffle(['rocket', 'bomb', 'mine', 'missiles', 'block', 'report', 'magnet']).slice(0, 3);
@@ -3830,6 +3852,11 @@ async function meetNPC(p, n) {
     say(p, 'jail');
     await info(p, '🕵️ 撞見檢調！', `「依法搜索！」${lost ? `${ITEMS[lost].icon} ${ITEMS[lost].name}被沒收，` : '身上什麼都沒搜到，'}原地停下配合調查。`);
     relocateNPC(n); updateHUD(); return true;
+  }
+  if (Math.random() < .6) {
+    say(p, 'earn', '阿伯好！');
+    await drawFate(p, 'good', '<p style="font-size:13px;margin:0 0 6px">🧓 樁腳伯拍拍你的肩膀：「少年耶，阿伯幫你喬一下！」</p>');
+    relocateNPC(n); updateHUD(); return false;
   }
   // 樁腳伯：送錢，再偷偷塞一個武器
   const gift = pick(['bomb', 'mine', 'bomb', 'mine', 'rocket']);
@@ -4645,6 +4672,47 @@ const NEWS = [
   { t: '地雷大清除', run: () => { Object.keys(G.traps).forEach(i => removeTrap(+i)); return '工兵出動，地圖上的地雷和路障全部清空。'; } },
   { t: '跑馬燈出現你的名字', run: p => { addPoll(p, 10); return `${p.char.name} 上了晚間新聞跑馬燈，民調 +10。`; } },
 ];
+// 機會（好事）／命運（倒楣事）：新聞格、路人都會抽到。台詞都是虛構搞笑，不影射真實事件
+const fine = n => async p => { await charge(p, n, null); };
+const FATE = [
+  // ⚡ 命運
+  { d: 'bad', ic: '🗑️', t: '亂丟垃圾被拍到', txt: '影片上了爆料社團，環保局開罰 1,500 元。', run: fine(1500) },
+  { d: 'bad', ic: '📢', t: '被國中同學爆料', txt: '「他小時候偷吃福利社的布丁！」民調 -15。', run: async p => addPoll(p, -15) },
+  { d: 'bad', ic: '🌪️', t: '競選看板被風吹走', txt: '重新印一面看板，花 2,000 元。', run: fine(2000) },
+  { d: 'bad', ic: '🤳', t: '直播忘記關美顏', txt: '臉變成貓咪被網友笑翻，民調 -8。', run: async p => addPoll(p, -8) },
+  { d: 'bad', ic: '🔊', t: '宣傳車太大聲', txt: '被鄰居檢舉噪音，罰 1,200 元。', run: fine(1200) },
+  { d: 'bad', ic: '🚦', t: '闖紅燈被行車記錄器拍到', txt: '罰 900 元，民調 -5。', run: async p => { addPoll(p, -5); await charge(p, 900, null); } },
+  { d: 'bad', ic: '🧨', t: '廟會被鞭炮嚇到', txt: '跌倒扭到腳，送醫院 1 回合。', run: async p => { await sendTo(p, HOSP, 1, 'hosp'); } },
+  { d: 'bad', ic: '🎤', t: '政見發表會口誤', txt: '口誤被做成迷因瘋傳，民調 -12。', run: async p => addPoll(p, -12) },
+  { d: 'bad', ic: '📸', t: '選舉公報照片太醜', txt: '民調 -6，還被說「本人比較帥」。', run: async p => addPoll(p, -6) },
+  { d: 'bad', ic: '📱', t: '手機掉進水溝', txt: '撈手機的時候弄丟了一個道具。', run: async p => { if (p.items.length) p.items.splice(rnd(p.items.length), 1); } },
+  { d: 'bad', ic: '☎️', t: '接到詐騙電話', txt: '「我是你兒子，換號碼了」…被騙走 10% 現金。', run: async p => { await charge(p, Math.round(p.cash * .1 / 10) * 10, null); } },
+  { d: 'bad', ic: '🍱', t: '請吃便當被檢舉', txt: '被懷疑是買票，請去檢調約談所說明 1 回合。', run: async p => { await sendTo(p, JAIL, 1, 'jail'); } },
+  { d: 'bad', ic: '🎂', t: '今天是你生日？', txt: '不，是你請大家吃蛋糕：付每個對手 300 元。', run: async p => { for (const q of others(p)) await charge(p, 300, q); } },
+  { d: 'bad', ic: '🐕', t: '掃街被狗追', txt: '狂奔三條街，鞋子跑掉，民調 -4、花 600 元買新鞋。', run: async p => { addPoll(p, -4); await charge(p, 600, null); } },
+  // 🍀 機會
+  { d: 'good', ic: '🧾', t: '發票中獎', txt: '路邊撿到的發票中了 2,000 元！', run: async p => { p.cash += 2000; } },
+  { d: 'good', ic: '👶', t: '抱小孩拍照爆紅', txt: '照片被瘋狂轉傳，民調 +12。', run: async p => addPoll(p, 12) },
+  { d: 'good', ic: '🎯', t: '夜市套圈圈', txt: '套中一個隨機道具！', run: async p => { giveItem(p, pick(ITEM_KEYS.filter(k => !['rocket', 'missiles'].includes(k)))); } },
+  { d: 'good', ic: '🙏', t: '廟口連擲三個聖筊', txt: '神明都挺你，民調 +8。', run: async p => addPoll(p, 8) },
+  { d: 'good', ic: '🎙️', t: 'KTV 歌聲被拍到', txt: '網友狂讚好聽，民調 +6，還收到 800 元抖內。', run: async p => { addPoll(p, 6); p.cash += 800; } },
+  { d: 'good', ic: '👵', t: '扶阿嬤過馬路', txt: '上了晚間新聞，民調 +10。', run: async p => addPoll(p, 10) },
+  { d: 'good', ic: '💰', t: '小額捐款湧入', txt: '支持者熱情贊助，+3,000 元。', run: async p => { p.cash += 3000; } },
+  { d: 'good', ic: '🧧', t: '大家包紅包給你', txt: '每個對手給你 500 元。', run: async p => { for (const q of others(p)) await charge(q, 500, p); } },
+  { d: 'good', ic: '🧋', t: '請全場喝珍奶', txt: '花 1,000 元，但民調 +10。', run: async p => { addPoll(p, 10); await charge(p, 1000, null); } },
+  { d: 'good', ic: '🚑', t: '律師朋友送你保釋卡', txt: '拿到一張 🚑 保釋卡，下次被送醫或約談可以直接保出來。', run: async p => { giveItem(p, 'bail'); } },
+  { d: 'good', ic: '🤢', t: '對手吃到過期便當', prep: p => ({ q: pick(others(p).filter(q => !q.where)) }), txt: (p, c) => c.q ? `${c.q.char.name} 吃壞肚子，送醫院 1 回合！` : '可惜大家都不在，便當沒人吃。', run: async (p, c) => { if (c.q) { say(c.q, 'hit', '肚子好痛…'); await sendTo(c.q, HOSP, 1, 'hosp'); } } },
+  { d: 'good', ic: '📺', t: '上政論節目大放異彩', txt: '名嘴都說你好，民調 +7，通告費 1,200 元。', run: async p => { addPoll(p, 7); p.cash += 1200; } },
+];
+async function drawFate(p, kind, intro = '') {
+  const c = pick(FATE.filter(x => !kind || x.d === kind)), good = c.d === 'good', ctx = c.prep ? c.prep(p) : {};
+  const head = good ? '🍀 機會' : '⚡ 命運', desc = typeof c.txt === 'function' ? c.txt(p, ctx) : c.txt;
+  (good ? SFX.coin : SFX.bad)(); say(p, good ? 'win' : 'lose');
+  log(`${head}：<b>${p.char.name}</b> ${c.ic} ${c.t}——${desc}`);
+  if (p.isAI) await caption(`${head}：${c.ic} ${c.t}`, desc, 2000);
+  else await ask(`${intro}<div class="fate ${c.d}"><span class="fh">${head}</span><div class="fi">${c.ic}</div><div class="ft">${c.t}</div><p>${desc}</p></div>`, [{ label: good ? '太好了！' : '認了…', cls: 'primary' }], p);
+  await c.run(p, ctx); updateHUD();
+}
 function addMod(zone, mult, rounds, label) { G.mods.push({ zone, mult, until: G.round + rounds, label }); }
 
 /* ---------- 全地圖突發事件：回合開始時有機會發生，影響所有人 ---------- */
@@ -4710,6 +4778,7 @@ async function suddenEvent() {
   cam.overview = was;
 }
 async function newsTile(p) {
+  if (Math.random() < .6) return drawFate(p);
   const n = pick(NEWS), d = n.run(p);
   SFX.fan(); updateHUD(); log(`📺 <b>${n.t}</b> ${d}`);
   if (p.isAI) await caption(`📺 ${n.t}`, d, 2000);
@@ -5087,7 +5156,8 @@ async function handleReq(r) {
         if (MISSIONS[r.key]) { NET.myMission = r.key; me.mission = r.key; }
         v = await ask(`<h2>🎯 你的祕密任務</h2>${missionHtml(me, NET.myMission)}`, [{ label: '記住了，開打！', cls: 'primary' }], me);
         break;
-      case 'ask': v = await ask(clean(String(r.html || '')), (Array.isArray(r.buttons) ? r.buttons : []).map((b, k) => ({ label: esc(String(b.label)), cls: ['primary', 'hot'].includes(b.cls) ? b.cls : '', disabled: !!b.disabled, value: k })), me); break;
+      case 'ask': v = await ask(clean(String(r.html || '')), (Array.isArray(r.buttons) ? r.buttons : []).map((b, k) => ({ label: esc(String(b.label)), cls: ['primary', 'hot'].includes(b.cls) ? b.cls : '', disabled: !!b.disabled, value: k,
+        card: b.card && typeof b.card === 'object' ? { ic: clean(String(b.card.ic || '')), name: esc(String(b.card.name || '')), desc: esc(String(b.card.desc || '')) } : null })), me); break;
       case 'aim': v = await aimTile((Array.isArray(r.valid) ? r.valid : []).map(Number), String(r.text || ''), me); break;
       case 'tap': v = await tapGame(me); break;
       case 'quiz': { const q = Array.isArray(r.q) ? r.q : ['', '', []]; v = await quizQT(me, [String(q[0]), String(q[1]), (Array.isArray(q[2]) ? q[2] : []).map(String), String(q[3] || '')], +r.k || 0, clamp(+r.total || 3, 1, 5), clamp(+r.secs || 7, 3, 12)); break; }
