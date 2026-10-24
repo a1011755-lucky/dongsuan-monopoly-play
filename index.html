@@ -131,6 +131,11 @@ button{touch-action:manipulation}
 #emos{display:flex;gap:4px}
 #emos button{font-size:20px;padding:4px 7px;line-height:1}
 .emofly{position:absolute;z-index:9;pointer-events:none;font-size:34px;transform:translate(-50%,-50%);animation:emofly 1.4s ease-out forwards;text-align:center}
+#vsub{position:fixed;left:50%;bottom:118px;transform:translate(-50%,20px);z-index:20;display:flex;align-items:center;gap:10px;max-width:min(560px,calc(100vw - 32px));background:rgba(29,22,51,.88);color:#fff;border:3px solid var(--c);border-radius:999px;padding:6px 16px 6px 6px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#vsub.on{opacity:1;transform:translate(-50%,0)}
+#vsub img,#vsub .g{width:44px;height:44px;border-radius:50%;flex:none;background:var(--c);display:grid;place-items:center;font-weight:900}
+#vsub b{display:block;font-family:var(--display);font-size:13px;color:var(--c);filter:brightness(1.6)}
+#vsub span{font-size:15px;font-weight:700;line-height:1.35}
 .emofly.big{font-size:54px;filter:drop-shadow(2px 3px 0 rgba(0,0,0,.25))}
 .emofly small{display:block;font-size:11px;font-weight:900;font-family:var(--display);background:#fff;border:2px solid var(--ink);border-radius:999px;padding:0 6px;white-space:nowrap}
 @keyframes emofly{0%{opacity:0;transform:translate(-50%,40px) scale(.6)}20%{opacity:1;transform:translate(-50%,-10px) scale(1.25)}100%{opacity:0;transform:translate(-50%,-90px) scale(1)}}
@@ -458,6 +463,7 @@ button{touch-action:manipulation}
     <button id="btn-sound" class="opt" title="音效開關">音效 開</button>
     <button id="btn-bgm" class="opt" title="背景音樂開關">音樂 開</button>
     <button id="btn-voice" class="opt" title="角色台詞語音開關">語音 開</button>
+    <button id="btn-vtest" class="opt" title="試聽每位候選人的配音">🎙️ 試聽</button>
     <button id="btn-more" title="更多按鈕">⋯ 更多</button>
   </div>
   <div id="caption"></div>
@@ -634,11 +640,38 @@ function pickVoice(male, alt = 0) {
 // 講話排隊：一次只有一個人講，講完喘口氣才換下一句，不會疊在一起
 // prio 0＝旁人的反應（有空才講、一半機率省略）；1＝輪到的人（有人在講就跳過，只顯示泡泡）；2＝玩家自己按的喊話（打斷別人馬上講）
 let speakUntil = 0;
-function speak(ch, line, prio = 1) {
-  if (!voiceOn || muted || !('speechSynthesis' in window)) return;
-  const now = performance.now(), busy = now < speakUntil || speechSynthesis.speaking || speechSynthesis.pending;
+const vAudio = typeof Audio !== 'undefined' ? new Audio() : null;
+// 底下的配音字幕：角色頭像＋名字＋這句話
+function showVsub(ch, line, ms) {
+  let el = document.getElementById('vsub');
+  if (!el) { el = document.createElement('div'); el.id = 'vsub'; document.body.appendChild(el); }
+  el.style.setProperty('--c', ch.color);
+  el.innerHTML = `${faceURL[ch.id] ? `<img src="${faceURL[ch.id]}" alt="">` : `<span class="g">${ch.glyph}</span>`}<div><b>${ch.name}</b><span>${esc(line)}</span></div>`;
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  clearTimeout(el.t); el.t = setTimeout(() => el.classList.remove('on'), Math.max(1800, ms));
+}
+function speak(ch, line, prio = 1, vid = '') {
+  if (!voiceOn || muted) return;
+  const now = performance.now(), busy = now < speakUntil || (vAudio && !vAudio.paused) || ('speechSynthesis' in window && (speechSynthesis.speaking || speechSynthesis.pending));
+  // 互動反應：前一句還在講，就等它講完再接（最多等 4 秒）
+  if (prio === 1.5 && busy) { const w = Math.min(4000, Math.max(300, speakUntil - now)); if (!speak.q || speak.q < 3) { speak.q = (speak.q || 0) + 1; setTimeout(() => { speak.q--; speak(ch, line, 1, vid); }, w); } return; }
   if (prio < 2 && busy) return;
   if (prio === 0 && Math.random() < .5) return;
+  // 角色專屬配音（voices/ 底下的 mp3）
+  if (vid && VMAN[vid] && vAudio) {
+    try {
+      if ('speechSynthesis' in window) speechSynthesis.cancel();
+      vAudio.pause(); vAudio.src = `voices/${vid}.mp3`; vAudio.volume = .95; vAudio.playbackRate = G && G.fast ? 1.15 : 1;
+      speakUntil = now + 6000;
+      vAudio.onloadedmetadata = () => { speakUntil = performance.now() + vAudio.duration * 1000 / vAudio.playbackRate + 500; showVsub(ch, line, vAudio.duration * 1000); };
+      vAudio.onended = () => { speakUntil = Math.min(speakUntil, performance.now() + 500); };
+      vAudio.onerror = () => { speakUntil = 0; };
+      vAudio.play().catch(() => { speakUntil = 0; });
+      return;
+    } catch (e) { }
+  }
+  if (!('speechSynthesis' in window)) return;
+  showVsub(ch, line, [...line].length * 230);
   try {
     const v = VOICE[ch.id] || { p: 1, r: 1 }, text = v.q ? v.q(line) : line;
     const u = new SpeechSynthesisUtterance(text), voice = pickVoice(v.male, Object.keys(VOICE).indexOf(ch.id));
@@ -648,7 +681,7 @@ function speak(ch, line, prio = 1) {
     // 估計講完的時間（有些手機不會回報講完），再多留 0.7 秒空檔
     speakUntil = now + 700 + [...text].length * 230 / u.rate;
     u.onend = () => { speakUntil = Math.min(speakUntil, performance.now() + 700); };
-    if (busy) speechSynthesis.cancel();
+    if (busy) { speechSynthesis.cancel(); if (vAudio) vAudio.pause(); }
     speechSynthesis.speak(u);
   } catch (e) { }
 }
@@ -717,7 +750,16 @@ const TAUNTS = {
   '3q': ['3Q！3Q！', '3Q 你的配合！', '光頭最閃亮！', '海線報到！'],
   gz: ['練起來！', '男人就是要硬！', '講那麼多，先去練腿！', '健身房開張啦！', '冠軍！蛋白質加倍！'],
 };
+// 角色配音台詞資料庫（voices/lines.json）和已錄好的語音清單（voices/manifest.json）；讀不到就照舊用內建台詞＋瀏覽器語音
+let VDB = null, VMAN = {};
+fetch('voices/lines.json').then(r => r.ok ? r.json() : null).then(j => { if (j && j.chars) VDB = j.chars; }).catch(() => { });
+fetch('voices/manifest.json').then(r => r.ok ? r.json() : null).then(j => { if (j && typeof j === 'object') VMAN = j; }).catch(() => { });
+// 遊戲裡的說話時機 → 台詞資料庫的事件
+const VKEY = { roll: 'sig', start: 'sig', buy: 'buy', upgrade: 'buy', pay: 'rent_pay', rentget: 'rent_get', attack: 'attack', hit: 'hit', hosp: 'hit', jail: 'hit', counter: 'counter', skill: 'skill', broke: 'broke', champion: 'champion' };
 const GENERIC = {
+  rentget: ['各位鄉親，這筆錢我就不客氣啦！', '過路費入袋！', '感謝光臨～'],
+  counter: ['想陰我？沒那麼簡單！', '早就料到了！', '還給你啦！'],
+  skill: ['看我的！', '造勢開始！', '全場跟我喊！'],
   buy: ['這塊我買了！', '地契拿來！', '投資台灣，從這塊地開始！'],
   upgrade: ['蓋！給我蓋大樓！', '建設看得到！', '地價噴發中！'],
   pay: ['這過路費也太貴了吧！', '錢包在哭…', '好啦好啦，給你。'],
@@ -2489,7 +2531,7 @@ async function mock(att, vic, kind) {
 }
 async function vestSave(v) {
   if (!v || !v.items.includes('vest')) return false;
-  takeItem(v, 'vest'); SFX.coin(); say(v, 'win', pick(['還好有穿背心！', '炸不死我啦！', '灰頭土臉而已～']));
+  takeItem(v, 'vest'); SFX.coin(); say(v, 'counter');
   await caption('🦺 防爆背心！', `${v.char.name} 被炸得灰頭土臉，但毫髮無傷，不用住院`, 1400); updateHUD();
   return true;
 }
@@ -2613,21 +2655,26 @@ function say(p, key, text) {
   const tt = TAUNTS[p.char.id] || [];
   if (!text && tt.length && ['roll', 'start', 'attack', 'win'].includes(key) && Math.random() < .35) text = pick(tt);
   const pool = key === 'roll' || key === 'start' ? p.char.lines.sig : (own.length && Math.random() < .75 ? own : (GENERIC[key] || own));
-  sayLine(p.seat, text || pick(pool && pool.length ? pool : ['……']), key);
+  // 有配音台詞資料庫：用資料庫的句子（有錄音就會播那個角色的專屬配音）
+  let vid = '';
+  const ev = VKEY[key], arr = !text && VDB && VDB[p.char.id] && VDB[p.char.id][ev];
+  if (arr && arr.length) { const k = rnd(arr.length); text = arr[k]; vid = `${p.char.id}/${ev}_${k + 1}`; }
+  sayLine(p.seat, text || pick(pool && pool.length ? pool : ['……']), key, vid);
 }
-function sayLine(seat, line, key) {
+function sayLine(seat, line, key, vid = '') {
   const p = G.players[seat]; if (!p || !p.bubble) return;
-  hostFx('say', [seat, line, key || '']);
+  hostFx('say', [seat, line, key || '', vid]);
   if (KEY_ANIM[key]) play(p, KEY_ANIM[key], true);
   const b = document.createElement('b'); b.textContent = p.char.name;
   p.bubble.replaceChildren(b, document.createTextNode(line)); p.bubble.classList.add('on');
   clearTimeout(p.bt); p.bt = setTimeout(() => p.bubble.classList.remove('on'), 2800);
   logLocal(`<b style="color:${p.char.color}">${p.char.name}</b>：「${esc(line)}」`);
   // 誰講話的優先順序：當選感言最優先，輪到的人次之，其他人的反應有空才講
-  const prio = key === 'champion' ? 2 : G.players[G.turn] === p ? 1 : 0;
+  // 互動反應（被收錢、被陷害、反制、收過路費）不能被吃掉：排隊等前一句講完
+  const prio = key === 'champion' ? 2 : ['rentget', 'pay', 'hit', 'counter', 'broke', 'skill'].includes(key) ? 1.5 : G.players[G.turn] === p ? 1 : 0;
   // 輪到的人擲骰、贏的時候先來一聲招牌音效（有冷卻）
-  if (prio && ['roll', 'win', 'champion'].includes(key) && charFx(p.char.id)) setTimeout(() => speak(p.char, line, prio), 300);
-  else speak(p.char, line, prio);
+  if (prio && ['roll', 'win', 'champion'].includes(key) && charFx(p.char.id)) setTimeout(() => speak(p.char, line, prio, vid), 300);
+  else speak(p.char, line, prio, vid);
 }
 
 const modal = $('#modal'), mbox = $('#modal-box');
@@ -2832,7 +2879,8 @@ $('#btn-fast').onclick = () => { G.fast = !G.fast; $('#btn-fast').textContent = 
 $('#btn-bgm').textContent = BGM.on ? '音樂 開' : '音樂 關';
 $('#btn-bgm').onclick = () => { BGM.on = !BGM.on; try { localStorage.setItem('ds-bgm', BGM.on ? '1' : '0'); } catch (e) { } $('#btn-bgm').textContent = BGM.on ? '音樂 開' : '音樂 關'; bgmStart(); };
 $('#btn-sound').onclick = () => { muted = !muted; $('#btn-sound').textContent = muted ? '音效 關' : '音效 開'; };
-$('#btn-voice').onclick = () => { voiceOn = !voiceOn; $('#btn-voice').textContent = voiceOn ? '語音 開' : '語音 關'; if (!voiceOn) try { speechSynthesis.cancel(); } catch (e) { } };
+$('#btn-vtest').onclick = () => { try { window.open('voices/test.html', '_blank'); } catch (e) { } };
+$('#btn-voice').onclick = () => { voiceOn = !voiceOn; $('#btn-voice').textContent = voiceOn ? '語音 開' : '語音 關'; if (!voiceOn) try { speechSynthesis.cancel(); if (vAudio) vAudio.pause(); } catch (e) { } };
 $('#btn-restart').onclick = async () => {
   if (!modal.hidden) return;
   const msg = NET.mode === 'client' ? '<h2>離開房間？</h2><p>你會回到選角畫面，房主那邊會改由電腦幫你代打。</p>'
@@ -2925,7 +2973,7 @@ async function takeTurn(p) {
     await caption('🐱 貓咪叼回🎁 一個神秘道具', p.char.name, 1100);
   }
   if (p.char.id === 'wsj' && G.round % 3 === 0 && p.songRound !== G.round) {
-    p.songRound = G.round; addPoll(p, 4); alive().filter(q => q !== p).forEach(q => addPoll(q, -2)); CHAR_FX.violin(); updateHUD();
+    p.songRound = G.round; addPoll(p, 4); alive().filter(q => q !== p).forEach(q => addPoll(q, -2)); CHAR_FX.violin(); updateHUD(); say(p, 'skill');
     await caption('🎻 世堅哥深情演唱', `${p.char.name} 民調 +4，對手聽到哭，民調各 -2`, 1300);
   }
   let g0 = null;
@@ -2941,7 +2989,7 @@ async function takeTurn(p) {
     if (again) {
       dbl++;
       if (dbl >= 3) { SFX.bad(); await caption('連三次對子！', `${p.char.name} 太囂張，被請去檢調約談所`, 1500); await sendTo(p, JAIL, 1, 'jail'); return; }
-      if (p.char.id === 'bian') { p.cash += 1500; SFX.coin(); await caption('對子！希望相隨', `${p.char.name} +1,500`, 1000); }
+      if (p.char.id === 'bian') { p.cash += 1500; SFX.coin(); say(p, 'skill'); await caption('對子！希望相隨', `${p.char.name} +1,500`, 1000); }
     }
     await diceBonus(p, v);
     if (p.out) return;
@@ -3338,7 +3386,7 @@ async function powerFlow(p, auto) {
   }
   let arg = true;
   if (P.item) { arg = auto || await chooseTarget(p, P.item); if (arg === null || arg === undefined) return null; }
-  p.powerAt = G.round; SFX.fan(); updateHUD();
+  p.powerAt = G.round; SFX.fan(); updateHUD(); say(p, 'skill');
   await caption(`⚡ ${p.char.name} 發動超能力！`, `${P.icon} ${P.name}`, 1300);
   let forced = null;
   if (P.item) forced = await useItem(p, P.item, arg, true);
@@ -3455,7 +3503,7 @@ async function remotePreRoll(p) {
 async function wanAnDrill(p) {
   p.skillUsed = true;
   for (let k = 0; k < 6; k++) beep(k % 2 ? 660 : 880, .25, 'sawtooth', .04, k * .25);
-  say(p, 'attack', '萬安演習，請大家就地避難！');
+  say(p, 'skill');
   others(p).forEach(q => { q.skip += 1; setTimeout(() => say(q, 'hit', pick(['又演習？', '我躲到桌子底下了！', '這警報也太大聲了吧！'])), 600 + rnd(900)); });
   updateHUD();
   await caption('🚨 萬安演習！', '其他人全部原地停一回合', 1800);
@@ -3516,7 +3564,7 @@ async function useItem(p, id, arg, free) {
   // 照妖鏡：打人的道具原封不動彈回去
   if (HIT_ITEMS.includes(id) && arg && arg.seat !== undefined && arg !== p && arg.items.includes('mirror')) {
     takeItem(arg, 'mirror'); SFX.whoosh(); cam.shake = .5;
-    say(arg, 'win', pick(['照妖鏡！還給你！', '想害我？沒那麼簡單！', '反彈！']));
+    say(arg, 'counter');
     await caption('🪞 照妖鏡反彈！', `${it.name}彈回 ${p.char.name} 自己身上`, 1500);
     arg = p;
   }
@@ -3671,7 +3719,7 @@ async function fireRocket(p, i) {
   let bounced = false;
   if (def) {
     lookAtTile(i); hostFx('rocket', [p.seat, i]); await rocketFly(p.seat, i);
-    takeItem(def, 'net'); SFX.whoosh(); cam.shake = .5; say(def, 'win', pick(['彈回去！', '想炸我？沒門！', '反彈網啟動！']));
+    takeItem(def, 'net'); SFX.whoosh(); cam.shake = .5; say(def, 'counter');
     await caption('🏓 飛彈反彈網！', `${def.char.name} 把火箭彈回 ${p.char.name} 那裡！`, 1500);
     i = p.pos; lookAtTile(i); hostFx('rocket', [def.seat, i]); await rocketFly(def.seat, i); bounced = true;
   }
@@ -3819,7 +3867,7 @@ async function sendTo0(p, corner, turns, where) {
   if (where === 'jail' && p.items.includes('goat')) {
     const q = pick(others(p).filter(x => !x.where));
     if (q) {
-      takeItem(p, 'goat'); SFX.whoosh(); say(p, 'win', pick(['不是我，是他！', '這鍋我不背！', '甩鍋成功～']));
+      takeItem(p, 'goat'); SFX.whoosh(); say(p, 'counter');
       log(`🐐 <b>${p.char.name}</b> 把鍋甩給 <b>${q.char.name}</b>`);
       await caption('🐐 甩鍋成功！', `${p.char.name} 把鍋甩給 ${q.char.name}，換他去約談所`, 1600); updateHUD();
       return sendTo0(q, corner, turns, where).then(() => { q.mockJail = false; return mock(p, q, 'jail'); });
@@ -4222,7 +4270,7 @@ async function payRent(p, i) {
     if (r === 'lose') { amt *= 2; addPoll(p, -5); }
   }
   say(p, 'pay'); SFX.bad();
-  setTimeout(() => say(o, 'earn'), 900 * speed());
+  setTimeout(() => say(o, 'rentget'), 900 * speed());
   await caption(`付過路費 ${fmt(amt)}`, `${p.char.name} → ${o.char.name}`, 1200);
   if (st.kind === 'hq') { addPoll(p, -5); addPoll(o, 5); await caption('🚩 走進對手競選總部', `${p.char.name} 民調 -5`, 900); }
   if (st.kind === 'stand') { const it = pick(ITEM_KEYS); giveItem(o, it); await caption('🍗 雞排賣出去了', `${o.char.name} 拿到🎁 一個神秘道具`, 900); }
@@ -5464,7 +5512,7 @@ function playFx(m) {
   try {
     switch (k) {
       case 'cap': caption(clean(String(d[0])), clean(String(d[1] || '')), +d[2] || 1600); break;
-      case 'say': sayLine(+d[0], String(d[1]), String(d[2] || '')); break;
+      case 'say': sayLine(+d[0], String(d[1]), String(d[2] || ''), /^[a-z0-9]+\/[a-z_]+_\d+$/.test(String(d[3] || '')) ? String(d[3]) : ''); break;
       case 'log': logLocal(clean(String(d))); break;
       case 'sfx': if (SFX_RAW[d]) SFX_RAW[d](); break;
       case 'boom': explosion(+d); break;

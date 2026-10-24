@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>候選人配音試聽</title>
+<style>
+:root{--ink:#1d1633;--bg:#fff8e7;--card:#ffffff;--muted:#6b6380;--sun:#ffd23f;--ok:#2e7d32}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ink:#f3eefc;--bg:#17122a;--card:#241d3d;--muted:#b3aac8}}
+:root[data-theme="dark"]{--ink:#f3eefc;--bg:#17122a;--card:#241d3d;--muted:#b3aac8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;padding:16px}
+h1{font-size:24px;margin:0 0 4px}
+.mut{color:var(--muted);font-size:14px;margin:0 0 12px;line-height:1.6}
+.stat{display:inline-block;background:var(--sun);color:#1d1633;border-radius:999px;padding:3px 12px;font-weight:900;font-size:14px}
+.chars{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.chars button{border:2px solid var(--ink);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 14px;font-weight:900;cursor:pointer;font-size:15px}
+.chars button[aria-pressed="true"]{background:var(--sun);color:#1d1633}
+.persona{background:var(--card);border:2px solid var(--ink);border-radius:14px;padding:12px 14px;margin-bottom:12px;line-height:1.6}
+.ev{margin:14px 0 6px;font-weight:900}
+.line{display:flex;align-items:center;gap:10px;background:var(--card);border:2px solid var(--ink);border-radius:12px;padding:8px 10px;margin:6px 0}
+.line button{flex:none;width:40px;height:40px;border-radius:50%;border:2px solid var(--ink);background:var(--sun);font-size:16px;cursor:pointer}
+.line .t{flex:1;line-height:1.5}
+.tag{flex:none;font-size:12px;font-weight:900;border-radius:999px;padding:2px 8px;border:1.5px solid currentColor}
+.tag.ok{color:var(--ok)}.tag.tts{color:var(--muted)}
+.wrap{max-width:760px;margin:0 auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎙️ 候選人配音試聽</h1>
+  <p class="mut">每位候選人都有自己的配音人格和台詞（全部虛構搞笑，不是模仿本人聲音）。有「✅ 專屬配音」的句子會播 AI 錄好的語音；還沒產生語音的句子先用瀏覽器內建語音代替。</p>
+  <span class="stat" id="stat">讀取中…</span>
+  <div class="chars" id="chars"></div>
+  <div id="detail"></div>
+</div>
+<script>
+const EV = { sig: '📣 招牌口號', buy: '🏠 買地蓋房', rent_get: '💰 收過路費', rent_pay: '💸 付過路費', attack: '😈 出招陷害', hit: '😱 被陷害', counter: '🛡️ 反制成功', skill: '⚡ 發動技能', broke: '💀 破產', champion: '🏆 勝選感言' };
+// 沒有錄音時，瀏覽器語音的音高、語速（跟遊戲裡一樣的卡通聲線）
+const TTS = { bian: [.95, 1.15, 1], ma: [1.3, 1, 1], tsai: [1, .82, 0], gou: [.85, 1.15, 1], han: [1.1, 1.25, 1], wsj: [.75, 1.05, 1], lai: [1.05, .95, 1], puma: [1.05, 1.2, 1], chiang: [1.15, 1.05, 1], kc: [1, 1.45, 1], ko: [.9, 1.3, 1], su: [1.4, 1.1, 0], '3q': [1.55, 1.35, 1], gz: [.45, .95, 1] };
+let L = {}, V = {}, M = {}, cur = '';
+const audio = new Audio();
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const get = u => fetch(u).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+Promise.all([get('lines.json'), get('voices.json'), get('manifest.json')]).then(([l, v, m]) => {
+  L = l.chars || {}; V = v.chars || {}; M = m || {};
+  const total = Object.values(L).reduce((n, c) => n + Object.values(c).reduce((a, x) => a + x.length, 0), 0);
+  document.getElementById('stat').textContent = `已產生專屬配音 ${Object.keys(M).length} / ${total} 句`;
+  const box = document.getElementById('chars');
+  box.innerHTML = Object.keys(L).map(id => `<button data-id="${id}">${esc((V[id] || {}).name || id)}</button>`).join('');
+  box.onclick = e => { const b = e.target.closest('[data-id]'); if (b) show(b.dataset.id); };
+  show(Object.keys(L)[0]);
+});
+function show(id) {
+  cur = id;
+  document.querySelectorAll('#chars button').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === id));
+  const c = L[id], v = V[id] || {};
+  document.getElementById('detail').innerHTML = `<div class="persona"><b>${esc(v.name || id)}</b>：${esc(v.persona || '')}<br><span class="mut">AI 聲音：${esc(v.voiceName || '未設定')}　語速 ${v.settings ? v.settings.speed : '—'}　誇張度 ${v.settings ? v.settings.style : '—'}</span></div>` +
+    Object.keys(c).map(ev => `<div class="ev">${EV[ev] || ev}</div>` + c[ev].map((t, k) => {
+      const vid = `${id}/${ev}_${k + 1}`, ok = !!M[vid];
+      return `<div class="line"><button data-vid="${vid}" data-t="${esc(t)}" title="播放">▶</button><span class="t">${esc(t)}</span><span class="tag ${ok ? 'ok' : 'tts'}">${ok ? '✅ 專屬配音' : '瀏覽器語音'}</span></div>`;
+    }).join('')).join('');
+}
+document.getElementById('detail').onclick = e => {
+  const b = e.target.closest('[data-vid]'); if (!b) return;
+  speechSynthesis.cancel(); audio.pause();
+  if (M[b.dataset.vid]) { audio.src = b.dataset.vid + '.mp3'; audio.play(); return; }
+  const [p, r, male] = TTS[cur] || [1, 1, 1], u = new SpeechSynthesisUtterance(b.dataset.t);
+  const vs = speechSynthesis.getVoices().filter(x => /^zh/i.test(x.lang)), tw = vs.filter(x => /TW|Hant/i.test(x.lang + x.name));
+  const pool = tw.length ? tw : vs, m = pool.filter(x => /male|男|zhiwei|yunxi|yunjian/i.test(x.name));
+  u.voice = (male && m.length ? m[0] : pool[0]) || null; u.lang = u.voice ? u.voice.lang : 'zh-TW'; u.pitch = p; u.rate = r;
+  speechSynthesis.speak(u);
+};
+</script>
+</body>
+</html>
