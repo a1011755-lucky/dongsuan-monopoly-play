@@ -733,7 +733,7 @@ function speak(ch, line, prio = 1, vid = '') {
 }
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
-const GAME_VER = '20261024d';   // 改角色名單、連線格式時要改這個
+const GAME_VER = '20261025e';   // 改角色名單、連線格式時要改這個
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -849,6 +849,22 @@ const MAPS = {
     props: [['駁二藝術特區', '旗津', '85大樓', '西子灣', '流行音樂中心'], ['六合夜市', '美麗島站', '愛河', '中央公園', '大立百貨'],
       ['高雄展覽館', '輕軌水岸', '夢時代', '衛武營', '新灣區'], ['壽山動物園', '美濃', '蓮池潭', '英國領事館', '義大世界']],
     stage: [-11, 3, .7], marks: [['t85', 10.5, 2.5, 0], ['pagoda', -3, 3.5, 0], ['wheel', 3.6, 3.2, 0], ['harbor', 0, -8.5, 0]],
+  },
+  tnn: {
+    name: '台南', blurb: '十字形古城棋盤，赤崁樓、安平古堡、七股鹽山、奇美博物館', fly: '台南機場', ground: '#f1ecd2', river: '曾文溪', mount: '關子嶺',
+    shape: [[6, 18], [-6, 18], [-6, 6], [-18, 6], [-18, -6], [-6, -6], [-6, -18], [6, -18], [6, -6], [18, -6], [18, 6], [6, 6]],
+    zones: ['安平古城', '中西區老城', '府城美食', '七股鹽田'],
+    props: [['安平古堡', '安平樹屋', '億載金城', '漁光島', '安平老街'], ['赤崁樓', '孔廟', '神農街', '林百貨', '藍晒圖'],
+      ['國華街', '花園夜市', '牛肉湯街', '鹽水意麵', '正興街'], ['七股鹽山', '井仔腳鹽田', '奇美博物館', '四草綠色隧道', '北門水晶教堂']],
+    stage: [0, 0, .62], marks: [['chikan', 0, 11.5, 0], ['fort', -11.5, 0, 0], ['salt', 11.5, 0, 0], ['chimei', 0, -11.5, 0]],
+  },
+  hl: {
+    name: '花東', blurb: '狹長的海岸線棋盤，太魯閣峽谷、鹿野熱氣球、三仙台八拱橋', fly: '花蓮機場', ground: '#e3f0d8', river: '秀姑巒溪', mount: '中央山脈',
+    shape: [[24, 7], [8, 9], [-8, 7], [-24, 9], [-24, -9], [-8, -7], [8, -9], [24, -7]],
+    zones: ['花蓮市區', '太魯閣', '花東縱谷', '台東海岸'],
+    props: [['東大門夜市', '花蓮港', '松園別館', '七星潭', '花蓮文創園區'], ['燕子口', '九曲洞', '長春祠', '砂卡礑步道', '清水斷崖'],
+      ['鹿野高台', '池上便當', '伯朗大道', '金城武樹', '關山親水公園'], ['三仙台', '都蘭', '加路蘭', '小野柳', '台東森林公園']],
+    stage: [0, 0, .55], marks: [['gorge', -15, 0, 0], ['balloon', 14.5, 0, 0], ['sanxian', 7.5, 0, 0], ['balloon', -7, .5, 0]],
   },
 };
 const MAP_KEYS = Object.keys(MAPS);
@@ -1109,7 +1125,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color('#8fd8ff');
 scene.fog = new THREE.Fog('#8fd8ff', 70, 140);
 const camera = new THREE.PerspectiveCamera(45, 1, .1, 400);
-scene.add(new THREE.HemisphereLight('#ffffff', '#7fa86a', .75));
+const hemi = new THREE.HemisphereLight('#ffffff', '#7fa86a', .75); scene.add(hemi);
 const sun = new THREE.DirectionalLight('#fff4dd', .85);
 sun.position.set(18, 40, 22); sun.castShadow = true;
 sun.shadow.mapSize.set(LITE ? 1024 : 2048, LITE ? 1024 : 2048);
@@ -1171,14 +1187,18 @@ function buildPath(shape) {
   }
   return { pos, th, inw, sgn };
 }
-function curvy(shape) {
+// 可重現的亂數：同一個 seed 每台裝置算出來都一樣
+function seeded(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function curvy(shape, seed) {
   const n = shape.length; let A = 0;
   for (let k = 0; k < n; k++) { const [x1, z1] = shape[k], [x2, z2] = shape[(k + 1) % n]; A += x1 * z2 - x2 * z1; }
-  const sgn = A >= 0 ? 1 : -1, out = [];
+  const sgn = A >= 0 ? 1 : -1, out = [], rand = seed ? seeded(seed) : null;
   for (let k = 0; k < n; k++) {
     const a = shape[k], b = shape[(k + 1) % n], dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz);
-    const nx = -dz / L * sgn, nz = dx / L * sgn, waves = L > 26 ? 2 : 1;
-    const amp = Math.min(waves > 1 ? 1.5 : 2.1, L * .085) * (k % 2 ? 1 : -1);
+    const nx = -dz / L * sgn, nz = dx / L * sgn;
+    // 沒有 seed（選地圖預覽）用固定彎法；有 seed（正式開局）每條邊的彎數、彎多大、往哪彎都隨機
+    const waves = rand ? (L > 22 ? 1 + Math.floor(rand() * 3) : 1 + Math.floor(rand() * 2)) : L > 26 ? 2 : 1;
+    const amp = Math.min(waves > 2 ? 1.1 : waves > 1 ? 1.5 : 2.1, L * .085) * (rand ? (.5 + rand() * .7) * (rand() < .5 ? 1 : -1) : (k % 2 ? 1 : -1));
     const K = Math.max(4, Math.round(L / 1.2));
     for (let j = 0; j < K; j++) { const t = j / K, off = amp * Math.sin(Math.PI * waves * t); out.push([a[0] + dx * t + nx * off, a[1] + dz * t + nz * off]); }
   }
@@ -1387,6 +1407,54 @@ const MARKS = {
       ball(.55, beast, x, .6, 1.3, g); ball(.2, '#ffffff', x - .2, .85, 1.75, g); ball(.2, '#ffffff', x + .2, .85, 1.75, g);
     });
   },
+  chikan(g) {    // 赤崁樓：石台基上兩座紅柱閩式樓閣
+    box(6, .8, 3, '#bdb3a0', 0, .4, 0, g);
+    [-1.5, 1.5].forEach(x => {
+      box(2.2, 1.6, 1.8, '#c62828', x, 1.6, 0, g); box(2.8, .2, 2.4, '#3e4a3e', x, 2.5, 0, g);
+      const r = cone(1.8, .9, '#3e4a3e', x, 3.05, 0, g, 4); r.rotation.y = Math.PI / 4; r.scale.z = .75;
+      box(1.4, .9, 1.1, '#c62828', x, 3.6, 0, g); const r2 = cone(1.2, .7, '#3e4a3e', x, 4.4, 0, g, 4); r2.rotation.y = Math.PI / 4; r2.scale.z = .75;
+      ball(.15, '#ffca28', x, 4.85, 0, g);
+    });
+    const s = textPlane('赤崁樓', 1.8, .45, '#ffffff', '#8d1f1f', 120); s.position.set(0, 1.3, 1.52); g.add(s);
+  },
+  fort(g) {      // 安平古堡：紅磚城牆＋白色瞭望塔
+    box(5, 1.4, 4, '#a5482c', 0, .7, 0, g); box(5.2, .3, 4.2, '#7a3520', 0, 1.5, 0, g);
+    for (let k = -2; k <= 2; k++) box(.5, .45, .5, '#a5482c', k * 1.1, 1.85, 1.9, g);
+    cyl(.9, 1, 2.6, '#f5f5f0', 0, 2.9, -.6, g, 16); cone(1.15, 1.1, '#c62828', 0, 4.75, -.6, g, 16);
+    cyl(.04, .04, 1.4, '#eceff1', 0, 5.9, -.6, g, 5); const f = box(.7, .4, .03, '#2e7d32', .35, 6.4, -.6, g);
+    boardAnims.push(t => { f.rotation.y = Math.sin(t * 3) * .4; });
+  },
+  salt(g) {      // 七股鹽山：一座座白色鹽堆，閃閃發亮
+    [[0, 0, 2.3, 3], [-2.3, 1.3, 1.6, 2.1], [2.1, 1.1, 1.4, 1.8], [.5, 2.6, 1.2, 1.5]].forEach(([x, z, r, h]) => cone(r, h, '#fbfbf7', x, h / 2, z, g, 14));
+    const sp = [0, 1, 2].map(k => ball(.1, glow('#fffde7', 1.5), -.5 + k * .6, 1.5 + k * .4, .9, g));
+    boardAnims.push(t => sp.forEach((b, k) => { b.visible = Math.sin(t * 5 + k * 2) > .3; }));
+  },
+  chimei(g) {    // 奇美博物館：白色宮殿＋圓頂＋前面的噴水池
+    box(6, 2.4, 2.6, '#f7f3ea', 0, 1.2, 0, g); box(6.4, .3, 3, '#e0d6c2', 0, 2.55, 0, g);
+    for (let k = -2; k <= 2; k++) cyl(.18, .2, 2.2, '#ffffff', k * 1.1, 1.1, 1.45, g, 10);
+    const d = new THREE.Mesh(new THREE.SphereGeometry(1.5, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), M('#e8f1f8')); d.position.y = 2.7; g.add(d);
+    cyl(1.6, 1.6, .25, '#81d4fa', 0, .12, 3.2, g, 20); const jet = cyl(.08, .08, 1, '#e1f5fe', 0, .6, 3.2, g, 6);
+    boardAnims.push(t => { jet.scale.y = .7 + Math.abs(Math.sin(t * 3)) * .6; });
+  },
+  gorge(g) {     // 太魯閣：兩道高聳的大理石峭壁，中間溪水，上面一座紅色吊橋
+    [-1.7, 1.7].forEach(x => { const w = box(2, 7, 5, '#b7b2a8', x, 3.5, 0, g); w.rotation.z = x > 0 ? -.06 : .06; box(2.1, .6, 5.1, '#5d8c4a', x, 7.1, 0, g); });
+    box(1.4, .1, 5.2, '#4fc3f7', 0, .1, 0, g);
+    box(3.6, .12, .5, '#c62828', 0, 4.6, 0, g);
+    const s = textPlane('太魯閣', 1.6, .45, '#ffffff', '#33691e', 120); s.position.set(0, 6, 2.6); g.add(s);
+  },
+  balloon(g) {   // 鹿野熱氣球：幾顆彩色熱氣球在空中飄
+    [['#ff7043', 0, 0, 5], ['#ffd23f', 1.8, .8, 6.5], ['#4fc3f7', -1.6, -.6, 7.2]].forEach(([c, x, z, y], k) => {
+      const b = new THREE.Group(); b.position.set(x, y, z); g.add(b);
+      const env = ball(1, c, 0, 0, 0, b); env.scale.y = 1.15; box(.45, .35, .45, '#8d6e63', 0, -1.6, 0, b);
+      [[-.18, -.18], [.18, -.18], [-.18, .18], [.18, .18]].forEach(([a, e]) => cyl(.015, .015, .6, '#5d4037', a, -1.2, e, b, 4));
+      boardAnims.push(t => { b.position.y = y + Math.sin(t * .8 + k * 2) * .5; b.rotation.y = t * .2; });
+    });
+  },
+  sanxian(g) {   // 三仙台八拱橋：一連串紅黃拱橋接到海上的小島
+    box(10, .1, 3, '#4fc3f7', 2, .02, 0, g);
+    for (let k = 0; k < 8; k++) { const a = new THREE.Mesh(new THREE.TorusGeometry(.62, .12, 6, 14, Math.PI), M(k % 2 ? '#ffca28' : '#e53935')); a.position.set(-1.6 + k * 1.24, .1, 0); g.add(a); }
+    const isl = ball(1.4, '#8d9b6a', 7.6, .1, 0, g); isl.scale.y = .6;
+  },
   harbor(g) {    // 港口：貨櫃輪在水道裡晃
     const s = new THREE.Group(); g.add(s);
     box(2, .9, 6, '#d32f2f', 0, -.6, 0, s); box(2, .25, 6, '#1d1633', 0, -1.05, 0, s); box(1.6, .9, 1.2, '#ffffff', 0, .3, -2.2, s);
@@ -1542,11 +1610,12 @@ function buildScenery(m) {
 }
 
 /* ---------- 建立整個棋盤（開場和換地圖時呼叫） ---------- */
-function buildBoard(id) {
-  MAP = MAPS[id] ? id : 'tpe';
+let BOARD_SEED = 0;
+function buildBoard(id, seed = 0) {
+  MAP = MAPS[id] ? id : 'tpe'; BOARD_SEED = seed;
   const m = MAPS[MAP];
   makeTiles(MAP);
-  const shp = curvy(m.shape);   // 彎曲的路線
+  const shp = curvy(m.shape, seed);   // 彎曲的路線（每局隨機）
   BOARD = buildPath(shp);
   if (BG) scene.remove(BG);
   BG = new THREE.Group(); scene.add(BG); boardAnims = [];
@@ -2122,6 +2191,51 @@ function showDest(list) {
 function setDest(list) { hostFx('dest', list); showDest(list); }
 // 從現在位置走 n 步會停在哪一格（back＝逆時針）
 const destOf = (p, n, back) => back ? ((p.pos - n) % N + N) % N : (p.pos + n) % N;
+
+/* ---------- 時段與天氣：每局隨機（房主決定，朋友同步） ---------- */
+const ENVS = [
+  { name: '☀️ 正午', sky: '#8fd8ff', hemi: ['#ffffff', '#7fa86a', .75], sun: ['#fff4dd', .85], sea: '#3aa3dc' },
+  { name: '🌅 清晨', sky: '#cfe9ff', hemi: ['#fff6e8', '#8fb07a', .8], sun: ['#ffe2b8', .7], sea: '#5bb5e0' },
+  { name: '🌇 黃昏', sky: '#ffad7a', hemi: ['#ffd9b8', '#7a6a5a', .7], sun: ['#ff9a5c', .9], sea: '#e08a6a' },
+  { name: '🌙 夜晚', sky: '#1d2550', hemi: ['#9fb3ff', '#2a3350', .7], sun: ['#c6d4ff', .45], sea: '#1f3f73' },
+];
+const WEATHERS = ['☀️ 晴天', '🌧️ 小雨', '🌸 櫻花飄落', '🌫️ 起霧'];
+let wxPts = null, wxKind = 0, starPts = null, curEnv = [0, 0];
+function setEnv(e, w) {
+  const E = ENVS[e] || ENVS[0]; wxKind = w; curEnv = [e, w];
+  scene.background.set(E.sky); scene.fog.color.set(E.sky);
+  scene.fog.near = w === 3 ? 25 : 70; scene.fog.far = w === 3 ? 85 : 140;
+  hemi.color.set(E.hemi[0]); hemi.groundColor.set(E.hemi[1]); hemi.intensity = E.hemi[2];
+  sun.color.set(E.sun[0]); sun.intensity = E.sun[1];
+  sea.material.color.set(E.sea);
+  // 夜晚：天上一片星星
+  if (!starPts) {
+    const g = new THREE.BufferGeometry(), a = new Float32Array(600 * 3);
+    for (let k = 0; k < 600; k++) { const th = Math.random() * Math.PI * 2, ph = Math.random() * 1.2; a.set([Math.cos(th) * Math.sin(ph) * 180, 40 + Math.cos(ph) * 120, Math.sin(th) * Math.sin(ph) * 180], k * 3); }
+    g.setAttribute('position', new THREE.BufferAttribute(a, 3));
+    starPts = new THREE.Points(g, new THREE.PointsMaterial({ color: '#ffffff', size: 1.2, sizeAttenuation: false, fog: false })); scene.add(starPts);
+  }
+  starPts.visible = e === 3;
+  // 雨、櫻花：一團粒子在鏡頭附近一直往下落
+  if (!wxPts) {
+    const n = LITE ? 500 : 1200, g = new THREE.BufferGeometry(), a = new Float32Array(n * 3);
+    for (let k = 0; k < n; k++) a.set([(Math.random() - .5) * 90, Math.random() * 40, (Math.random() - .5) * 90], k * 3);
+    g.setAttribute('position', new THREE.BufferAttribute(a, 3));
+    wxPts = new THREE.Points(g, new THREE.PointsMaterial({ color: '#cfe8ff', size: .25, transparent: true, opacity: .7, depthWrite: false })); scene.add(wxPts);
+    anim.push((t, dt) => {
+      if (!wxPts.visible) return;
+      const p = wxPts.geometry.attributes.position, arr = p.array, rain = wxKind === 1, d = (dt || .016);
+      for (let k = 0; k < arr.length; k += 3) {
+        arr[k + 1] -= (rain ? 38 : 2.5) * d;
+        if (!rain) { arr[k] += Math.sin(t + k) * .02; arr[k + 2] += Math.cos(t * .7 + k) * .02; }
+        if (arr[k + 1] < 0) arr[k + 1] = 40;
+      }
+      p.needsUpdate = true;
+    });
+  }
+  wxPts.visible = w === 1 || w === 2;
+  wxPts.material.color.set(w === 2 ? '#ffb7d5' : '#cfe8ff'); wxPts.material.size = w === 2 ? .45 : .22;
+}
 
 /* ---------- 住院受傷的樣子 ---------- */
 function emojiSprite(e, size) {
@@ -2987,12 +3101,13 @@ $('#btn-start').onclick = () => {
   beep(660, .05);
   // 順序隨機：抽籤決定誰先走（朋友拿到的是同一份順序）
   const sks = shuffle(Object.keys(SKILLS));   // 技能抽籤：每人一個，不重複
-  const cfg = { ver: GAME_VER, players: shuffle(roster).map((r, k) => ({ sk: sks[k % sks.length], ci: r.ci, id: CHARS[r.ci].id, ctl: r.mode === 'ai' ? 'ai' : r.mode === 'remote' ? 'r:' + r.cid : 'local', nick: r.nick || '' })), rounds: maxRounds, map: MAP, t0: Date.now() };
+  const cfg = { ver: GAME_VER, seed: 1 + rnd(2e9), env: rnd(4), wx: rnd(4), players: shuffle(roster).map((r, k) => ({ sk: sks[k % sks.length], ci: r.ci, id: CHARS[r.ci].id, ctl: r.mode === 'ai' ? 'ai' : r.mode === 'remote' ? 'r:' + r.cid : 'local', nick: r.nick || '' })), rounds: maxRounds, map: MAP, t0: Date.now() };
   if (NET.mode === 'host') { NET.cfg = cfg; NET.started = true; NET.named.emit('start', cfg).catch(() => { }); }
   startGame(cfg);
 };
 function startGame(cfg) {
-  if (cfg.map && MAPS[cfg.map] && cfg.map !== MAP) buildBoard(cfg.map);
+  if (cfg.map && MAPS[cfg.map] && (cfg.map !== MAP || (+cfg.seed || 0) !== BOARD_SEED)) buildBoard(cfg.map, +cfg.seed || 0);
+  setEnv(+cfg.env || 0, +cfg.wx || 0);
   let h = 0;
   const players = cfg.players.map((x, seat) => ({
     seat, char: CHARS[x.ci], sk: SKILLS[x.sk] ? x.sk : CHARS[x.ci].id, ctl: x.ctl, nick: String(x.nick || '').slice(0, 10), isAI: x.ctl === 'ai', humanNo: x.ctl === 'ai' ? 0 : ++h,
@@ -3058,6 +3173,7 @@ $('#btn-restart').onclick = async () => {
 /* ---------- 回合流程 ---------- */
 async function gameLoop() {
   await caption('競選開始！', '先看清楚怎麼贏', 1400);
+  await caption('🗺️ 今日戰場', `${MAPS[MAP].name}・${(ENVS[curEnv[0]] || ENVS[0]).name}・${WEATHERS[curEnv[1]] || ''}`, 1800);
   await caption('🎲 抽籤決定順序', G.players.map((p, k) => `${k + 1}. ${p.char.name}`).join('　→　'), 2400);
   await caption('⭐ 技能抽籤結果', G.players.map(p => `${p.char.name}：${skillName(p.sk)}`).join('　'), 3200);
   // 開局公布勝利條件（連線的朋友在自己畫面上看到同一份）
