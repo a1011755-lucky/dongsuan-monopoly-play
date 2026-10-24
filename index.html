@@ -1133,6 +1133,19 @@ sun.shadow.mapSize.set(LITE ? 1024 : 2048, LITE ? 1024 : 2048);
 sun.shadow.bias = -.0008; sun.shadow.normalBias = .02;   // 減少陰影閃爍（手機的精度比較低）
 Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 100 });
 scene.add(sun);
+const skyMat = new THREE.ShaderMaterial({
+  uniforms: { top: { value: new THREE.Color('#3d9cf0') }, bot: { value: new THREE.Color('#c4ecff') } },
+  vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+  fragmentShader: 'uniform vec3 top; uniform vec3 bot; varying vec3 vW; void main(){ float h = normalize(vW - cameraPosition).y; gl_FragColor = vec4(mix(bot, top, smoothstep(-0.02, 0.6, h)), 1.0); }',
+  side: THREE.BackSide, depthWrite: false,
+});
+const sky = new THREE.Mesh(new THREE.SphereGeometry(300, 24, 12), skyMat); sky.renderOrder = -1; sky.frustumCulled = false; scene.add(sky);
+scene.background.set('#c4ecff'); scene.fog.color.set('#c4ecff');
+// 夜晚會亮燈的窗戶（地標大樓）
+const nightMats = []; let isNight = false;
+const nightMat = (map, k = .7) => { const m = new THREE.MeshStandardMaterial({ map, emissive: '#ffe7a3', emissiveMap: map, emissiveIntensity: isNight ? k : 0, roughness: .5 }); m.userData.nk = k; nightMats.push(m); return m; };
+// 低多邊形（一面一面的）材質：山、樹、雲用
+const FM = c => matCache['f' + c] || (matCache['f' + c] = new THREE.MeshStandardMaterial({ color: c, roughness: .9, flatShading: true }));
 
 const matCache = {};
 const M = c => matCache[c] || (matCache[c] = new THREE.MeshStandardMaterial({ color: c, roughness: .75 }));
@@ -1279,42 +1292,80 @@ function windowsTex(bg, win, cols, rows, lit) {
     }
   });
 }
-// 浮誇版飛機：彩色條紋機身、駕駛艙、客艙窗、後掠機翼、兩具引擎、尾翼寫「凍蒜航空」、閃爍航行燈，還拖著競選布條
+// 浮誇版飛機：流線機身（機頭圓、機尾收尖）、後掠機翼＋翼尖小翼、兩具渦扇引擎、尾翼寫「凍蒜航空」、客艙窗和彩色腰線，還可以拖競選布條
+const planeSkin = {};
+function planeTex(accent) {
+  return planeSkin[accent] || (planeSkin[accent] = canvasTex(512, 256, (x, w, h) => {
+    // 機身貼圖：橫向是繞機身一圈（.25 機腹、.5 和 0 兩側、.75 機背），縱向是機尾→機頭
+    x.fillStyle = '#ffffff'; x.fillRect(0, 0, w, h);
+    x.fillStyle = '#dfe5ec'; x.fillRect(w * .12, 0, w * .26, h);                       // 機腹灰
+    x.fillStyle = accent; x.fillRect(w * .44, 0, w * .05, h); x.fillRect(0, 0, w * .05, h);  // 兩側腰線
+    x.fillStyle = '#ffd23f'; x.fillRect(w * .415, 0, w * .015, h); x.fillRect(w * .065, 0, w * .015, h);
+    x.fillStyle = accent; x.fillRect(w * .6, h * .86, w * .3, h * .14);               // 機尾上方
+    x.fillStyle = '#26324a';
+    for (let k = 0; k < 15; k++) { const y = h * (.22 + k * .036); x.fillRect(w * .545, y, w * .025, h * .022); x.fillRect(w * .925, y, w * .025, h * .022); }
+    x.fillRect(w * .55, h * .06, w * .4, h * .045);                                      // 駕駛艙玻璃
+  }));
+}
+function wingGeo(pts, depth) {
+  const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(([a, b]) => new THREE.Vector2(a, b))), { depth, bevelEnabled: true, bevelThickness: depth * .3, bevelSize: depth * .3, bevelSegments: 1 });
+  g.rotateX(Math.PI / 2); g.translate(0, depth / 2, 0); return g;
+}
 function fancyPlane(accent = '#3d8bff', banner = '') {
   const pl = new THREE.Group();
-  const body = cyl(.42, .42, 3.2, '#ffffff', 0, 0, 0, pl, 16); body.rotation.z = Math.PI / 2;
-  const nose = ball(.42, '#ffffff', 1.6, 0, 0, pl); nose.scale.set(1.5, 1, 1);
-  const tail = cone(.42, 1.3, '#ffffff', -2.25, .08, 0, pl, 16); tail.rotation.z = Math.PI / 2;
-  const stripe = cyl(.43, .43, 3.1, accent, 0, -.1, 0, pl, 16); stripe.rotation.z = Math.PI / 2; stripe.scale.set(1, 1, .35);
-  box(.32, .2, .74, '#1d1633', 1.85, .16, 0, pl);   // 駕駛艙玻璃
-  for (let k = -5; k <= 4; k++) [-.41, .41].forEach(zz => box(.14, .12, .02, '#263238', k * .26, .12, zz, pl));
+  const prof = [[0, -2.55], [.1, -2.5], [.2, -2.25], [.3, -1.8], [.4, -1.05], [.44, -.3], [.44, 1.05], [.41, 1.5], [.33, 1.85], [.2, 2.08], [.06, 2.2], [0, 2.22]].map(([r, y]) => new THREE.Vector2(r, y));
+  const fg = new THREE.LatheGeometry(prof, 20); fg.rotateZ(-Math.PI / 2);
+  const body = new THREE.Mesh(fg, new THREE.MeshStandardMaterial({ map: planeTex(accent), roughness: .35, metalness: .1 })); body.castShadow = true; pl.add(body);
+  body.position.y = .05;
+  const wm = new THREE.MeshStandardMaterial({ color: '#e8edf3', roughness: .45, metalness: .15 }), am = M(accent);
+  // 主翼（後掠、往上翹一點）
+  const wing = new THREE.Mesh(wingGeo([[.75, 0], [-.55, 2.6], [-.95, 2.6], [-.45, 0], [-.95, -2.6], [-.55, -2.6]], .07), wm);
+  wing.position.set(0, -.2, 0); wing.castShadow = true; pl.add(wing);
   [-1, 1].forEach(sd => {
-    const w = box(1.1, .08, 2.4, accent, .1, -.18, sd * 1.35, pl); w.rotation.y = sd * .38;
-    box(.5, .3, .06, accent, -.25, .02, sd * 2.45, pl);   // 翼尖小翼
-    const e = cyl(.22, .2, .85, '#cfd8dc', .45, -.42, sd * 1.15, pl, 12); e.rotation.z = Math.PI / 2;
-    const fan = cyl(.17, .17, .05, '#1d1633', .88, -.42, sd * 1.15, pl, 12); fan.rotation.z = Math.PI / 2;
-    ball(.08, glow(sd < 0 ? '#ff1744' : '#00e676'), .1, -.12, sd * 2.5, pl);
+    const wl = box(.38, .42, .04, am, -.75, .0, sd * 2.6, pl); wl.rotation.x = sd * -.25;   // 翼尖小翼
+    // 引擎：短胖的圓筒＋前面進氣環＋黑色風扇＋銀色整流錐
+    const eng = new THREE.Group(); eng.position.set(.35, -.45, sd * 1.05); pl.add(eng);
+    const nac = cyl(.21, .17, .9, '#f4f6f8', 0, 0, 0, eng, 16); nac.rotation.z = Math.PI / 2;
+    const lip = mesh(new THREE.TorusGeometry(.2, .035, 8, 18), am, .45, 0, 0, eng); lip.rotation.y = Math.PI / 2;
+    const fan = cyl(.18, .18, .02, '#1d1633', .43, 0, 0, eng, 16); fan.rotation.z = Math.PI / 2;
+    const spin = cone(.07, .14, '#cfd8dc', .48, 0, 0, eng, 10); spin.rotation.z = -Math.PI / 2;
+    box(.5, .2, .06, '#e8edf3', .05, .18, 0, eng);   // 吊架
+    ball(.06, glow(sd < 0 ? '#ff1744' : '#00e676', 1.2), -.8, -.18, sd * 2.62, pl);   // 航行燈
   });
-  const fin = box(.95, 1.05, .07, accent, -2.15, .75, 0, pl); fin.rotation.z = .4;
-  [-1, 1].forEach(sd => { const l = textPlane('凍蒜航空', .9, .3, '#ffffff', null, 90); l.position.set(-2.1, .7, sd * .05); l.rotation.y = sd < 0 ? Math.PI : 0; pl.add(l); });
-  box(.6, .06, 1.9, accent, -2.25, .12, 0, pl);
-  const strobe = ball(.07, glow('#ffffff'), -2.55, 1.3, 0, pl);
-  boardAnims.push(t => { strobe.visible = (t * 2) % 1 < .15; });
+  // 水平尾翼、垂直尾翼
+  const hs = new THREE.Mesh(wingGeo([[-1.75, 0], [-2.3, 1.05], [-2.55, 1.05], [-2.3, 0], [-2.55, -1.05], [-2.3, -1.05]], .05), wm); hs.position.y = .12; hs.castShadow = true; pl.add(hs);
+  const fs2 = new THREE.Shape([[-1.55, .3], [-2.3, 1.55], [-2.62, 1.55], [-2.5, .3]].map(([a, b]) => new THREE.Vector2(a, b)));
+  const fin = new THREE.Mesh(new THREE.ExtrudeGeometry(fs2, { depth: .07, bevelEnabled: false }), am); fin.position.z = -.035; fin.castShadow = true; pl.add(fin);
+  [-1, 1].forEach(sd => { const l = textPlane('凍蒜航空', .62, .2, '#ffffff', null, 90); l.position.set(-2.25, .95, sd * .045); l.rotation.y = sd < 0 ? Math.PI : 0; pl.add(l); });
+  const strobe = ball(.06, glow('#ffffff', 1.5), -2.5, 1.6, 0, pl);
+  const beacon = ball(.06, glow('#ff1744', 1.2), 0, -.42, 0, pl);
+  boardAnims.push(t => { strobe.visible = (t * 2) % 1 < .12; beacon.visible = (t * 1.5 + .5) % 1 < .2; });
   if (banner) {
-    box(1.6, .03, .03, '#eceff1', -3.3, -.1, 0, pl);
-    const bn = textPlane(banner, 3, .6, '#ffffff', '#ff4f79', 110); bn.position.set(-5.6, -.15, 0); pl.add(bn);
-    const bn2 = textPlane(banner, 3, .6, '#ffffff', '#ff4f79', 110); bn2.position.set(-5.6, -.15, -.01); bn2.rotation.y = Math.PI; pl.add(bn2);
+    box(1.6, .03, .03, '#eceff1', -3.4, -.1, 0, pl);
+    const bn = textPlane(banner, 3, .6, '#ffffff', '#ff4f79', 110); bn.position.set(-5.7, -.15, 0); pl.add(bn);
+    const bn2 = textPlane(banner, 3, .6, '#ffffff', '#ff4f79', 110); bn2.position.set(-5.7, -.15, -.01); bn2.rotation.y = Math.PI; pl.add(bn2);
     boardAnims.push(t => { bn.rotation.x = bn2.rotation.x = Math.sin(t * 6) * .12; });
   }
   return pl;
 }
 const MARKS = {
   t101(g) {
-    box(2.4, 1.6, 2.4, '#5e9c94', 0, .8, 0, g);
-    for (let k = 0; k < 8; k++) cyl(1.05, 1.35, 1.05, '#7fbfb3', 0, 2.1 + k * 1.05, 0, g, 4).rotation.y = Math.PI / 4;
-    cyl(.5, .8, .8, '#5e9c94', 0, 10.6, 0, g, 4);
-    cyl(.06, .12, 2.4, '#dfe7e5', 0, 12.2, 0, g);
-    const b = ball(.12, glow('#ff1744'), 0, 13.5, 0, g); boardAnims.push(t => { b.visible = Math.sin(t * 4) > 0; });
+    const gm = nightMat(canvasTex(256, 128, (x, w, h) => {
+      const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#9ed9cc'); gr.addColorStop(1, '#4e9c8d'); x.fillStyle = gr; x.fillRect(0, 0, w, h);
+      x.fillStyle = 'rgba(20,70,62,.55)'; for (let c = 0; c < 24; c++) x.fillRect(c * w / 24 + 1, 0, 2, h);
+      for (let r = 0; r < 6; r++) x.fillRect(0, r * h / 6 + 2, w, 3);
+      x.fillStyle = 'rgba(255,255,255,.35)'; for (let c = 0; c < 4; c++) x.fillRect(c * w / 4 + 6, 0, 8, h);
+    }), .5);
+    const pod = new THREE.Mesh(new THREE.BoxGeometry(3, 1.8, 3), gm); pod.position.y = .9; pod.castShadow = true; g.add(pod);
+    box(3.2, .14, 3.2, '#e6efe9', 0, 1.85, 0, g);
+    for (let k = 0; k < 8; k++) {
+      const seg = new THREE.Mesh(new THREE.CylinderGeometry(1.32, .98, 1.05, 4, 1), gm); seg.rotation.y = Math.PI / 4; seg.position.y = 2.45 + k * 1.08; seg.castShadow = true; g.add(seg);
+      box(1.92, .06, 1.92, '#e6efe9', 0, 2.99 + k * 1.08, 0, g);
+    }
+    [[0, 1.52], [0, -1.52], [1.52, 0], [-1.52, 0]].forEach(([x, z]) => { const d = cyl(.38, .38, .08, '#ffca28', x, 1.2, z, g, 18); if (x) d.rotation.z = Math.PI / 2; else d.rotation.x = Math.PI / 2; });
+    const tp = new THREE.Mesh(new THREE.CylinderGeometry(.55, .85, 1, 4, 1), gm); tp.rotation.y = Math.PI / 4; tp.position.y = 11.15; g.add(tp);
+    cyl(.06, .12, 2.4, '#dfe7e5', 0, 12.85, 0, g);
+    const b = ball(.12, glow('#ff1744'), 0, 14.1, 0, g); boardAnims.push(t => { b.visible = Math.sin(t * 4) > 0; });
   },
   grand(g) {   // 圓山大飯店：紅柱綠瓦的宮殿式大樓
     box(5.4, 1.6, 2, '#b71c1c', 0, .8, 0, g); box(6, .35, 2.6, '#2e7d32', 0, 1.75, 0, g);
@@ -1394,7 +1445,7 @@ const MARKS = {
     box(.25, .9, .25, '#ffffff', 0, 5.3, 0, g);
   },
   t85(g) {       // 85 大樓：兩隻腳撐起中段
-    const tex = windowsTex('#7f93a8', '#2b3a4f', 4, 14, true), m = new THREE.MeshStandardMaterial({ map: tex });
+    const tex = windowsTex('#7f93a8', '#2b3a4f', 4, 14, true), m = nightMat(tex);
     [-1.2, 1.2].forEach(x => { const l = new THREE.Mesh(new THREE.BoxGeometry(1.3, 6, 1.8), m); l.position.set(x, 3, 0); l.castShadow = true; g.add(l); });
     const mid = new THREE.Mesh(new THREE.BoxGeometry(3.7, 4, 1.8), m); mid.position.y = 8; mid.castShadow = true; g.add(mid);
     const top = new THREE.Mesh(new THREE.BoxGeometry(1.6, 3.4, 1.6), m); top.position.y = 11.7; top.castShadow = true; g.add(top);
@@ -1550,17 +1601,48 @@ function ribbon(points, width, mat, y) {
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
   const m = new THREE.Mesh(geo, mat); m.receiveShadow = true; return m;
 }
+// 樹：一半是三層的針葉樹，一半是圓圓蓬蓬的闊葉樹（一面一面的低多邊形）
 function tree(g, x, z, s = 1, y = -.15) {
-  cyl(.12 * s, .16 * s, .8 * s, '#795548', x, y + .4 * s, z, g, 6);
-  const c = pick(['#43a047', '#2e7d32', '#66bb6a', '#558b2f']);
-  cone(.9 * s, 1.4 * s, c, x, y + 1.3 * s, z, g, 7); cone(.65 * s, 1.1 * s, c, x, y + 2 * s, z, g, 7);
+  const parts = [cyl(.11 * s, .16 * s, .8 * s, '#7a5236', x, y + .4 * s, z, g, 6)];
+  if (Math.random() < .5) {
+    const c = pick(['#2e7d32', '#388e3c', '#2f6f3a', '#3c8d40']);
+    [[.95, 1.2, 1.15], [.75, 1, 1.75], [.5, .85, 2.3]].forEach(([r, h, yy]) => { const k = cone(r * s, h * s, FM(c), x, y + yy * s, z, g, 7); k.rotation.y = Math.random() * 3; parts.push(k); });
+  } else {
+    const c = pick(['#5cb85c', '#66bb6a', '#7cc35a', '#4caf50']);
+    [[0, 1.45, 0, .8], [.35, 1.25, .2, .55], [-.3, 1.3, -.15, .6], [.05, 1.95, -.05, .55]].forEach(([dx, yy, dz, r]) => {
+      const b = mesh(new THREE.IcosahedronGeometry(r * s, 0), FM(c), x + dx * s, y + yy * s, z + dz * s, g); b.rotation.set(Math.random() * 3, Math.random() * 3, 0); parts.push(b);
+    });
+  }
+  parts.forEach(o => { o.userData.mtn = true; });
+}
+// 山：一面一面的低多邊形，山腳綠、山腰岩石、高的山頂有雪
+const MTN_MAT = () => matCache.__mtn || (matCache.__mtn = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: .95 }));
+function lowCone(r, h, seed, palette) {
+  const geo = new THREE.ConeGeometry(r, h, 9, 4), p = geo.attributes.position;
+  const hash = (a, b, c) => { const v = Math.sin(a * 12.9898 + b * 78.233 + c * 37.719 + seed) * 43758.5453; return v - Math.floor(v) - .5; };
+  for (let i = 0; i < p.count; i++) {
+    const X = p.getX(i), Y = p.getY(i), Z = p.getZ(i);
+    if (Y <= -h / 2 + 1e-3 || Y >= h / 2 - 1e-3) continue;
+    const a = Math.round(X * 1000), b = Math.round(Y * 1000), c = Math.round(Z * 1000);
+    p.setXYZ(i, X + hash(a, b, c) * r * .28, Y + hash(b, c, a) * h * .12, Z + hash(c, a, b) * r * .28);
+  }
+  const ng = geo.toNonIndexed(); geo.dispose();
+  const q = ng.attributes.position, col = new Float32Array(q.count * 3), cc = new THREE.Color();
+  for (let i = 0; i < q.count; i += 3) {
+    const t = ((q.getY(i) + q.getY(i + 1) + q.getY(i + 2)) / 3 + h / 2) / h;
+    cc.set(palette(t)).multiplyScalar(.9 + Math.random() * .16);
+    for (let j = 0; j < 3; j++) col.set([cc.r, cc.g, cc.b], (i + j) * 3);
+  }
+  ng.setAttribute('color', new THREE.BufferAttribute(col, 3)); ng.computeVertexNormals();
+  return ng;
 }
 function mountain(g, x, z, r, h) {
-  const col = pick(['#3f8a34', '#4c9a3c', '#357a2e', '#5b8f2f']);
-  const m = cone(r, h, col, x, -1.3 + h / 2, z, g, 9); m.rotation.y = Math.random() * 3;
-  const rock = cone(r * .5, h * .5, '#7b6a58', x, -1.3 + h * .75, z, g, 9); rock.rotation.y = m.rotation.y;   // 山腰岩石
-  cone(r * .72, h * .55, '#2f6b28', x + r * .5, -1.3 + h * .27, z + r * .3, g, 8);
-  if (h > 6) { const c = cone(r * .3, h * .3, '#ffffff', x, -1.3 + h - h * .15, z, g, 9); c.rotation.y = m.rotation.y; }
+  const base = pick(['#4c9a3c', '#3f8a34', '#5b9a35', '#4a8f3f']), snow = h > 6.5;
+  const pal = t => t > .8 && snow ? '#f3f6fa' : t > .62 ? (snow ? '#8d7f6c' : '#6f8f3a') : t > .3 ? base : '#3a7a2e';
+  const m = new THREE.Mesh(lowCone(r, h, x * 7 + z, pal), MTN_MAT()); m.position.set(x, -1.3 + h / 2, z); m.rotation.y = Math.random() * 3;
+  m.castShadow = m.receiveShadow = true; m.userData.mtn = true; g.add(m);
+  const fh = h * .5, f = new THREE.Mesh(lowCone(r * .7, fh, x + z * 5, t => t > .7 ? '#5b9a35' : '#3a7a2e'), MTN_MAT());
+  f.position.set(x + r * .55, -1.3 + fh / 2, z + r * .35); f.castShadow = f.receiveShadow = true; f.userData.mtn = true; g.add(f);
 }
 function buildScenery(m) {
   const xs = m.shape.map(p => p[0]), zs = m.shape.map(p => p[1]);
@@ -1611,7 +1693,7 @@ function buildScenery(m) {
 }
 
 /* ---------- 建立整個棋盤（開場和換地圖時呼叫） ---------- */
-let BOARD_SEED = 0;
+let BOARD_SEED = 0, shoalTex = null, shoalMat = null, grassTex = null;
 function buildBoard(id, seed = 0) {
   MAP = MAPS[id] ? id : 'tpe'; BOARD_SEED = seed;
   const m = MAPS[MAP];
@@ -1619,13 +1701,33 @@ function buildBoard(id, seed = 0) {
   const shp = curvy(m.shape, seed);   // 彎曲的路線（每局隨機）
   BOARD = buildPath(shp);
   if (BG) scene.remove(BG);
-  BG = new THREE.Group(); scene.add(BG); boardAnims = [];
+  BG = new THREE.Group(); scene.add(BG); boardAnims = []; nightMats.length = 0;
   tileCanvases.length = tileTex.length = tileMeshes.length = hiMeshes.length = 0;
   // 陸地：沿棋盤外推的一整塊島，內圈鋪草地
   const toShape = pts => new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
   const land = new THREE.Mesh(new THREE.ExtrudeGeometry(toShape(offsetPoly(shp, 3.4, BOARD.sgn)), { depth: 1.2, bevelEnabled: false }), M('#fff1d0'));
   land.rotation.x = -Math.PI / 2; land.position.y = -1.35; land.receiveShadow = true; BG.add(land);
-  const inner = new THREE.Mesh(new THREE.ShapeGeometry(toShape(offsetPoly(shp, -2.3, BOARD.sgn))), new THREE.MeshStandardMaterial({ color: m.ground, roughness: .95 }));
+  // 海岸：島四周一圈淺藍綠色淺灘＋白色浪花
+  if (!shoalTex) shoalTex = canvasTex(128, 128, (x, w, h) => { const gr = x.createRadialGradient(64, 64, 4, 64, 64, 64); gr.addColorStop(0, 'rgba(120,236,224,.85)'); gr.addColorStop(.55, 'rgba(110,226,220,.45)'); gr.addColorStop(1, 'rgba(100,210,220,0)'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
+  if (!shoalMat) shoalMat = new THREE.MeshStandardMaterial({ map: shoalTex, transparent: true, depthWrite: false, roughness: .3, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  const shoalGeo = new THREE.PlaneGeometry(17, 17);
+  BOARD.pos.forEach(([x, z], i) => { if (i % 2) return; const [ix, iz] = tileIn(i); const sh = new THREE.Mesh(shoalGeo, shoalMat); sh.rotation.x = -Math.PI / 2; sh.position.set(x - ix * 3, -1.26, z - iz * 3); sh.renderOrder = 1; BG.add(sh); });
+  const foamM = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: .75, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+  const fsh = toShape(offsetPoly(shp, 4.1, BOARD.sgn)); fsh.holes.push(new THREE.Path(offsetPoly(shp, 3.35, BOARD.sgn).map(([x, z]) => new THREE.Vector2(x, -z))));
+  const foam = new THREE.Mesh(new THREE.ShapeGeometry(fsh), foamM); foam.rotation.x = -Math.PI / 2; foam.position.y = -1.22; foam.renderOrder = 2; BG.add(foam);
+  boardAnims.push(t => { foamM.opacity = .45 + Math.sin(t * 1.6) * .3; });
+  // 內圈草地：有深淺斑點和小花的紋理
+  if (!grassTex) {
+    grassTex = canvasTex(256, 256, (x, w, h) => {
+      x.fillStyle = '#ffffff'; x.fillRect(0, 0, w, h);
+      for (let k = 0; k < 420; k++) { x.fillStyle = Math.random() < .5 ? 'rgba(80,120,40,.10)' : 'rgba(255,255,255,.5)'; x.beginPath(); x.arc(Math.random() * w, Math.random() * h, 3 + Math.random() * 9, 0, 7); x.fill(); }
+      x.strokeStyle = 'rgba(60,110,40,.28)'; x.lineWidth = 2;
+      for (let k = 0; k < 90; k++) { const a = Math.random() * w, b = Math.random() * h; x.beginPath(); x.moveTo(a, b); x.lineTo(a - 2, b - 6); x.moveTo(a + 3, b); x.lineTo(a + 4, b - 7); x.stroke(); }
+      ['#ffffff', '#ffd23f', '#ff8fb1'].forEach(c => { for (let k = 0; k < 10; k++) { x.fillStyle = c; x.beginPath(); x.arc(Math.random() * w, Math.random() * h, 2.5, 0, 7); x.fill(); } });
+    });
+    grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping; grassTex.repeat.set(1 / 7, 1 / 7);
+  }
+  const inner = new THREE.Mesh(new THREE.ShapeGeometry(toShape(offsetPoly(shp, -2.3, BOARD.sgn))), new THREE.MeshStandardMaterial({ color: m.ground, map: grassTex, roughness: .95 }));
   inner.rotation.x = -Math.PI / 2; inner.position.y = -.13; inner.receiveShadow = true; BG.add(inner);
   buildScenery(m);
   // 格子
@@ -1683,7 +1785,7 @@ function buildBoard(id, seed = 0) {
     const cx = jx + dx * 14, cz = jz + dz * 14;
     BOARD.island = [cx, cz];
     const wp = new THREE.Vector3();
-    BG.traverse(o => { if (o.isMesh && o.geometry && o.geometry.type === 'ConeGeometry') { o.getWorldPosition(wp); if (Math.hypot(wp.x - cx, wp.z - cz) < 8) o.visible = false; } });
+    BG.traverse(o => { if (o.isMesh && o.geometry && (o.geometry.type === 'ConeGeometry' || o.userData.mtn)) { o.getWorldPosition(wp); if (Math.hypot(wp.x - cx, wp.z - cz) < 8) o.visible = false; } });
     const g = new THREE.Group(); g.position.set(cx, 0, cz); BG.add(g);
     cyl(4.6, 5.3, 1.4, '#ecdcae', 0, -.9, 0, g, 28); cyl(3.9, 4.3, .5, '#66bb6a', 0, -.25, 0, g, 24);
     for (let k = 0; k < 4; k++) cyl(.42 - k * .04, .46 - k * .04, .7, k % 2 ? '#e53935' : '#ffffff', -2.4, .35 + k * .7, -1.3, g, 14);
@@ -1698,8 +1800,12 @@ function buildBoard(id, seed = 0) {
   }
   cornerProp(16, g => {
     // 機場：小航廈＋塔台，上空一架拖著競選布條的飛機一直繞圈
-    box(2.6, 1.2, 1.6, '#eceff1', 0, .6, -.6, g); box(2.8, .15, 1.8, '#3d8bff', 0, 1.25, -.6, g);
-    cyl(.18, .25, 2.4, '#e0e0e0', 1.1, 1.2, .6, g, 8); cyl(.45, .35, .45, glow('#4fc3f7', .35), 1.1, 2.6, .6, g, 10);
+    const gl = nightMat(canvasTex(256, 64, (x, w, h) => { x.fillStyle = '#8fd0ef'; x.fillRect(0, 0, w, h); x.fillStyle = '#5a9cc4'; for (let c = 0; c < 16; c++) x.fillRect(c * 16, 0, 2, h); x.fillStyle = 'rgba(255,255,255,.4)'; x.fillRect(0, 6, w, 6); }), .6);
+    const term = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 1.6), gl); term.position.set(-.2, .5, -.7); term.castShadow = true; g.add(term);
+    const rg = new THREE.CylinderGeometry(.95, .95, 3.3, 20, 1, false, 0, Math.PI); rg.rotateZ(Math.PI / 2);
+    const roof = new THREE.Mesh(rg, M('#f4f6f8')); roof.scale.y = .45; roof.position.set(-.2, 1, -.7); roof.castShadow = true; g.add(roof);
+    box(3.3, .08, .3, '#3d8bff', -.2, 1.02, .15, g);
+    cyl(.18, .25, 2.4, '#e0e0e0', 1.3, 1.2, .5, g, 8); cyl(.45, .35, .45, glow('#4fc3f7', .35), 1.3, 2.6, .5, g, 10); cyl(.5, .5, .08, '#455a64', 1.3, 2.86, .5, g, 10);
     const orbit = new THREE.Group(); orbit.position.y = 5.2; g.add(orbit);
     const pl = fancyPlane('#3d8bff', '凍蒜！投我一票'); pl.scale.setScalar(.75); orbit.add(pl);
     boardAnims.push(t => { const a = t * .5; pl.position.set(Math.cos(a) * 4, Math.sin(t * 1.3) * .4, Math.sin(a) * 4); pl.rotation.set(-.35, -a - Math.PI / 2, 0); });
@@ -1720,10 +1826,18 @@ function buildBoard(id, seed = 0) {
   if (G && G.tiles) TILES.forEach((t, i) => drawTile(i));
 }
 
+anim.push(() => sky.position.copy(camera.position));
 // 雲（不跟地圖走）
-for (let k = 0; k < 7; k++) {
-  const g = new THREE.Group(); const r = 36 + rnd(14), a = k / 7 * Math.PI * 2;
-  for (let j = 0; j < 3; j++) { const s = ball(1.4 + Math.random(), '#ffffff', j * 1.5 - 1.5, Math.random() * .5, 0, g); s.castShadow = false; }
+const cloudMat = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#ffffff', emissiveIntensity: .18, roughness: 1, flatShading: true });
+for (let k = 0; k < (LITE ? 6 : 10); k++) {
+  const g = new THREE.Group(); const r = 34 + rnd(20), a = k / (LITE ? 6 : 10) * Math.PI * 2 + Math.random() * .4;
+  const n = 4 + rnd(3);
+  for (let j = 0; j < n; j++) {
+    const big = j < 3, rr = big ? 1.5 + Math.random() * .8 : 1 + Math.random() * .6;
+    const s = new THREE.Mesh(new THREE.IcosahedronGeometry(rr, 1), cloudMat);
+    s.position.set((j % 3 - 1) * 1.7 + (Math.random() - .5) * .6, big ? 0 : 1 + Math.random() * .4, (Math.random() - .5) * 1.2 + (big ? 0 : .3)); s.scale.y = .75; g.add(s);
+  }
+  g.scale.setScalar(.9 + Math.random() * .7);
   g.position.set(Math.cos(a) * r, 9 + rnd(5), Math.sin(a) * r); scene.add(g);
   anim.push(t => { const b = a + t * .02; g.position.x = Math.cos(b) * r; g.position.z = Math.sin(b) * r; });
 }
@@ -2196,16 +2310,21 @@ const destOf = (p, n, back) => back ? ((p.pos - n) % N + N) % N : (p.pos + n) % 
 
 /* ---------- 時段與天氣：每局隨機（房主決定，朋友同步） ---------- */
 const ENVS = [
-  { name: '☀️ 正午', sky: '#8fd8ff', hemi: ['#ffffff', '#7fa86a', .75], sun: ['#fff4dd', .85], sea: '#3aa3dc' },
-  { name: '🌅 清晨', sky: '#cfe9ff', hemi: ['#fff6e8', '#8fb07a', .8], sun: ['#ffe2b8', .7], sea: '#5bb5e0' },
-  { name: '🌇 黃昏', sky: '#ffad7a', hemi: ['#ffd9b8', '#7a6a5a', .7], sun: ['#ff9a5c', .9], sea: '#e08a6a' },
-  { name: '🌙 夜晚', sky: '#1d2550', hemi: ['#9fb3ff', '#2a3350', .7], sun: ['#c6d4ff', .45], sea: '#1f3f73' },
+  { name: '☀️ 正午', sky: '#c4ecff', top: '#3d9cf0', hemi: ['#ffffff', '#7fa86a', .75], sun: ['#fff4dd', .9], sea: '#2f9bd8', shoal: '#ffffff', cloud: .18 },
+  { name: '🌅 清晨', sky: '#ffe3c8', top: '#7fbcef', hemi: ['#fff6e8', '#8fb07a', .8], sun: ['#ffe2b8', .75], sea: '#4fb0de', shoal: '#fff4e6', cloud: .25 },
+  { name: '🌇 黃昏', sky: '#ffb27c', top: '#6a5aa8', hemi: ['#ffd9b8', '#7a6a5a', .7], sun: ['#ff9a5c', .95], sea: '#d9876e', shoal: '#ffc7a6', cloud: .12 },
+  { name: '🌙 夜晚', sky: '#2c3a78', top: '#0a0f2e', hemi: ['#9fb3ff', '#2a3350', .7], sun: ['#c6d4ff', .45], sea: '#1f3f73', shoal: '#5c6d9e', cloud: .02 },
 ];
 const WEATHERS = ['☀️ 晴天', '🌧️ 小雨', '🌸 櫻花飄落', '🌫️ 起霧'];
 let wxPts = null, wxKind = 0, starPts = null, curEnv = [0, 0];
 function setEnv(e, w) {
   const E = ENVS[e] || ENVS[0]; wxKind = w; curEnv = [e, w];
   scene.background.set(E.sky); scene.fog.color.set(E.sky);
+  skyMat.uniforms.bot.value.set(E.sky); skyMat.uniforms.top.value.set(E.top);
+  if (w === 3) skyMat.uniforms.top.value.lerp(skyMat.uniforms.bot.value, .7);   // 起霧：天空灰濛濛
+  if (shoalMat) shoalMat.color.set(E.shoal);
+  cloudMat.emissiveIntensity = E.cloud; cloudMat.color.set(e === 3 ? '#8f9cc8' : e === 2 ? '#ffe2cf' : '#ffffff');
+  isNight = e === 3; nightMats.forEach(m => { m.emissiveIntensity = isNight ? m.userData.nk : 0; });
   scene.fog.near = w === 3 ? 25 : 70; scene.fog.far = w === 3 ? 85 : 140;
   hemi.color.set(E.hemi[0]); hemi.groundColor.set(E.hemi[1]); hemi.intensity = E.hemi[2];
   sun.color.set(E.sun[0]); sun.intensity = E.sun[1];
