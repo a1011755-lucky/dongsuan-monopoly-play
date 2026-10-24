@@ -154,6 +154,18 @@ button{touch-action:manipulation}
 .mole-top b{font-family:var(--display);font-size:30px;min-width:56px;text-align:center}
 .mole-top .timer{flex:1}
 .moles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mg-top{display:flex;align-items:center;gap:10px;margin:6px 0 10px}.mg-top b{font-family:var(--display);font-size:22px;min-width:64px}.mg-top .timer{flex:1}
+.mg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.mg-grid.four{grid-template-columns:repeat(4,1fr);margin-top:10px}
+.mg-grid button{height:64px;font-family:var(--display);font-size:26px;font-weight:900;touch-action:manipulation}
+.mg-grid button.ok{background:#c8e6c9;opacity:.6}.mg-grid button.bad{animation:nshake .3s}
+.mg-grid button[style*="--ink"]{color:#fff;background:var(--ink);font-size:18px}
+.mg-track{position:relative;height:56px;border:3px solid var(--ink);border-radius:14px;background:#fff;margin:6px 0 12px;overflow:hidden}
+.mg-zone{position:absolute;left:44%;width:12%;top:0;bottom:0;background:rgba(229,57,53,.18);border-left:3px dashed #e53935;border-right:3px dashed #e53935}
+#mgcur{position:absolute;top:6px;bottom:6px;width:8px;margin-left:-4px;border-radius:4px;background:#e53935}
+.mg-big{width:100%;height:64px;font-size:22px}
+.mg-note{text-align:center;font-weight:900;margin:8px 0 0}
+.mg-memo{display:flex;justify-content:center;gap:8px;font-size:40px;margin:6px 0}.mg-memo.dim span{opacity:.9}
+.mg-word{text-align:center;font-family:var(--display);font-weight:900;font-size:64px;line-height:1.3;-webkit-text-stroke:2px #1d1633}
 .moles button{height:72px;font-size:34px;background:#fff;border-radius:16px;touch-action:manipulation;user-select:none;padding:0}
 .moles button.up{background:#fff8e1}
 .tug{position:relative}
@@ -4248,19 +4260,18 @@ async function payRent(p, i) {
     const use = p.isAI ? amt >= 600 : await ask(`<h2>要付 ${fmt(amt)} 過路費</h2><p>你有一張🎫免死金牌，要用掉它免付嗎？</p>`, [{ label: '免死金牌！', value: true, cls: 'primary' }, { label: '留著', value: false }], p);
     if (use) { takeItem(p, 'free'); say(p, 'item', '免死金牌在此！'); say(o, 'lose'); await caption('🎫 免死金牌', `${p.char.name} 這次不付錢`); updateHUD(); lookBack(); return; }
   }
-  const choice = p.isAI ? (amt < 400 ? 'pay' : pick(['pay', 'debate', 'tug', 'quiz', 'react', 'mole']))
+  const choice = p.isAI ? (amt < 400 ? 'pay' : pick(['pay', 'debate', 'tug', 'quiz', 'mini', 'mini']))
     : await ask(`<h2>${TILES[i].name} 是 ${o.char.name} 的${buildingName(i)}</h2><p>過路費 <b>${fmt(amt)}</b>。乖乖付，還是跟地主拚一場？</p>
       <div class="cardlist">
         <div class="cardrow"><span class="ic">✊</span><div><b>嗆聲對決</b><small>政見、抹黑、哭哭猜拳，靠心理戰。</small></div></div>
         <div class="cardrow"><span class="ic">🪢</span><div><b>造勢拔河</b><small>雙方狂點 8 秒，把繩子拉過來就贏，靠手速。</small></div></div>
         <div class="cardrow"><span class="ic">🎤</span><div><b>質詢對決</b><small>兩人答同一題（國學、政治、地理、數學），答對又答得快的人贏。</small></div></div>
-        <div class="cardrow"><span class="ic">📸</span><div><b>閃光燈反應</b><small>閃光燈一亮就按，比反應速度；太早按算犯規。</small></div></div>
-        <div class="cardrow"><span class="ic">🔨</span><div><b>打假新聞</b><small>10 秒狂點假新聞，點到真新聞扣分，比分數。</small></div></div>
+        <div class="cardrow"><span class="ic">🎲</span><div><b>隨機小遊戲</b><small>從 7 種裡抽一個：閃光燈、打假新聞、直播狂點、數字快手、精準蓋章、政見記憶、顏色陷阱。</small></div></div>
       </div>
       <p style="font-size:13px;color:var(--muted)">贏了免付、地主民調 -5；輸了付兩倍、你的民調 -5。</p>`,
-      [{ label: '乖乖付錢', value: 'pay' }, { label: '✊ 嗆聲對決', value: 'debate', cls: 'hot' }, { label: '🪢 造勢拔河', value: 'tug', cls: 'hot' }, { label: '🎤 質詢對決', value: 'quiz', cls: 'hot' }, { label: '📸 閃光燈反應', value: 'react', cls: 'hot' }, { label: '🔨 打假新聞', value: 'mole', cls: 'hot' }], p);
+      [{ label: '乖乖付錢', value: 'pay' }, { label: '✊ 嗆聲對決', value: 'debate', cls: 'hot' }, { label: '🪢 造勢拔河', value: 'tug', cls: 'hot' }, { label: '🎤 質詢對決', value: 'quiz', cls: 'hot' }, { label: '🎲 隨機小遊戲', value: 'mini', cls: 'hot' }], p);
   if (choice && choice !== 'pay') {
-    const r = choice === 'debate' ? await debate(p, o) : choice === 'tug' ? await tugWar(p, o) : DUEL[choice] ? await miniDuel(choice, p, o) : await quizDuel(p, o);
+    const r = choice === 'debate' ? await debate(p, o) : choice === 'tug' ? await tugWar(p, o) : choice === 'mini' ? await miniDuel(pick(Object.keys(DUEL)), p, o) : DUEL[choice] ? await miniDuel(choice, p, o) : await quizDuel(p, o);
     if (r === 'win') {
       addPoll(p, 5); addPoll(o, -5);
       if (p.char.id === 'kc' && o.items.length) { const it = o.items.splice(rnd(o.items.length), 1)[0]; giveItem(p, it); await caption('我手上有資料！', `沒收 ${o.char.name} 的一個道具`, 1200); }
@@ -4660,7 +4671,7 @@ async function quizDuel(p, o) {
 }
 
 /* ---------- 全民小遊戲：每 2 回合一次，大家同時玩（搶答、打假新聞、閃光燈、狂點輪流換） ---------- */
-const ALL_GAMES = ['quiz', 'mole', 'react', 'tap'];
+const ALL_GAMES = ['quiz', 'mole', 'color', 'react', 'order', 'tap', 'memo', 'stamp'];
 async function allGame() {
   const kind = ALL_GAMES[(G.round / 2 - 1) % ALL_GAMES.length | 0];
   if (kind === 'quiz') return allQuiz();
@@ -4668,6 +4679,7 @@ async function allGame() {
     mole: { name: '🔨 全民打假新聞', intro: '大家同時打 10 秒，分數最高 +1,500，最低的罰 800！', play: moleGame, ai: () => 5 + rnd(10), better: (a, b) => a > b, fmt: v => `${v} 分` },
     react: { name: '📸 全民閃光燈', intro: '閃光燈一亮就按！最快 +1,500，最慢和犯規的罰 800！', play: reactGame, ai: () => Math.random() < .1 ? 9999 : 260 + rnd(380), better: (a, b) => a < b, fmt: v => v >= 9000 ? '犯規' : `${(v / 1000).toFixed(2)} 秒` },
     tap: { name: '📱 全民直播狂點', intro: '5 秒狂點按讚！最多 +1,500，最少的罰 800！', play: tapGame, ai: () => 18 + rnd(16), better: (a, b) => a > b, fmt: v => `${v} 讚` },
+    ...Object.fromEntries(['order', 'stamp', 'memo', 'color'].map(k => [k, { ...DUEL[k], name: DUEL[k].name.replace(' ', ' 全民'), intro: DUEL[k].intro.replace('的人贏', '的 +1,500，最差的罰 800！') }])),
   }[kind];
   SFX.fan();
   await caption(meta.name + '！', meta.intro, 2000);
@@ -4854,10 +4866,113 @@ function moleGame0(p) {
     tick(); setTimeout(end, D + 150);
   });
 }
+/* ---------- 新小遊戲（每個都回傳一個分數；連線朋友用 req 在自己畫面玩） ---------- */
+// 共用外框：標題、說明、倒數條
+function gameBox(p, title, tip) {
+  mbox.style.setProperty('--c', p.char.color);
+  mbox.innerHTML = `<span class="who">${p.char.name}（${esc(label(p))}）</span><h2>${title}</h2><p>${tip}</p><div class="mg-top"><b id="mgs">0</b><div class="timer"><i id="mgbar"></i></div></div><div id="mgbody"></div>`;
+  modal.hidden = false;
+  return $('#mgbody');
+}
+function mgTimer(D, onEnd) {
+  const t0 = performance.now(); let stop = false;
+  const tick = () => { if (stop) return; const r = 1 - (performance.now() - t0) / D; const bar = $('#mgbar'); if (bar) bar.style.width = Math.max(0, r * 100) + '%'; if (r <= 0) { stop = true; onEnd(); } else requestAnimationFrame(tick); };
+  tick(); const tm = setTimeout(() => { if (!stop) { stop = true; onEnd(); } }, D + 200);
+  return () => { stop = true; clearTimeout(tm); };
+}
+const mgWrap = (kind, title, run0, lo, hi, show) => p => {
+  peek(p, { kind, title: title + '中…' });
+  const go = viaNet(p) ? req(p, kind).then(v => clamp(+v || 0, lo, hi)) : run0(p);
+  return go.then(v => { peekDone(p, { pick: show(v) }); return v; });
+};
+
+// 🔢 數字快手：1～9 依序點完，越快越好（點錯 +1 秒）
+const orderGame = mgWrap('order', '🔢 數字快手', p => new Promise(res => {
+  const body = gameBox(p, '🔢 數字快手', '照 1、2、3…9 的順序點完！點錯加 1 秒，最多 15 秒。');
+  const nums = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  body.innerHTML = `<div class="mg-grid">${nums.map(n => `<button data-n="${n}">${n}</button>`).join('')}</div>`;
+  let next = 1, pen = 0, done = false; const t0 = performance.now();
+  const end = ms => { if (done) return; done = true; stopT(); SFX.coin(); $('#mgs').textContent = (ms / 1000).toFixed(2) + ' 秒'; setTimeout(() => { modal.hidden = true; res(Math.round(ms)); }, 700); };
+  const stopT = mgTimer(15000, () => end(15000 + (10 - next) * 1000));
+  body.querySelectorAll('[data-n]').forEach(b => b.onpointerdown = e => {
+    e.preventDefault(); if (done) return;
+    if (+b.dataset.n === next) { b.disabled = true; b.classList.add('ok'); SFX.tap(); $('#mgs').textContent = next; next++; if (next > 9) end(performance.now() - t0 + pen); }
+    else { pen += 1000; SFX.bad(); b.classList.remove('bad'); void b.offsetWidth; b.classList.add('bad'); }
+  });
+}), 1000, 30000, v => `${(v / 1000).toFixed(2)} 秒`);
+
+// 🗳️ 精準蓋章：游標左右跑，跑到圈圈正中間就按，3 次總分（每次最多 100）
+const stampGame = mgWrap('stamp', '🗳️ 精準蓋章', p => new Promise(res => {
+  const body = gameBox(p, '🗳️ 精準蓋章', '紅色游標跑到中間的圈圈就按「蓋章」！3 次，越準分數越高。');
+  body.innerHTML = `<div class="mg-track"><i class="mg-zone"></i><b id="mgcur"></b></div><button class="primary mg-big" id="mgbtn">🗳️ 蓋章！</button><p class="mg-note" id="mgnote">第 1 / 3 次</p>`;
+  let round = 0, total = 0, x = 0, dir = 1, t = performance.now(), done = false, lock = false;
+  const speed = () => 70 + round * 35;   // 每秒移動的百分比，越來越快
+  const loop = now => { if (done) return; const dt = (now - t) / 1000; t = now; if (!lock) { x += dir * speed() * dt; if (x > 100) { x = 200 - x; dir = -1; } if (x < 0) { x = -x; dir = 1; } } const c = $('#mgcur'); if (c) c.style.left = x + '%'; requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+  const press = () => {
+    if (done || lock) return; lock = true;
+    const pts = Math.max(0, Math.round(100 - Math.abs(x - 50) * 4)); total += pts; round++;
+    pts >= 80 ? SFX.coin() : pts > 0 ? SFX.tap() : SFX.bad();
+    $('#mgs').textContent = total; $('#mgnote').textContent = `這次 ${pts} 分${round < 3 ? `，第 ${round + 1} / 3 次` : ''}`;
+    if (round >= 3) { done = true; removeEventListener('keydown', key); stopT(); setTimeout(() => { modal.hidden = true; res(total); }, 900); }
+    else setTimeout(() => { lock = false; x = 0; dir = 1; }, 600);
+  };
+  const key = e => { if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); press(); } };
+  addEventListener('keydown', key);
+  $('#mgbtn').onpointerdown = e => { e.preventDefault(); press(); };
+  const stopT = mgTimer(15000, () => { if (done) return; done = true; removeEventListener('keydown', key); modal.hidden = true; res(total); });
+}), 0, 300, v => `${v} 分`);
+
+// 🧠 政見記憶：記住 5 個圖案的順序，再依序點出來（全對再加速度分）
+const MEMO_ICONS = ['🍱', '🚀', '🐔', '🏠', '📢', '🧧', '🎤', '🐱'];
+const memoGame = mgWrap('memo', '🧠 政見記憶', p => new Promise(res => {
+  const body = gameBox(p, '🧠 政見記憶', '記住下面 5 個圖案的順序（3 秒），再照順序點出來！');
+  const seq = Array.from({ length: 5 }, () => pick(MEMO_ICONS));
+  body.innerHTML = `<div class="mg-memo" id="mgseq">${seq.map(e => `<span>${e}</span>`).join('')}</div>`;
+  let done = false, k = 0, t0 = 0;
+  const end = sc => { if (done) return; done = true; stopT && stopT(); setTimeout(() => { modal.hidden = true; res(sc); }, 800); };
+  let stopT = null;
+  setTimeout(() => {
+    if (done) return;
+    body.innerHTML = `<div class="mg-memo dim">${seq.map(() => '<span>❔</span>').join('')}</div><div class="mg-grid four">${MEMO_ICONS.map(e => `<button data-e="${e}">${e}</button>`).join('')}</div>`;
+    t0 = performance.now();
+    stopT = mgTimer(12000, () => end(k * 10));
+    body.querySelectorAll('[data-e]').forEach(b => b.onpointerdown = ev => {
+      ev.preventDefault(); if (done) return;
+      const slot = body.querySelectorAll('.mg-memo span')[k];
+      if (b.dataset.e === seq[k]) {
+        slot.textContent = seq[k]; k++; SFX.tap(); $('#mgs').textContent = k;
+        if (k === 5) { SFX.coin(); end(50 + Math.max(0, 9 - Math.floor((performance.now() - t0) / 1000))); }
+      } else { slot.textContent = '❌'; SFX.bad(); end(k * 10); }
+    });
+  }, 3000);
+}), 0, 59, v => `記對 ${Math.min(5, Math.floor(v / 10))} 個${v > 50 ? `（速度 +${v - 50}）` : ''}`);
+
+// 🎨 顏色陷阱：看字的「顏色」不是看字，10 秒答對 +1、答錯 -1
+const INKS = [['紅', '#e53935'], ['藍', '#1e88e5'], ['綠', '#43a047'], ['黃', '#fbc02d']];
+const colorGame = mgWrap('color', '🎨 顏色陷阱', p => new Promise(res => {
+  const body = gameBox(p, '🎨 顏色陷阱', '點「字的顏色」，不是點字的意思！10 秒內答對 +1、答錯 -1。');
+  body.innerHTML = `<div class="mg-word" id="mgword"></div><div class="mg-grid four">${INKS.map(([n, c]) => `<button data-c="${n}" style="--ink:${c}">${n}色</button>`).join('')}</div>`;
+  let n = 0, ink = '', done = false;
+  const next = () => { const w = pick(INKS), c = pick(INKS.filter(x => x !== w)); ink = c[0]; const el = $('#mgword'); el.textContent = w[0]; el.style.color = c[1]; };
+  next();
+  body.querySelectorAll('[data-c]').forEach(b => b.onpointerdown = e => {
+    e.preventDefault(); if (done) return;
+    if (b.dataset.c === ink) { n++; SFX.tap(); } else { n--; SFX.bad(); }
+    $('#mgs').textContent = n; next();
+  });
+  mgTimer(10000, () => { done = true; setTimeout(() => { modal.hidden = true; res(n); }, 500); });
+}), -20, 40, v => `${v} 分`);
+
 // 兩人比賽（付過路費時用）：連線朋友同時玩；同一台電腦輪流玩；電腦隨機
 const DUEL = {
   react: { name: '📸 閃光燈反應', intro: '閃光燈一亮就按，反應快的人贏', ai: () => Math.random() < .1 ? 9999 : 260 + rnd(380), fmt: v => v >= 9000 ? '犯規' : `${(v / 1000).toFixed(3)} 秒`, better: (a, b) => a < b, play: reactGame },
   mole: { name: '🔨 打假新聞', intro: '10 秒內分數高的人贏', ai: () => 5 + rnd(10), fmt: v => `${v} 分`, better: (a, b) => a > b, play: moleGame },
+  tap: { name: '📱 直播狂點', intro: '5 秒狂點按讚，點多的人贏', ai: () => 18 + rnd(16), fmt: v => `${v} 讚`, better: (a, b) => a > b, play: tapGame },
+  order: { name: '🔢 數字快手', intro: '1 到 9 依序點完，快的人贏', ai: () => 4500 + rnd(5000), fmt: v => `${(v / 1000).toFixed(2)} 秒`, better: (a, b) => a < b, play: orderGame },
+  stamp: { name: '🗳️ 精準蓋章', intro: '游標跑到圈圈正中間就蓋章，3 次總分高的人贏', ai: () => 110 + rnd(160), fmt: v => `${v} 分`, better: (a, b) => a > b, play: stampGame },
+  memo: { name: '🧠 政見記憶', intro: '記住 5 個圖案的順序再點出來，記得多又快的人贏', ai: () => pick([20, 30, 40, 50, 53, 56]), fmt: v => `記對 ${Math.min(5, Math.floor(v / 10))} 個`, better: (a, b) => a > b, play: memoGame },
+  color: { name: '🎨 顏色陷阱', intro: '看字的顏色不是看字，10 秒答對多的人贏', ai: () => 4 + rnd(9), fmt: v => `${v} 分`, better: (a, b) => a > b, play: colorGame },
 };
 async function miniDuel(kind, p, o, note) {
   const D = DUEL[kind];
@@ -5541,6 +5656,10 @@ async function handleReq(r) {
       case 'hand': v = await handshakeGame(me); break;
       case 'react': v = await reactGame(me); break;
       case 'mole': v = await moleGame(me); break;
+      case 'order': v = await orderGame(me); break;
+      case 'stamp': v = await stampGame(me); break;
+      case 'memo': v = await memoGame(me); break;
+      case 'color': v = await colorGame(me); break;
       case 'tug': v = await tugUI(r.cfg || {}); break;
     }
   } catch (e) { v = null; }
