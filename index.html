@@ -2029,6 +2029,34 @@ function rocketModel() {
   g.userData.tick = t => { const k = .8 + Math.random() * .5; fl.scale.set(1, k, 1); fl2.scale.set(1, k * 1.1, 1); };
   return g;
 }
+/* ---------- 目的地標記：擲完骰子在要停的那格插一支會跳的箭頭＋格子名稱 ---------- */
+const destMarks = ['#ffd23f', '#4fc3f7'].map(col => {
+  const g = new THREE.Group(); g.visible = false; scene.add(g);
+  const mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .9 });
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.6, .18, 8, 36), mat); ring.rotation.x = Math.PI / 2; ring.position.y = .45; g.add(ring);
+  const arrow = new THREE.Mesh(new THREE.ConeGeometry(.7, 1.4, 4), mat); arrow.rotation.x = Math.PI; g.add(arrow);
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128;
+  const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding;
+  const lab = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, fog: false, toneMapped: false })); lab.scale.set(7, 1.75, 1); lab.position.y = 5; lab.renderOrder = 6; g.add(lab);
+  const m = { g, ring, arrow, cv, tex, col };
+  anim.push(t => { if (!g.visible) return; arrow.position.y = 2.6 + Math.abs(Math.sin(t * 4)) * .6; arrow.rotation.y = t * 2; ring.scale.setScalar(1 + Math.sin(t * 5) * .06); });
+  return m;
+});
+function showDest(list) {
+  destMarks.forEach((m, k) => {
+    const d = list[k]; m.g.visible = !!d; if (!d) return;
+    const [x, z] = tilePos(d[0]); m.g.position.set(x, 0, z);
+    const c = m.cv.getContext('2d'); c.clearRect(0, 0, 512, 128);
+    c.fillStyle = '#1d1633'; c.beginPath(); if (c.roundRect) c.roundRect(6, 10, 500, 108, 30); else c.rect(6, 10, 500, 108); c.fill();
+    c.lineWidth = 8; c.strokeStyle = m.col; c.stroke();
+    c.fillStyle = '#ffffff'; c.textAlign = 'center'; c.textBaseline = 'middle'; fitFont(c, d[1], 470, 54); c.fillText(d[1], 256, 66);
+    m.tex.needsUpdate = true;
+  });
+}
+function setDest(list) { hostFx('dest', list); showDest(list); }
+// 從現在位置走 n 步會停在哪一格（back＝逆時針）
+const destOf = (p, n, back) => back ? ((p.pos - n) % N + N) % N : (p.pos + n) % N;
+
 /* ---------- 陷阱、炸彈、特效 ---------- */
 const trapMeshes = {};
 function placeTrapMesh(i, kind) {
@@ -3016,8 +3044,14 @@ async function takeTurn(p) {
     await diceBonus(p, v);
     if (p.out) return;
     let steps = v.reduce((x, y) => x + y, 0);
+    p.nextBack = lawOn('reverse') || Math.random() < .12;   // 先決定這次是不是「倒退嚕」，預覽目的地才會準
     if (p.sk === 'ma') {
-      const more = p.isAI ? Math.random() < .4 : await ask(`<h2>擲出 ${steps} 點</h2><p>馬英九技能「慢跑達人」：要多跑 1 步，走 ${steps + 1} 步嗎？</p>`, [{ label: `跑 ${steps + 1} 步`, value: true, cls: 'primary' }, { label: `走 ${steps} 步就好`, value: false }], p);
+      const eff = n => p.turtle > 0 ? 1 : n + (lawOn('express') ? 2 : 0);
+      const d1 = destOf(p, eff(steps), p.nextBack), d2 = destOf(p, eff(steps + 1), p.nextBack);
+      setDest([[d1, `走 ${steps} 步：${TILES[d1].name}`], [d2, `跑 ${steps + 1} 步：${TILES[d2].name}`]]);
+      const more = p.isAI ? Math.random() < .4 : await ask(`<h2>擲出 ${steps} 點</h2><p>慢跑達人：要多跑 1 步嗎？棋盤上<b style="color:#e6a800">黃色箭頭</b>是走 ${steps} 步、<b style="color:#1e88e5">藍色箭頭</b>是跑 ${steps + 1} 步會停的地方。</p>`,
+        [{ label: `🏃 跑 ${steps + 1} 步（到 ${TILES[d2].name}）`, value: true, cls: 'primary' }, { label: `🚶 走 ${steps} 步（到 ${TILES[d1].name}）`, value: false }], p);
+      setDest([]);
       if (more) { steps++; say(p, 'roll', '再跑一步，有益健康！'); }
     }
     await afterRoll(p, steps, false);
@@ -3030,9 +3064,14 @@ async function afterRoll(p, steps, forced) {
   if (forced) say(p, 'roll');
   if (p.turtle > 0) { p.turtle--; steps = 1; await caption('🐢 烏龜卡生效', `${p.char.name} 只能走 1 步`, 900); }
   else if (lawOn('express')) { steps += 2; await caption('🚄 高鐵法案', `${p.char.name} 多走 2 步，共 ${steps} 步`, 900); }
-  const back = lawOn('reverse') || (!forced && Math.random() < .12);
+  const back = p.nextBack !== undefined && !forced ? p.nextBack : lawOn('reverse') || (!forced && Math.random() < .12);
+  p.nextBack = undefined;
   if (back) { SFX.whoosh(); say(p, 'roll', pick(['咦？怎麼往回走？', '倒退嚕～', '這是戰略性撤退！'])); await caption('🔄 倒退嚕！', `${p.char.name} 這次逆時針走 ${steps} 步${lawOn('reverse') ? '（逆行令）' : ''}`, 1300); }
+  const dest = destOf(p, steps, back);
+  setDest([[dest, `🎯 ${steps} 步 → ${TILES[dest].name}`]]);
+  log(`🎯 <b>${p.char.name}</b> 走 ${steps} 步，目的地：${TILES[dest].name}`);
   await moveSteps(p, steps, back);
+  setDest([]);
   if (p.out || p.where) return;
   await streetClash(p);
   if (p.out || p.where) return;
@@ -5889,6 +5928,7 @@ function playFx(m) {
       case 'wheel': if (d && Array.isArray(d.s)) { const w = wheelData(d); if (!(wheelState && wheelState.id === w.id && wheelState.inter)) wheelOpen(w, false); } break;
       case 'emoAt': if (Array.isArray(d)) emoAtLocal(+d[0], [...String(d[1] || '')].slice(0, 2).join('')); break;
       case 'lcap': if (Array.isArray(d)) localCaption(esc(String(d[0] || '')), esc(String(d[1] || '')), 500); break;
+      case 'dest': if (Array.isArray(d)) showDest(d.slice(0, 2).filter(x => Array.isArray(x) && TILES[+x[0]]).map(x => [+x[0], String(x[1] || '').slice(0, 30)])); break;
       case 'wheelGo': wheelSpin(clamp(Math.round(+d) || 0, 0, 9)); break;
     }
   } catch (e) { }
