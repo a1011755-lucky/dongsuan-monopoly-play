@@ -106,7 +106,7 @@ button.hot{background:var(--hot);color:#fff}
 /* 資料面板（道具／任務／超能力，隨時可看） */
 #sheet{position:absolute;inset:0;z-index:15;display:grid;place-items:center;background:rgba(29,22,51,.3);padding:16px}
 #sheet[hidden]{display:none}
-.sh-box{position:relative;width:min(440px,100%);max-height:min(80vh,640px);overflow-y:auto;overflow-x:hidden;background:var(--paper);border:3px solid var(--ink);border-radius:18px;box-shadow:5px 5px 0 var(--ink);padding:14px 16px}
+.sh-box{position:relative;box-sizing:border-box;width:min(440px,100%);max-height:min(80vh,640px);overflow-y:auto;overflow-x:hidden;background:var(--paper);border:3px solid var(--ink);border-radius:18px;box-shadow:5px 5px 0 var(--ink);padding:14px 16px}
 .sh-x{position:absolute;top:8px;right:8px;padding:4px 10px;font-size:16px}
 .sh-head{display:flex;gap:10px;align-items:center;margin-bottom:6px;padding-right:44px}
 .sh-head b{font-family:var(--display);font-size:20px;display:block}
@@ -263,10 +263,11 @@ button{touch-action:manipulation}
 #modal .stat dt{color:var(--muted);font-weight:700}
 #modal .stat dd{margin:0;font-weight:900}
 .cardlist{display:grid;gap:8px}
-.cardrow{display:flex;gap:10px;align-items:center;padding:8px 10px;border:2px solid var(--ink);border-radius:12px;background:#fff;text-align:left;box-shadow:none;font-family:var(--body);font-weight:400;width:100%}
+.cardrow{box-sizing:border-box;max-width:100%;display:flex;gap:10px;align-items:center;padding:8px 10px;border:2px solid var(--ink);border-radius:12px;background:#fff;text-align:left;box-shadow:none;font-family:var(--body);font-weight:400;width:100%}
 .cardrow:hover:not(:disabled){box-shadow:3px 3px 0 var(--ink)}
 .cardrow .ic{font-size:26px;flex:none}
-.wi{display:inline-block;width:1.6em;height:1.6em;background:center/contain no-repeat;vertical-align:middle}
+.wi{display:inline-grid;place-items:center;width:1.6em;height:1.6em;background:center/contain no-repeat;vertical-align:middle;font-style:normal}
+.wi>i{font-style:normal;font-size:.9em;line-height:1}
 .cardrow .ic .wi{width:46px;height:46px}
 .cardpick{display:flex;flex-direction:column;gap:8px;margin:8px 0}
 .cardrow.cardbtn{cursor:pointer;box-shadow:3px 3px 0 var(--ink)}
@@ -1858,14 +1859,15 @@ function loadPortraits() {
 const WIMG = { mine: ['models/w-mine.jpg', 505, 300, 265], bomb: ['models/w-bomb.jpg', 520, 290, 250], rocket: ['models/w-rocket.jpg', 545, 270, 260] };
 const wTex = {};
 Object.keys(WIMG).forEach(k => { const c = document.createElement('canvas'); c.width = c.height = 4; wTex[k] = new THREE.CanvasTexture(c); wTex[k].encoding = THREE.sRGBEncoding; });
-const ico = k => WIMG[k] ? `<span class="wi wi-${k}"></span>` : ITEMS[k].icon;
+// 圖還沒載好（或載不到）時先顯示 emoji，不會空白
+const ico = k => WIMG[k] ? `<span class="wi wi-${k}"><i>${ITEMS[k].icon}</i></span>` : ITEMS[k].icon;
 Object.entries(WIMG).forEach(([k, [u, cx, cy, r]]) => loadImg(u).then(im => {
   if (!im) return;
   const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
   x.beginPath(); x.arc(128, 128, 125, 0, 7); x.fillStyle = '#1d1633'; x.fill();
   x.beginPath(); x.arc(128, 128, 117, 0, 7); x.fillStyle = '#ffffff'; x.fill();
   x.save(); x.beginPath(); x.arc(128, 128, 110, 0, 7); x.clip(); x.drawImage(im, cx - r, cy - r, r * 2, r * 2, 18, 18, 220, 220); x.restore();
-  const st = document.createElement('style'); st.textContent = `.wi-${k}{background-image:url(${cv.toDataURL('image/png')})}`; document.head.appendChild(st);
+  const st = document.createElement('style'); st.textContent = `.wi-${k}{background-image:url(${cv.toDataURL('image/png')})}.wi-${k}>i{display:none}`; document.head.appendChild(st);
   wTex[k].image = cv; wTex[k].needsUpdate = true;
 }));
 const wSprite = (k, size) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: wTex[k], depthWrite: false, fog: false, toneMapped: false })); sp.scale.set(size, size, 1); return sp; };
