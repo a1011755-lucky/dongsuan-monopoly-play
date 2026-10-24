@@ -2576,22 +2576,28 @@ function logLocal(html) {
   const l = $('#log-list'); const el = document.createElement('p'); el.innerHTML = html; l.prepend(el);
   while (l.children.length > 9) l.lastChild.remove();
 }
-let capTimer = null, capChain = Promise.resolve();
-// 大字幕：依字數給足讀的時間（電腦回合不再縮短），而且排隊一個一個出，不會被下一個馬上蓋掉
+let capTimer = null, capChain = Promise.resolve(), capSkip = null;
+// 大字幕：排隊一個一個出，每個停 1.5 秒換下一個（後面沒有字幕就多留一下）；點畫面可以馬上跳過
 function caption(big, sub = '', ms = 1600) {
   hostFx('cap', [big, sub, ms]);
   const len = String(big + sub).replace(/<[^>]*>/g, '').length;
-  const show = Math.max(ms, 1200 + len * 100) * (G && G.fast ? .6 : 1);
+  const show = Math.max(ms, 1200 + len * 100) * (G && G.fast ? .6 : 1), gap = 1500 * (G && G.fast ? .6 : 1);
   const p = capChain.then(() => {
     const c = $('#caption');
     c.innerHTML = `<span class="big">${big}</span>${sub ? `<span class="sub">${sub}</span>` : ''}`;
     c.classList.remove('show'); void c.offsetWidth; c.classList.add('show');
     clearTimeout(capTimer); capTimer = setTimeout(() => { c.innerHTML = ''; }, show + 300);
-    return new Promise(r => BGT.timeout(r, show * .85));
+    return new Promise(r => {
+      let done = false; const go = () => { if (done) return; done = true; if (capSkip === skip) capSkip = null; r(); };
+      const skip = () => { clearTimeout(capTimer); c.innerHTML = ''; go(); };
+      capSkip = skip; BGT.timeout(go, gap);
+    });
   });
   capChain = p.catch(() => { });
   return p;
 }
+// 點畫面（按鈕、對話框以外的地方）跳過目前的字幕
+addEventListener('pointerdown', e => { if (capSkip && !e.target.closest('button, #modal, #sheet, input, #wheel, #night, #setup, #end')) capSkip(); });
 function say(p, key, text) {
   if (!p.bubble) return;
   const own = p.char.lines[key] || [];
