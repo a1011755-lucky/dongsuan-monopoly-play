@@ -520,16 +520,16 @@ button{touch-action:manipulation}
             <li><b>🎲 一鍵擲骰</b>：輪到你時下方會出現骰子，<b>點 1、2 或 3 顆</b>就擲，擲完自動出發；10 秒沒動作會自動擲。<b>對子再擲一次</b>（3 顆要三個一樣；連三次會被約談）。</li>
             <li><b>🎰 骰子點數特殊效果</b>：1 顆擲出 1＝一點靈（拿遙控骰子）、1 顆擲出 6＝+600、蛇眼 1-1＝拿遙控骰子、雙六＝+3,000 加特殊道具、總和 7＝幸運七 +777、總和 11＝一路發民調 +5、3 顆三個一樣＝豹子（其他人每人給你 1,000）、3 顆順子＝拿特殊道具。</li>
             <li><b>🚨 突發事件</b>：每回合開始有機會發生影響全地圖的事件，例如大地震、隕石雨、政黨輪替（大家位置洗牌）、豪雨（只能擲 1 顆）、選前大撒幣、全國大掃黑。</li>
-            <li><b>📣 答題要快又要對</b>：全民搶答最快答對 +1,500，<b>最後一個答對的罰 800</b>、<b>答錯的罰 1,000</b>；質詢台、速算擂台答錯也會扣錢。</li>
+            <li><b>📣 答題要快又要對</b>：全民搶答最快答對 +1,500，<b>最後一個答對的罰 800</b>、<b>答錯的罰 1,000</b>；質詢台、常識擂台答錯也會扣錢。</li>
             <li><b>🏠 買地當下就能蓋</b>：一次最多蓋到公寓；回到自己的地可以一口氣蓋到摩天樓。摩天樓是 🛡️ 地標。</li>
-            <li><b>🏴 強制收購</b>：踩到別人的地，付完過路費可以花 1.5 倍價錢把地連房子搶過來（地標收不走），收購完還能馬上加蓋。</li>
+            <li><b>🏴 強制收購</b>：踩到別人的地，付完過路費可以挑戰收購：先跟地主比一場小遊戲，<b>贏了</b>才能花 1.5 倍價錢把地連房子搶過來；<b>輸了要賠 3 成</b>、地也買不到（地標收不走）。</li>
             <li><b>🎉 造勢晚會</b>：選一塊自己的地，過路費翻倍；同一塊再辦一次變 4 倍。<b>✈️ 機場</b>可以飛到地圖上任何一格。</li>
             <li>每人開局送 2 個道具。擲骰前可以出道具：<b>地雷、路障、火箭要直接在 3D 棋盤上點格子瞄準</b>。</li>
             <li>定時炸彈：黏到別人身上，誰經過誰就接手，倒數歸零就爆炸送醫院。</li>
             <li>空地也可以改建成「競選總部」「雞排攤」。</li>
             <li>踩到別人的地可以發動<b>嗆聲對決</b>（政見 &gt; 哭哭 &gt; 抹黑 &gt; 政見）或<b>造勢拔河</b>（雙方狂點拉繩子，兩個真人可以同一台搶按 A 鍵和 L 鍵）。</li>
             <li><b>🗺️ 四張地圖</b>：台北（正方形）、桃園（寬長形＋機場跑道）、台中（六角形）、高雄（港灣形），各有當地精華地段和地標。</li>
-            <li>小遊戲格：📱直播抖內（狂點按讚）、🎤質詢台（國學／政治／地理／數學 3 題）、🧮速算擂台（5 題心算）、🏁剛好停在凍蒜廣場（拜票握手）。<b>每 3 回合全民搶答</b>，所有人一起答。</li>
+            <li>小遊戲格：📱直播抖內（狂點按讚）、🎤質詢台（國學／政治／地理／數學 3 題）、📚常識擂台（常識、國學、急轉彎 5 題）、🏁剛好停在凍蒜廣場（拜票握手）。<b>每 3 回合全民搶答</b>，所有人一起答。</li>
             <li>踩到別人的地，除了嗆聲和拔河，還能發動<b>🎤 質詢對決</b>：兩人答同一題，答對的贏。</li>
             <li><b>🎒 道具更多</b>：開局 3 個，每經過起點再送 1 個。新道具：🌀颱風、🧲吸金、🔄換位、👻隱身、🚑保釋、🎆飛彈雨、🏗️免費加蓋、📈民調灌水。</li>
             <li>地圖上會亂跑的路人角色：雞鴨販（賣你凍蒜雞）、檢調（搜索沒收道具）、樁腳伯（發紅包）。</li>
@@ -709,7 +709,7 @@ const CHARS = [
     skill: '醫生出身：住院天數少 1 天。',
     lines: { sig: ['大家好，我是賴清德。', '團結台灣！', '我是醫生，我來看看。'], attack: ['這是必要的處置。'], hit: ['我會堅持下去。'], release: ['出院囉，醫生自己顧好自己！'], champion: ['謝謝大家，我們一起努力！'] } },
   { id: 'puma', name: '沈伯洋', glyph: '沈', color: '#5c4fd6', title: '立委', look: { hair: 'short', glasses: true, extra: 'bear' },
-    skill: '黑熊學院：踩到地雷會自動拆除，不會受傷。',
+    skill: '黑熊學院：踩到地雷會自動拆除，不會受傷（用過要等 2 回合才能再拆）。',
     lines: { sig: ['黑熊學院開課囉！', '準備好了嗎？', '大家要有韌性！'], attack: ['這是防衛演練！', '演練開始！'], hit: ['沒事，我受過訓練。'], defuse: ['地雷？上課教過，拆掉！'], champion: ['韌性就是勝利！'] } },
   { id: 'chiang', name: '蔣萬安', glyph: '蔣', color: '#00a3c4', title: '台北市長', look: { hair: 'side', extra: 'helmet' },
     skill: '萬安演習（每局一次）：發動後，其他人全部原地停一回合。',
@@ -767,7 +767,7 @@ const LAYOUT = ['start', 'p', 'p', 'item', 'p', 'live', 'p', 'p', 'jail', 'p', '
   'fly', 'p', 'p', 'fest', 'p', 'quiz', 'p', 'p', 'hosp', 'p', 'p', 'bribe', 'p', 'shop', 'p', 'p'];
 const PRICES = [[2000, 1800, 3600, 2200, 2400], [2600, 2400, 2900, 2600, 3200], [3000, 2800, 3800, 3300, 4000], [1200, 1000, 1400, 1500, 1700]];
 const ZONE_STYLE = [{ color: '#ff5d5d', tint: '#ffd9d3' }, { color: '#ff9f1c', tint: '#ffe8c2' }, { color: '#3d8bff', tint: '#d5e6ff' }, { color: '#4cb944', tint: '#dff3c8' }];
-const SPECIAL_NAMES = { start: '凍蒜廣場', item: '道具箱', live: '直播抖內', jail: '檢調約談所', math: '速算擂台', news: '新聞快報', fest: '造勢晚會', quiz: '質詢台', hosp: '凍蒜醫院', bribe: '疑似賄選', shop: '軍火夜市' };
+const SPECIAL_NAMES = { start: '凍蒜廣場', item: '道具箱', live: '直播抖內', jail: '檢調約談所', math: '常識擂台', news: '新聞快報', fest: '造勢晚會', quiz: '質詢台', hosp: '凍蒜醫院', bribe: '疑似賄選', shop: '軍火夜市' };
 const hexagon = r => Array.from({ length: 6 }, (_, k) => { const a = (30 + 60 * k) * Math.PI / 180; return [r * Math.cos(a), r * Math.sin(a)]; });
 const MAPS = {
   tpe: {
@@ -809,7 +809,7 @@ const SPECIAL = {
   start: { icon: '🏁', bg: '#ffd23f' }, item: { icon: '🎁', bg: '#c49bff' }, live: { icon: '📱', bg: '#ff6fae' },
   news: { icon: '📺', bg: '#5fd3e8' }, jail: { icon: '🕵️', bg: '#b9c0cc' }, fly: { icon: '✈️', bg: '#9be3f2' },
   shop: { icon: '💣', bg: '#ffb35c' }, bribe: { icon: '🧧', bg: '#ff8a8a' }, hosp: { icon: '🏥', bg: '#e8f6ff' },
-  quiz: { icon: '🎤', bg: '#ffe066' }, fest: { icon: '🎉', bg: '#ffa8d2' }, math: { icon: '🧮', bg: '#b9f2d0' },
+  quiz: { icon: '🎤', bg: '#ffe066' }, fest: { icon: '🎉', bg: '#ffa8d2' }, math: { icon: '📚', bg: '#b9f2d0' },
 };
 // 依地圖產生 32 格的資料
 function makeTiles(id) {
@@ -831,15 +831,15 @@ const LEVEL_NAME = ['空地', '平房', '透天厝', '公寓', '大樓', '摩天
 const KINDS = { hq: { name: '競選總部', mult: 4.5 }, stand: { name: '雞排攤', mult: 3.5 } };
 
 const ITEMS = {
-  mine: { name: '地雷', icon: '💥', price: 800, aim: 'tile', desc: '埋在你前後 8 格內，踩到的人炸進醫院 2 回合。' },
-  bomb: { name: '定時炸彈', icon: '⏰', price: 1200, aim: 'near', desc: '黏到 6 格內的對手身上，經過誰就傳給誰；再走 12～18 步（隨機）就爆炸。' },
-  rocket: { name: '火箭', icon: '🚀', price: 2000, aim: 'tile', desc: '轟炸任何一格：房子全拆，站在那格和左右隔壁的人都送醫院 2 回合。' },
+  mine: { name: '地雷', icon: '💥', price: 1600, aim: 'tile', desc: '埋在你前後 8 格內，剛好停在那格的人炸進醫院 2 回合（經過不會爆）。' },
+  bomb: { name: '定時炸彈', icon: '⏰', price: 2500, aim: 'near', desc: '黏到 6 格內的對手身上，經過誰就傳給誰；再走 12～18 步（隨機）就爆炸。' },
+  rocket: { name: '火箭', icon: '🚀', price: 4500, aim: 'tile', desc: '轟炸任何一格：房子全拆，站在那格和左右隔壁的人都送醫院 2 回合。' },
   block: { name: '路障', icon: '🚧', price: 500, aim: 'tile', desc: '放在你前後 8 格內，經過的人被擋下來。' },
   dice: { name: '遙控骰子', icon: '🎲', price: 700, desc: '這次走幾步由你決定（1～12）。' },
   robot: { name: '清道夫', icon: '🧹', price: 600, desc: '清掉你前方 10 格內所有地雷和路障。' },
-  grab: { name: '搶地卡', icon: '🏴', price: 2500, aim: 'enemyLand', desc: '付 1.5 倍地價給地主，強制收購他的地（連房子）。' },
+  grab: { name: '搶地卡', icon: '🏴', price: 5000, aim: 'enemyLand', desc: '付 1.5 倍地價給地主，強制收購他的地（連房子）。' },
   demolish: { name: '拆屋卡', icon: '🏚️', price: 1200, aim: 'enemyBuilt', desc: '把對手一塊地的房子拆掉一層。' },
-  report: { name: '檢舉卡', icon: '📝', price: 1000, aim: 'player', desc: '檢舉一位對手，他被請去檢調約談所喝咖啡 1 回合。' },
+  report: { name: '檢舉卡', icon: '📝', price: 3000, aim: 'player', desc: '檢舉一位對手，他被請去檢調約談所喝咖啡 1 回合。' },
   troll: { name: '網軍', icon: '🖥️', price: 900, aim: 'player', desc: '對手民調 -15，你的民調 +5。' },
   turtle: { name: '烏龜卡', icon: '🐢', price: 900, aim: 'player', desc: '對手接下來 2 回合每次只能走 1 步。' },
   bento: { name: '發便當', icon: '🍱', price: 600, desc: '辦造勢晚會發便當，民調 +10。（小心被檢舉）' },
@@ -855,7 +855,7 @@ const ITEMS = {
   swap: { name: '換位卡', icon: '🔄', price: 1000, aim: 'player', desc: '跟一位對手瞬間交換位置。' },
   ghost: { name: '隱身卡', icon: '👻', price: 1200, desc: '接下來 2 回合隱身：別人的檢舉、網軍、炸彈、吸金……都打不到你。' },
   bail: { name: '保釋卡', icon: '🚑', price: 900, passive: true, desc: '被動：下次要被送進醫院或約談所時，直接保出來。' },
-  missiles: { name: '飛彈雨', icon: '🎆', price: 2500, desc: '同時轟炸 3 塊對手有房子的地，每塊各掉一層。' },
+  missiles: { name: '飛彈雨', icon: '🎆', price: 5000, desc: '同時轟炸 3 塊對手有房子的地，每塊各掉一層。' },
   build: { name: '免費加蓋', icon: '🏗️', price: 1200, aim: 'ownLand', desc: '點一塊自己的地，免費往上蓋一層。' },
   fakepoll: { name: '民調灌水', icon: '📈', price: 900, desc: '民調 +15；但有三成機率被抓包，反而 -10。' },
 };
@@ -930,9 +930,9 @@ const MISSIONS = {
   snake: { name: '背骨仔', desc: '背刺盟友 2 次（可以是同一個人）', prog: p => [p.stats.stabs, 2] },
   lord: { name: '大地主', desc: '同時擁有 5 塊地', prog: p => [G.tiles.filter(s => s.owner === p.seat).length, 5] },
   bomber: { name: '爆破專家', desc: '把對手送進醫院、約談所 3 次', prog: p => [p.stats.sends, 3] },
-  rich: { name: '黑金帝國', desc: '手上現金達到 35,000', prog: p => [p.cash, 35000] },
+  rich: { name: '黑金帝國', desc: '手上現金達到 90,000', prog: p => [p.cash, 90000] },
   combo: { name: '連段大師', desc: '同一回合連續打同一個人 2 下（連擊），做到 2 次', prog: p => [p.stats.combo2 || 0, 2] },
-  quizking: { name: '名嘴之路', desc: '質詢搶答、速算擂台累積答對 8 題', prog: p => [p.stats.quiz || 0, 8] },
+  quizking: { name: '名嘴之路', desc: '質詢搶答、常識擂台累積答對 8 題', prog: p => [p.stats.quiz || 0, 8] },
   traveler: { name: '台灣走透透', desc: '經過起點 3 次', prog: p => [p.stats.laps || 0, 3] },
   builder: { name: '工程包商', desc: '累積蓋房子 6 層（買地時順便蓋也算）', prog: p => [p.stats.built || 0, 6] },
 };
@@ -2319,7 +2319,7 @@ function showTip(i, x, y) {
   let html = `<b>${t.name}</b><br>`;
   if (t.type === 'prop') {
     html += st.owner >= 0 ? `地主：${G.players[st.owner].char.name}<br>${buildingName(i)}・過路費 ${fmt(rentOf(i))}` : `空地・售價 ${fmt(t.price)}`;
-  } else html += ({ fest: '選一塊自己的地辦造勢晚會，過路費翻倍', math: '5 題心算，答對有錢拿', quiz: '質詢搶答，答對有錢拿', start: '經過領 2,000 元，剛好停下有拜票握手',item: '抽一個道具', live: '直播狂點賺抖內', news: '抽機會／命運卡，或發生新聞事件', jail: '停在這裡要被約談 1 回合', fly: '花 500 元飛到別區', shop: '買地雷、火箭、炸彈', bribe: '被檢舉疑似賄選', hosp: '健康檢查，民調 +3' })[t.type];
+  } else html += ({ fest: '選一塊自己的地辦造勢晚會，過路費翻倍', math: '常識、國學、腦筋急轉彎 5 題，答對有錢拿', quiz: '質詢搶答，答對有錢拿', start: '經過領 2,000 元，剛好停下有拜票握手',item: '抽一個道具', live: '直播狂點賺抖內', news: '抽機會／命運卡，或發生新聞事件', jail: '停在這裡要被約談 1 回合', fly: '花 500 元飛到別區', shop: '買地雷、火箭、炸彈', bribe: '被檢舉疑似賄選', hosp: '健康檢查，民調 +3' })[t.type];
   if (G.traps[i] && trapVisible(G.traps[i])) html += `<br>⚠️ 這格有${G.traps[i].k === 'mine' ? '你埋的地雷' : '路障'}`;
   const npc = G.npcs.find(n => n.pos === i); if (npc) html += `<br>🧍 ${npc.def.name}在這裡`;
   tip.innerHTML = html; tip.hidden = false;
@@ -2472,7 +2472,7 @@ function rentPreview(i, level, seat) {
   Object.assign(st, { owner: seat, level, kind: null });
   const r = rentOf(i); Object.assign(st, keep); return r;
 }
-const START_CASH = 20000, SALARY = 3000, POLL_VOTES = 100;
+const START_CASH = 50000, SALARY = 3000, POLL_VOTES = 100;
 function winRulesHtml() {
   return `<h2>🏆 怎麼贏？（${G.maxRounds} 回合）</h2>
     <div class="cardlist">
@@ -2482,7 +2482,7 @@ function winRulesHtml() {
       <div class="cardrow"><span class="ic">🦸</span><div><b>超能力：每 2 回合發動一次</b><small>開局每人隨機抽到一個超能力（飛彈部隊、政治獻金、乾坤大挪移…），出牌時按「⚡」發動，用完冷卻 2 回合。點左邊玩家卡可以看每個人的超能力、道具和地產。</small></div></div>
       <div class="cardrow"><span class="ic">🗳️</span><div><b>時間到：得票最高的人當選</b><small>得票 = 現金 + 地產價值 + 民調 × ${POLL_VOTES} + 祕密任務 + 每擊倒一人 5,000。</small></div></div>
     </div>
-    <p style="font-size:13px;margin-top:10px">💡 買地當下就能一次蓋到公寓；踩到別人的地，付完過路費可以花 1.5 倍價錢<b>強制收購</b>（摩天樓是地標，收不走）；擲出<b>對子再擲一次</b>。</p>`;
+    <p style="font-size:13px;margin-top:10px">💡 買地當下就能一次蓋到公寓；踩到別人的地，付完過路費可以<b>挑戰收購</b>（先跟地主比小遊戲，贏了才能花 1.5 倍價錢買）（摩天樓是地標，收不走）；擲出<b>對子再擲一次</b>。</p>`;
 }
 // 最後三回合「選前之夜」
 const finalNight = () => !!G.maxRounds && G.round > G.maxRounds - 3;
@@ -3830,7 +3830,7 @@ async function buyOut(p) {
   await caption(hosp ? '🏥 自費 VIP 提早出院！' : '☕ 疏通成功！', `${p.char.name} 花 ${fmt(cost)} 馬上出來`, 1400);
   return true;
 }
-// 三進三出：第 3 次被約談直接收押出局；名下的地被查封，房子拆掉，變成半價法拍屋
+// 五進五出：第 5 次被約談直接收押出局；名下的地被查封，房子拆掉，變成半價法拍屋
 async function detain(p) {
   SFX.bad(); cam.shake = .5; say(p, 'jail', pick(['我是冤枉的！', '我要找律師！', '我會還自己清白！']));
   const lands = G.tiles.map((s, i) => i).filter(i => G.tiles[i].owner === p.seat);
@@ -3840,8 +3840,8 @@ async function detain(p) {
   if (p.ally >= 0 && G.players[p.ally]) G.players[p.ally].ally = -1;
   p.ally = -1;
   await tween(700, k => { p.mesh.rotation.x = k * Math.PI / 2; p.mesh.position.y = -k * .3; });
-  log(`🔒 <b>${p.char.name}</b> 第 3 次被約談，收押出局${lands.length ? `；名下 ${lands.length} 塊地變成法拍屋` : ''}`);
-  await caption('🔒 三進三出，收押出局！', `${p.char.name} 第 3 次被約談，直接收押禁見${lands.length ? `；名下 ${lands.length} 塊地被查封，變成半價法拍屋` : ''}`, 2600);
+  log(`🔒 <b>${p.char.name}</b> 第 5 次被約談，收押出局${lands.length ? `；名下 ${lands.length} 塊地變成法拍屋` : ''}`);
+  await caption('🔒 五進五出，收押出局！', `${p.char.name} 第 5 次被約談，直接收押禁見${lands.length ? `；名下 ${lands.length} 塊地被查封，變成半價法拍屋` : ''}`, 2600);
   scene.remove(p.mesh); updateHUD();
 }
 async function sendTo(p, corner, turns, where) {
@@ -3865,8 +3865,8 @@ async function sendTo0(p, corner, turns, where) {
   }
   if (where === 'jail') {
     p.stats.jail = (p.stats.jail || 0) + 1;
-    if (p.stats.jail >= 3) { await detain(p); return; }
-    if (p.stats.jail === 2) { SFX.bad(); await caption('⚠️ 第 2 次被約談！', `${p.char.name} 再被約談一次，就會被收押出局`, 1600); }
+    if (p.stats.jail >= 5) { await detain(p); return; }
+    if (p.stats.jail === 4) { SFX.bad(); await caption('⚠️ 第 4 次被約談！', `${p.char.name} 再被約談一次，就會被收押出局`, 1600); }
   }
   if (p.char.id === 'lai' && where === 'hosp') turns = Math.max(0, turns - 1);
   if (p.char.id === 'gz' && where === 'hosp') turns = Math.ceil(turns / 2);
@@ -4008,11 +4008,12 @@ async function moveSteps(p, n, back = false) {
       const mates = alive().filter(q => q !== p && q.pos === p.pos);
       if (G.bomb.holder === p.seat && mates.length) { G.bomb.holder = mates[0].seat; SFX.whoosh(); say(mates[0], 'hit', '炸彈怎麼跑到我身上了！'); caption('⏰ 炸彈傳出去了！', `${p.char.name} → ${mates[0].char.name}`, 1000); updateHUD(); }
     }
+    const last = s === n;   // 這一步是不是最後一步（停在這格）
     const npc = G.npcs.find(m => m.pos === p.pos);
-    if (npc) { const stop = await meetNPC(p, npc); if (stop || p.where) break; }
+    if (npc && last) { const stop = await meetNPC(p, npc); if (stop || p.where) break; }
     const trap = G.traps[p.pos], tk = trap && trap.k;
-    if (tk === 'mine') {
-      if (p.char.id === 'puma') { removeTrap(p.pos); say(p, 'defuse'); SFX.coin(); await caption('💥 地雷被拆了', '黑熊學院有教過', 1100); continue; }
+    if (tk === 'mine' && last) {
+      if (p.char.id === 'puma' && G.round - (p.defuseAt === undefined ? -9 : p.defuseAt) >= 2) { p.defuseAt = G.round; removeTrap(p.pos); say(p, 'defuse'); SFX.coin(); await caption('💥 地雷被拆了', '黑熊學院有教過（拆雷技能冷卻 2 回合）', 1100); continue; }
       if (p.items.includes('vest')) { removeTrap(p.pos); await explosion(p.pos); await vestSave(p); continue; }
       const planter = G.players[trap.o];
       removeTrap(p.pos); await explosion(p.pos); say(p, 'hit');
@@ -4025,6 +4026,7 @@ async function moveSteps(p, n, back = false) {
       removeTrap(p.pos); SFX.bad();
       await tween(300, k => { p.mesh.rotation.z = Math.sin(k * Math.PI * 2) * .4; }); p.mesh.rotation.z = 0;
       say(p, 'lose', '誰擋我的路！'); await caption('🚧 被路障擋下來', `${p.char.name} 停在 ${TILES[p.pos].name}`, 1000);
+      if (npc && !last) await meetNPC(p, npc);
       break;
     }
   }
@@ -4048,13 +4050,13 @@ async function meetNPC(p, n) {
     relocateNPC(n); updateHUD(); return false;
   }
   if (id === 'chicken') {
-    // 軍火販子：隨機 3 種武器打 4 折，挑一個
+    // 軍火販子：隨機 3 種武器打 7 折，挑一個（要剛好停在他那格才遇得到）
     const pool = shuffle(['rocket', 'bomb', 'mine', 'missiles', 'block', 'report', 'magnet', 'mirror', 'net', 'vest', 'goat']).slice(0, 3);
-    const price = k => Math.round(ITEMS[k].price * .4 / 10) * 10;
+    const price = k => Math.round(ITEMS[k].price * .7 / 10) * 10;
     say(p, 'roll', '老闆，今天有什麼好貨？');
     let got = null;
     if (p.isAI) { const ok = pool.filter(k => p.cash > price(k) + 2000); got = ok.length && Math.random() < .8 ? pick(ok) : null; }
-    else got = await ask(`<h2>🧨 遇到軍火販子</h2><p>「少年耶，今天全部 4 折，要哪一個？」</p><div class="cardlist">${pool.map(k => `<div class="cardrow"><span class="ic">${ico(k)}</span><div><b>${ITEMS[k].name}　${fmt(price(k))}</b><small>${ITEMS[k].desc}</small></div></div>`).join('')}</div>`,
+    else got = await ask(`<h2>🧨 遇到軍火販子</h2><p>「少年耶，今天全部 7 折，要哪一個？」</p><div class="cardlist">${pool.map(k => `<div class="cardrow"><span class="ic">${ico(k)}</span><div><b>${ITEMS[k].name}　${fmt(price(k))}</b><small>${ITEMS[k].desc}</small></div></div>`).join('')}</div>`,
       [...pool.map(k => ({ label: `${ITEMS[k].icon} ${ITEMS[k].name} ${fmt(price(k))}`, value: k, cls: 'primary', disabled: p.cash < price(k) })), { label: '不用了', value: null }], p);
     if (got && ITEMS[got]) { p.cash -= price(got); giveItem(p, got); SFX.coin(); say(p, 'item', '這個好，包起來！'); await caption('🧨 成交！', `${p.char.name} 跟軍火販子買了🎁 一個神秘道具`, 1200); }
     else say(p, 'lose', '下次再說…');
@@ -4184,11 +4186,22 @@ async function offerTakeover(p, i) {
     yes = theirs >= 4 ? p.cash > cost : p.cash - cost > 2000 && (mine >= 2 || theirs >= 3 || Math.random() < .5);
   } else {
     const theirs = TILES.filter((x, k) => x.zone === t.zone && G.tiles[k].owner === o.seat).length;
-    yes = await ask(`<h2>🏴 強制收購 ${t.name}？</h2><p>付給 ${o.char.name} <b>${fmt(cost)}</b>（地價＋房子的 1.5 倍），這塊地連房子直接變你的，收購完還能馬上加蓋。</p>
+    yes = await ask(`<h2>🏴 強制收購 ${t.name}？</h2><p>要先跟地主 ${o.char.name} <b>比一場小遊戲</b>：贏了付 <b>${fmt(cost)}</b>（地價＋房子的 1.5 倍）把地連房子買下來；<b>輸了或平手要賠 ${fmt(Math.round(cost * .3 / 10) * 10)}</b>，地也買不到。</p>
       ${theirs >= 4 ? `<p><b>⚠️ ${o.char.name} 在這區已經有 ${theirs} 塊地，快收購阻止他壟斷！</b></p>` : ''}<dl class="stat"><dt>你的現金</dt><dd>${fmt(p.cash)}</dd></dl>`,
-      [{ label: `🏴 收購！（${fmt(cost)}）`, value: true, cls: 'hot' }, { label: '算了', value: false }], p);
+      [{ label: `🏴 挑戰收購！（贏了付 ${fmt(cost)}）`, value: true, cls: 'hot' }, { label: '算了', value: false }], p);
   }
   if (!yes) return;
+  // 先跟地主比一場小遊戲：贏了才能收購；輸了或平手要賠地主 3 成收購價，地也買不到
+  const fine = Math.round(cost * .3 / 10) * 10;
+  await caption(`🏴 ${p.char.name} 想收購 ${t.name}！`, `先跟地主 ${o.char.name} 比一場，贏了才能買`, 1600);
+  const r = await miniDuel(pick(Object.keys(DUEL)), p, o, { win: '，收購挑戰成功！', lose: `，收購失敗，賠 ${fmt(fine)}`, tie: `，平手算失敗，賠 ${fmt(fine)}` });
+  if (r !== 'win') {
+    say(o, 'counter'); SFX.bad();
+    log(`🏴 <b>${p.char.name}</b> 收購 ${t.name} 失敗，賠給 <b>${o.char.name}</b> ${fmt(fine)}`);
+    await caption('❌ 收購失敗！', `${p.char.name} 賠給 ${o.char.name} ${fmt(fine)}，${t.name} 還是他的`, 1600);
+    await charge(p, fine, o); lookBack(); return;
+  }
+  if (p.cash < cost) { await caption('💸 錢不夠了', '贏了比賽，但現金不夠付收購價', 1300); return; }
   p.cash -= cost; o.cash += cost; st.owner = p.seat;
   if (G.fest && G.fest.i === i) G.fest = null;
   SFX.fan(); cam.shake = .5; lookAtTile(i); rebuild(i); drawTile(i);
@@ -4485,6 +4498,51 @@ const QUIZ = [
   ['「紙上談兵」比喻什麼？', '只會空談、不會實做', ['很會打仗', '很會寫字', '很會下棋'], '國學'],
   ['「狐假虎威」比喻什麼？', '仗著別人的勢力嚇人', ['狐狸很勇敢', '老虎很聰明', '朋友互相幫忙'], '國學'],
 ];
+// 常識擂台題庫：[題目, 正確答案, [錯誤選項]]
+const TRIVIA = [
+  ['【常識】一年（平年）有幾天？', '365 天', ['366 天', '360 天', '364 天']],
+  ['【常識】一大氣壓下，水在攝氏幾度沸騰？', '100 度', ['90 度', '120 度', '80 度']],
+  ['【常識】一打是幾個？', '12 個', ['10 個', '6 個', '24 個']],
+  ['【常識】人體最大的器官是？', '皮膚', ['肝臟', '心臟', '大腸']],
+  ['【常識】地球繞太陽一圈大約要多久？', '一年', ['一個月', '一天', '十年']],
+  ['【常識】一公斤等於幾公克？', '1000 公克', ['100 公克', '10 公克', '10000 公克']],
+  ['【常識】蜘蛛有幾隻腳？', '8 隻', ['6 隻', '10 隻', '4 隻']],
+  ['【常識】太陽系最大的行星是？', '木星', ['土星', '地球', '海王星']],
+  ['【常識】台灣報案打幾號？', '110', ['119', '113', '104']],
+  ['【常識】台灣消防、救護打幾號？', '119', ['110', '112', '104']],
+  ['【常識】一個小時有幾秒？', '3600 秒', ['360 秒', '6000 秒', '1800 秒']],
+  ['【常識】打雷時，先看到閃電還是先聽到雷聲？', '先看到閃電', ['先聽到雷聲', '同時', '看天氣']],
+  ['【常識】台灣的國際電話區碼是？', '+886', ['+86', '+81', '+852']],
+  ['【常識】彩虹常說有幾種顏色？', '7 種', ['5 種', '6 種', '8 種']],
+  ['【國學】「床前明月光」是誰寫的？', '李白', ['杜甫', '白居易', '王維']],
+  ['【國學】《論語》記錄的是誰的言行？', '孔子', ['孟子', '老子', '莊子']],
+  ['【國學】下列哪一本「不是」四書？', '詩經', ['論語', '孟子', '中庸']],
+  ['【國學】「學而時習之」的下一句是？', '不亦說乎', ['有朋自遠方來', '溫故而知新', '人不知而不慍']],
+  ['【國學】被稱為「詩聖」的是？', '杜甫', ['李白', '王維', '蘇軾']],
+  ['【國學】被稱為「詩仙」的是？', '李白', ['杜甫', '白居易', '李商隱']],
+  ['【國學】「臥薪嘗膽」說的是哪位君王？', '勾踐', ['夫差', '劉邦', '秦始皇']],
+  ['【國學】「破釜沉舟」的主角是？', '項羽', ['劉邦', '韓信', '曹操']],
+  ['【國學】「桃園三結義」不包括誰？', '諸葛亮', ['劉備', '關羽', '張飛']],
+  ['【國學】端午節紀念的是誰？', '屈原', ['孔子', '岳飛', '李白']],
+  ['【國學】「司馬昭之心」下一句是？', '路人皆知', ['天下皆知', '無人知曉', '眾人皆醉']],
+  ['【國學】《西遊記》唐三藏的大徒弟是？', '孫悟空', ['豬八戒', '沙悟淨', '白龍馬']],
+  ['【國學】「一日不見」下一句是？', '如隔三秋', ['思之如狂', '度日如年', '如隔一日']],
+  ['【國學】「亡羊補牢」的意思是？', '出了問題趕快補救還不晚', ['羊跑掉就算了', '先蓋羊圈再買羊', '羊比羊圈重要']],
+  ['【急轉彎】什麼東西越洗越髒？', '水', ['衣服', '碗', '車子']],
+  ['【急轉彎】什麼門永遠關不上？', '球門', ['鐵門', '後門', '大門']],
+  ['【急轉彎】什麼東西有頭沒有腳？', '蒜頭', ['香蕉', '椅子', '電話']],
+  ['【急轉彎】小明的爸爸有三個兒子：大毛、二毛，第三個叫什麼？', '小明', ['三毛', '四毛', '大明']],
+  ['【急轉彎】什麼路最窄？', '冤家路窄', ['小路', '山路', '鐵路']],
+  ['【急轉彎】哪一種布剪不斷？', '瀑布', ['牛仔布', '帆布', '抹布']],
+  ['【急轉彎】什麼人一年只上班一天？', '聖誕老人', ['郵差', '廚師', '公車司機']],
+  ['【急轉彎】打什麼不用花力氣？', '打哈欠', ['打鐵', '打架', '打球']],
+  ['【急轉彎】什麼瓜不能吃？', '傻瓜', ['西瓜', '苦瓜', '冬瓜']],
+  ['【急轉彎】雞和鵝一起放進冰箱，雞凍死了，鵝為什麼沒事？', '牠是企鵝', ['鵝比較胖', '鵝穿外套', '冰箱壞了']],
+  ['【急轉彎】什麼書在書店買不到？', '秘書', ['漫畫書', '字典', '食譜']],
+  ['【急轉彎】一年中哪一個月有 28 天？', '每個月都有', ['只有二月', '一月', '十二月']],
+  ['【急轉彎】「凍蒜」最怕什麼天氣？', '大太陽（會解凍）', ['下雨', '颱風', '起霧']],
+  ['【急轉彎】什麼東西越生氣越大？', '脾氣', ['肚子', '鼻孔', '眼睛']],
+];
 // 速算題：每次隨機出
 function mathQ() {
   const r = (a, b) => a + rnd(b - a + 1);
@@ -4558,15 +4616,15 @@ async function quizTile(p) {
   if (wrong) await charge(p, wrong * 400, null);
 }
 
-/* ---------- 速算擂台：5 題心算，每題 6 秒 ---------- */
+/* ---------- 常識擂台：基本常識、國學常識、腦筋急轉彎 5 題，每題 8 秒 ---------- */
 async function mathTile(p) {
-  say(p, 'roll', pick(['數學我最行！', '算盤拿來！', '這題我算過了。']));
-  const qs = Array.from({ length: 5 }, mathQ);
+  say(p, 'roll', pick(['這題我會！', '常識我最行！', '放馬過來！']));
+  const qs = shuffle(TRIVIA).slice(0, 5);
   let right = 0;
-  if (p.isAI) { await caption('🧮 速算擂台', `${p.char.name} 狂按計算機…`, 1100); right = qs.filter(() => Math.random() < .55).length; }
+  if (p.isAI) { await caption('📚 常識擂台', `${p.char.name} 正在絞盡腦汁…`, 1100); right = qs.filter(() => Math.random() < .55).length; }
   else {
-    await ask('<h2>🧮 速算擂台</h2><p>5 題心算，每題 6 秒。答對一題 +500；<b>答錯一題 -300</b>；全對加送民調 +8 和一個道具！</p>', [{ label: '開算！', cls: 'hot' }], p);
-    for (let k = 0; k < 5; k++) right += await quizQ(p, qs[k], k, 5, 6);
+    await ask('<h2>📚 常識擂台</h2><p>基本常識、國學常識、腦筋急轉彎，隨機 5 題，每題 8 秒。答對一題 +500；<b>答錯一題 -300</b>；全對加送民調 +8 和一個道具！</p>', [{ label: '開始！', cls: 'hot' }], p);
+    for (let k = 0; k < 5; k++) right += await quizQ(p, qs[k], k, 5, 8);
     modal.hidden = true;
   }
   const wrong = 5 - right;
@@ -4574,14 +4632,14 @@ async function mathTile(p) {
   let extra = '';
   if (right === 5) { addPoll(p, 8); const it = pick(ITEM_KEYS); giveItem(p, it); extra = p.isAI ? '全對！民調 +8，加送一個神秘道具。' : `全對！民調 +8，加送 ${ITEMS[it].icon}${ITEMS[it].name}。`; SFX.fan(); }
   updateHUD();
-  say(p, right >= 3 ? 'win' : 'lose', right <= 1 ? '我是文組的…' : undefined);
-  await info(p, `🧮 答對 ${right} / 5 題`, `答對拿 ${fmt(right * 500)}${wrong ? `，答錯罰 ${fmt(wrong * 300)}` : ''}。${extra}`);
+  say(p, right >= 3 ? 'win' : 'lose', right <= 1 ? '這題超綱了吧…' : undefined);
+  await info(p, `📚 答對 ${right} / 5 題`, `答對拿 ${fmt(right * 500)}${wrong ? `，答錯罰 ${fmt(wrong * 300)}` : ''}。${extra}`);
   if (wrong) await charge(p, wrong * 300, null);
 }
 
 /* ---------- 質詢對決：付過路費時跟地主比答題 ---------- */
 async function quizDuel(p, o) {
-  const q = Math.random() < .3 ? mathQ() : pick(QUIZ);
+  const q = Math.random() < .3 ? pick(TRIVIA) : pick(QUIZ);
   await caption('🎤 質詢對決！', `${p.char.name} 對 ${o.char.name}：同一題，答對又答得快的人贏`, 1200);
   // 回傳 { ok, t }：答對沒、花幾秒
   const answer = async who => who.isAI ? (Math.random() < .6 ? { ok: true, t: 1.8 + Math.random() * 5 } : { ok: false, t: 8 }) : quizQT(who, q, 0, 1, 8);
@@ -4634,7 +4692,7 @@ async function allGame() {
 
 /* ---------- 全民搶答：所有人一起答 ---------- */
 async function allQuiz() {
-  const q = Math.random() < .35 ? mathQ() : pick(QUIZ);
+  const q = Math.random() < .35 ? pick(TRIVIA) : pick(QUIZ);
   SFX.fan();
   await caption('📣 全民搶答時間！', '最快答對的 +1,500；最後一個答對的、答錯的都要罰！', 2000);
   const ps = alive(), SECS = 10;
@@ -4801,7 +4859,7 @@ const DUEL = {
   react: { name: '📸 閃光燈反應', intro: '閃光燈一亮就按，反應快的人贏', ai: () => Math.random() < .1 ? 9999 : 260 + rnd(380), fmt: v => v >= 9000 ? '犯規' : `${(v / 1000).toFixed(3)} 秒`, better: (a, b) => a < b, play: reactGame },
   mole: { name: '🔨 打假新聞', intro: '10 秒內分數高的人贏', ai: () => 5 + rnd(10), fmt: v => `${v} 分`, better: (a, b) => a > b, play: moleGame },
 };
-async function miniDuel(kind, p, o) {
+async function miniDuel(kind, p, o, note) {
   const D = DUEL[kind];
   await caption(`${D.name}！`, `${p.char.name} 對 ${o.char.name}：${D.intro}`, 1400);
   const run = who => who.isAI ? Promise.resolve(D.ai()) : D.play(who);
@@ -4813,7 +4871,7 @@ async function miniDuel(kind, p, o) {
   log(`${D.name}：${p.char.name} ${D.fmt(a)} 對 ${o.char.name} ${D.fmt(b)}`);
   if (r === 'win') { say(p, 'win'); SFX.fan(); setTimeout(() => say(o, 'lose'), 700); }
   if (r === 'lose') { say(o, 'win'); SFX.bad(); setTimeout(() => say(p, 'lose'), 700); }
-  await caption(r === 'win' ? `${p.char.name} 贏了！` : r === 'lose' ? `${o.char.name} 贏了！` : '平手，照常付錢', `${p.char.name} ${D.fmt(a)}：${o.char.name} ${D.fmt(b)}${r === 'win' ? '，過路費免付' : r === 'lose' ? '，過路費變兩倍' : ''}`, 2000);
+  await caption(r === 'win' ? `${p.char.name} 贏了！` : r === 'lose' ? `${o.char.name} 贏了！` : '平手，照常付錢', `${p.char.name} ${D.fmt(a)}：${o.char.name} ${D.fmt(b)}${note ? note[r] : r === 'win' ? '，過路費免付' : r === 'lose' ? '，過路費變兩倍' : ''}`, 2000);
   return r;
 }
 
@@ -5103,7 +5161,7 @@ async function newsTile(p) {
   else await ask(`<h2>📺 ${n.t}</h2><p>${d}</p>`, [{ label: '知道了', cls: 'primary' }], p);
 }
 
-const FLEE_CASH = 50000;   // 落跑門檻
+const FLEE_CASH = 120000;   // 落跑門檻
 async function fleeAbroad(p) {
   say(p, 'win', pick(['先走一步，大家保重！', '我去國外考察一下～', '機票早就買好了！']));
   SFX.whoosh(); cam.follow = p;
@@ -5256,7 +5314,7 @@ const TITLES = [
   ['🔪', '背刺之鬼', p => p.stats.stabs, 1, n => `背刺盟友 ${n} 次，盟友聽到名字就發抖`],
   ['🏗️', '違章建築王', highRise, 2, n => `手上 ${n} 棟公寓以上的高樓，建管處已經在路上了`],
   ['💣', '地雷專家', p => p.stats.boom, 1, n => `炸傷對手 ${n} 次，醫院院長親自頒發感謝狀`],
-  ['🎤', '通告名嘴', p => p.stats.quiz, 4, n => `質詢、速算答對 ${n} 題，下週開始上政論節目`],
+  ['🎤', '通告名嘴', p => p.stats.quiz, 4, n => `質詢、常識擂台答對 ${n} 題，下週開始上政論節目`],
   ['🚑', '送醫專業戶', p => p.stats.sends, 2, n => `把人送進醫院、約談所 ${n} 次`],
   ['🕵️', '約談常客', p => p.stats.jail || 0, 2, n => `被約談 ${n} 次，檢調的咖啡集點卡快集滿了`],
 ];
@@ -5271,7 +5329,7 @@ function titlesHtml(ranked) {
   const rich = [...live].sort((a, b) => b.cash - a.cash)[0], loud = [...live].sort((a, b) => b.poll - a.poll)[0];
   ranked.forEach(p => {
     if (got.has(p)) return;
-    if (p.stats && p.stats.jail >= 3) got.set(p, ['🔒', '收押禁見中', '三進三出，律師說一定會上訴']);
+    if (p.stats && p.stats.jail >= 5) got.set(p, ['🔒', '收押禁見中', '五進五出，律師說一定會上訴']);
     else if (p.out) got.set(p, ['💀', '提早退選', '資金燒光，競選看板拿去資源回收']);
     else if (p === rich) got.set(p, ['💰', '人肉提款機', `手上還有 ${fmt(p.cash)}，大家都想跟他借錢`]);
     else if (p === loud) got.set(p, ['📈', '網路聲量王', `民調 ${Math.round(p.poll)}%，留言區都是他的粉絲`]);
@@ -5312,7 +5370,7 @@ function showEnd() {
     <div class="rank">${ranked.map((p, k) => `
       <div class="row ${k === 0 ? 'win' : ''}">
         <span class="no">${k + 1}</span><div class="av" style="--c:${p.char.color}">${p.char.glyph}</div>
-        <div><b>${p.char.name}</b><small>${p.out ? (p.stats && p.stats.jail >= 3 ? '🔒 收押出局' : '退選（破產）') : `現金 ${fmt(p.cash)}・地產 ${fmt(assets(p))}・民調 ${Math.round(p.poll)}%`}</small>
+        <div><b>${p.char.name}</b><small>${p.out ? (p.stats && p.stats.jail >= 5 ? '🔒 收押出局' : '退選（破產）') : `現金 ${fmt(p.cash)}・地產 ${fmt(assets(p))}・民調 ${Math.round(p.poll)}%`}</small>
           <small>🎯 ${p.mission && MISSIONS[p.mission] ? `${MISSIONS[p.mission].name}：${p.mDone ? `✅ 達成 +${(missionBonus(p)).toLocaleString('zh-TW')} 票${p.mExposed ? '（被爆料，減半）' : ''}` : '❌ 沒完成'}` : '（不明）'}${p.stats && p.stats.kos ? `・擊倒 ${p.stats.kos} 人 +${(p.stats.kos * 5000).toLocaleString('zh-TW')} 票` : ''}${p.nightBonus ? `・開票之夜 ${p.nightBonus > 0 ? '+' : ''}${p.nightBonus.toLocaleString('zh-TW')} 票` : ''}</small></div>
         <b>${p.out ? '—' : Math.round(score(p)).toLocaleString('zh-TW') + ' 票'}</b>
       </div>`).join('')}</div>
