@@ -722,7 +722,7 @@ const CHARS = [
     skill: '發大財：每次經過起點，民調 +8。',
     lines: { sig: ['發大財！', '賣菜郎報到！', '貨出得去，人進得來！'], attack: ['這顆送你，發大財！'], hit: ['唉呀，頭好痛！', '沒關係，我很樂觀。'], champion: ['大家一起發大財！'] } },
   { id: 'wsj', name: '王世堅', glyph: '堅', color: '#6d4c41', title: '世堅哥', look: { hair: 'side', extra: 'mic' },
-    skill: '深情演唱：每 3 回合唱一首，自己民調 +4，對手民調各 -2。',
+    skill: '世堅神隱：自動隱身 2 回合（檢舉、網軍、炸彈、吸金…都打不到），之後冷卻 2 回合，再自動隱身，一直循環。',
     lines: { sig: ['大家好，我是世堅！', '來，我唱一首給大家聽！', '世堅哥來了！'], attack: ['這一下，是我的真心！'], hit: ['我真的很生氣！', '心好痛…'], champion: ['謝謝大家，安可！'] } },
   { id: 'lai', name: '賴清德', glyph: '賴', color: '#2e7d32', title: '總統', look: { hair: 'short', extra: 'coat' },
     skill: '醫生出身：住院天數少 1 天。',
@@ -2994,9 +2994,9 @@ async function takeTurn(p) {
     p.catRound = G.round; const id = pick(ITEM_KEYS); giveItem(p, id);
     await caption('🐱 貓咪叼回🎁 一個神秘道具', p.char.name, 1100);
   }
-  if (p.sk === 'wsj' && G.round % 3 === 0 && p.songRound !== G.round) {
-    p.songRound = G.round; addPoll(p, 4); alive().filter(q => q !== p).forEach(q => addPoll(q, -2)); CHAR_FX.violin(); updateHUD(); say(p, 'skill');
-    await caption('🎻 世堅哥深情演唱', `${p.char.name} 民調 +4，對手聽到哭，民調各 -2`, 1300);
+  if (p.sk === 'wsj' && !(p.ghost > 0) && G.round - (p.wsjAt === undefined ? -9 : p.wsjAt) >= 4) {
+    p.wsjAt = G.round; p.ghost = 2; CHAR_FX.violin(); updateHUD(); say(p, 'skill');
+    await caption('👻 世堅神隱！', `${p.char.name} 隱身 2 回合，攻擊都打不到他（之後冷卻 2 回合）`, 1300);
   }
   let g0 = null;
   if (p.isAI) { await wait(400); const f = await aiPreRoll(p); if (f && !p.skip && !p.out) return afterRoll(p, f, true); }
@@ -3029,6 +3029,7 @@ async function takeTurn(p) {
 async function afterRoll(p, steps, forced) {
   if (forced) say(p, 'roll');
   if (p.turtle > 0) { p.turtle--; steps = 1; await caption('🐢 烏龜卡生效', `${p.char.name} 只能走 1 步`, 900); }
+  else if (lawOn('express')) { steps += 2; await caption('🚄 高鐵法案', `${p.char.name} 多走 2 步，共 ${steps} 步`, 900); }
   const back = lawOn('reverse') || (!forced && Math.random() < .12);
   if (back) { SFX.whoosh(); say(p, 'roll', pick(['咦？怎麼往回走？', '倒退嚕～', '這是戰略性撤退！'])); await caption('🔄 倒退嚕！', `${p.char.name} 這次逆時針走 ${steps} 步${lawOn('reverse') ? '（逆行令）' : ''}`, 1300); }
   await moveSteps(p, steps, back);
@@ -3402,12 +3403,13 @@ $('#btn-power').onclick = async () => {
 // 發動超能力：auto = 電腦直接給目標（不問）
 async function powerFlow(p, auto) {
   const P = POWERS[p.power]; if (!P || !powerReady(p)) return null;
-  if (!auto) {
+  const isAuto = auto !== undefined && auto !== null && auto !== false;   // 電腦會傳目標進來（可能是第 0 格，不能用 !auto 判斷）
+  if (!isAuto) {
     const ok = await ask(`<h2>⚡ 發動「${P.icon} ${P.name}」？</h2><p>${P.desc}</p><p style="font-size:13px;color:var(--muted)">用完要等 2 回合才能再用。</p>`, [{ label: '發動！', value: true, cls: 'hot' }, { label: '先不要', value: false }], p);
     if (!ok) return null;
   }
   let arg = true;
-  if (P.item) { arg = auto || await chooseTarget(p, P.item); if (arg === null || arg === undefined) return null; }
+  if (P.item) { arg = isAuto ? auto : await chooseTarget(p, P.item); if (arg === null || arg === undefined) return null; }
   p.powerAt = G.round; SFX.fan(); updateHUD(); say(p, 'skill');
   await caption(`⚡ ${p.char.name} 發動超能力！`, `${P.icon} ${P.name}`, 1300);
   let forced = null;
@@ -4070,7 +4072,8 @@ async function passStart(p) {
   p.stats.laps = (p.stats.laps || 0) + 1;
   if (p.sk === 'han') addPoll(p, 8);
   p.cash += pay; SFX.coin(); say(p, 'start');
-  const gift = Math.random() < .35 ? pick(['bomb', 'mine', 'rocket']) : pick(ITEM_KEYS.filter(k => !['rocket', 'missiles'].includes(k))); giveItem(p, gift); updateHUD();   // 三成五送武器，火箭不要太多
+  const lastPlace = [...alive()].sort((a, b) => score(a) - score(b))[0] === p;
+  const gift = lastPlace || Math.random() < .35 ? pick(['bomb', 'mine', 'rocket']) : pick(ITEM_KEYS.filter(k => !['rocket', 'missiles'].includes(k))); giveItem(p, gift); updateHUD();   // 三成五送武器，火箭不要太多
   caption('經過凍蒜廣場', `${p.char.name} 領政治獻金 ${fmt(pay)}＋🎁 一個神秘道具${p.sk === 'han' ? '，民調 +8' : ''}`, 1000);
 }
 
@@ -4273,6 +4276,7 @@ async function payRent(p, i) {
   const st = G.tiles[i], o = G.players[st.owner];
   let amt = rentOf(i);
   lookAtTile(i);
+  if (amt <= 0) { await caption('🆓 免過路費', `${p.char.name} 踩到 ${o.char.name} 的地，這段期間免付`, 1100); lookBack(); return; }
   if (p.ally === o.seat) {
     say(o, 'earn', '自己人，免啦！'); await caption('🤝 盟友免過路費', `${p.char.name} 踩到盟友 ${o.char.name} 的地`, 1100); lookBack(); return;
   }
@@ -5295,6 +5299,15 @@ const LAWS = {
   bento: { ic: '🍱', name: '便當補助', desc: '每回合開始，每個人 +500' },
   pollx2: { ic: '📢', name: '網路放大鏡', desc: '民調的加減全部變兩倍' },
   nobuild: { ic: '🏗️', name: '建築凍結', desc: '不能買地、不能蓋房子' },
+  freerent: { ic: '🆓', name: '免過路費週', desc: '這段期間踩到別人的地都不用付錢' },
+  halfrent: { ic: '✂️', name: '過路費減半', desc: '所有過路費打 5 折' },
+  ubi: { ic: '💵', name: '全民基本收入', desc: '每回合開始，每個人 +1,500' },
+  lottery: { ic: '🎰', name: '公益彩券', desc: '每回合開始，隨機一個人中獎 6,000' },
+  poorbonus: { ic: '🍚', name: '弱勢加碼', desc: '每回合開始，得票最少的人 +4,000、民調 +4' },
+  landtax: { ic: '🏠', name: '房屋稅', desc: '每回合開始，每塊地要繳 400 元給國庫' },
+  pollswap: { ic: '🔁', name: '民調大洗牌', desc: '通過當下，民調最高和最低的人交換民調' },
+  wealthcap: { ic: '🧢', name: '財產上限', desc: '每回合開始，現金超過 10 萬的部分課 20%，平分給其他人' },
+  express: { ic: '🚄', name: '高鐵法案', desc: '每次擲骰多走 2 步' },
 };
 const lawOn = id => G.mods.some(m => m.law === id && m.until >= G.round);
 // 回合開始：先執行生效中法案的效果，每 3 回合再表決一次新法案
@@ -5304,9 +5317,35 @@ function dropWildMine() {
   const ks = [...Array(N).keys()].filter(i => !isCorner(i) && !G.traps[i] && !busy.has(i));
   if (!ks.length) return; G.traps[pick(ks)] = { k: 'mine', o: -1 };
 }
+// 弱勢翻身機制：落後太多的人拿同情票，領先太多的人被媒體盯上（第 3 回合起每回合檢查）
+async function underdogAid() {
+  const ps = alive(); if (ps.length < 2 || G.round < 3) return;
+  const sc = new Map(ps.map(p => [p, score(p)])), top = Math.max(...sc.values());
+  const lows = ps.filter(p => sc.get(p) < top * .65);
+  for (const q of lows) { q.cash += 3500; addPoll(q, 4); }
+  if (lows.length) { SFX.coin(); say(lows[0], 'win', '謝謝大家的同情票！'); log(`🥺 同情票：${lows.map(q => q.char.name).join('、')} +3,500、民調 +4`); await caption('🥺 同情票湧入', `${lows.map(q => q.char.name).join('、')} 落後太多，選民同情：+3,500、民調 +4`, 1500); }
+  const leader = ps.reduce((a, b) => sc.get(a) >= sc.get(b) ? a : b), second = Math.max(...ps.filter(p => p !== leader).map(p => sc.get(p)));
+  if (sc.get(leader) > second * 1.3) { addPoll(leader, -4); say(leader, 'hit', '怎麼又是我上新聞！'); log(`📸 樹大招風：${leader.char.name} 民調 -4`); await caption('📸 樹大招風', `${leader.char.name} 領先太多被媒體盯上，民調 -4`, 1400); }
+}
 async function roundLaws() {
+  await underdogAid();
   if (Math.random() < .3) dropWildMine();
   if (lawOn('bento')) { alive().forEach(q => q.cash += 500); SFX.coin(); await caption('🍱 便當補助', '每個人 +500', 1200); }
+  if (lawOn('ubi')) { alive().forEach(q => q.cash += 1500); SFX.coin(); await caption('💵 全民基本收入', '每個人 +1,500', 1200); }
+  if (lawOn('lottery')) { const q = pick(alive()); if (q) { q.cash += 6000; SFX.fan(); say(q, 'win', '中獎了！'); await caption('🎰 公益彩券開獎！', `${q.char.name} 中了 6,000`, 1400); } }
+  if (lawOn('poorbonus')) { const q = [...alive()].sort((a, b) => score(a) - score(b))[0]; if (q) { q.cash += 4000; addPoll(q, 4); SFX.coin(); await caption('🍚 弱勢加碼', `得票最少的 ${q.char.name} +4,000、民調 +4`, 1400); } }
+  if (lawOn('landtax')) {
+    const bills = alive().map(q => [q, G.tiles.filter(t => t.owner === q.seat).length * 400]).filter(([, b]) => b > 0);
+    for (const [q, b] of bills) await charge(q, b, null);
+    if (bills.length) await caption('🏠 房屋稅開徵', bills.map(([q, b]) => `${q.char.name} -${fmt(b)}`).join('　'), 1500);
+  }
+  if (lawOn('wealthcap')) {
+    for (const q of alive().filter(x => x.cash > 100000)) {
+      const t = Math.round((q.cash - 100000) * .2 / 10) * 10, rest = others(q); if (!t || !rest.length) continue;
+      q.cash -= t; rest.forEach(x => x.cash += Math.round(t / rest.length));
+      await caption('🧢 財產上限', `${q.char.name} 超過 10 萬的部分課 ${fmt(t)}，平分給其他人`, 1500);
+    }
+  }
   if (lawOn('richtax')) {
     const ps = [...alive()].sort((a, b) => b.cash - a.cash), rich = ps[0], poor = ps[ps.length - 1];
     if (rich && poor && rich !== poor) { const t = Math.round(rich.cash * .1 / 10) * 10; rich.cash -= t; poor.cash += t; await caption('🧾 富人稅', `${rich.char.name} 繳 ${fmt(t)} 給 ${poor.char.name}`, 1400); }
@@ -5329,8 +5368,19 @@ async function roundLaws() {
     if (!LAWS[v]) v = opts[0];
     votes[v]++; ballots.push(`${p.char.name}→${LAWS[v].ic}`); say(p, 'roll', pick(['贊成！', '我投這個！', '這條好！']));
   }
-  const top = Math.max(...opts.map(k => votes[k])), win = pick(opts.filter(k => votes[k] === top)), L = LAWS[win];
-  G.mods.push({ zone: null, mult: win === 'rent3' ? 3 : 1, until: G.round + 2, label: `${L.ic} ${L.name}`, law: win, dice1: win === 'dice1' });
+  const top = Math.max(...opts.map(k => votes[k])), tied = opts.filter(k => votes[k] === top), win = pick(tied), L = LAWS[win];
+  if (tied.length > 1) {
+    await caption('⚖️ 平手！抽籤決定', tied.map(k => `${LAWS[k].ic} ${LAWS[k].name}（${votes[k]} 票）`).join('　vs　'), 1600);
+    // 抽籤跑馬燈：在平手的法案之間跳來跳去，越跳越慢，最後停在抽中的那條
+    const seq = []; for (let k = 0; k < 9; k++) seq.push(tied[k % tied.length]);
+    if (seq[seq.length - 1] !== win) seq.push(win);
+    for (let k = 0; k < seq.length; k++) { beep(700 + k * 40, .06, 'square', .03); const t = `🎲 ${LAWS[seq[k]].ic} ${LAWS[seq[k]].name}`; hostFx('lcap', [t, '抽籤中…']); localCaption(t, '抽籤中…', 500); await nap(120 + k * 45); }
+  }
+  G.mods.push({ zone: null, mult: win === 'rent3' ? 3 : win === 'freerent' ? 0 : win === 'halfrent' ? .5 : 1, until: G.round + 2, label: `${L.ic} ${L.name}`, law: win, dice1: win === 'dice1' });
+  if (win === 'pollswap') {
+    const ps = [...alive()].sort((a, b) => a.poll - b.poll), lo = ps[0], hi = ps[ps.length - 1];
+    if (lo && hi && lo !== hi) { const t = lo.poll; lo.poll = hi.poll; hi.poll = t; say(lo, 'win', '翻身了！'); say(hi, 'hit', '我的民調！'); }
+  }
   log(`🏛️ 表決結果：${opts.map(k => `${LAWS[k].ic}${LAWS[k].name} ${votes[k]} 票`).join('、')}，<b>${L.name}</b> 通過`);
   SFX.fan(); updateHUD();
   await caption(`🔨 三讀通過：${L.ic} ${L.name}`, `${L.desc}（${votes[win]} 票，生效到第 ${G.round + 2} 回合）`, 2600);
@@ -5838,6 +5888,7 @@ function playFx(m) {
       case 'peekEnd': if (d && G.players[+d.s] && G.players[+d.s] !== myPlayer()) showPeekEnd(d); break;
       case 'wheel': if (d && Array.isArray(d.s)) { const w = wheelData(d); if (!(wheelState && wheelState.id === w.id && wheelState.inter)) wheelOpen(w, false); } break;
       case 'emoAt': if (Array.isArray(d)) emoAtLocal(+d[0], [...String(d[1] || '')].slice(0, 2).join('')); break;
+      case 'lcap': if (Array.isArray(d)) localCaption(esc(String(d[0] || '')), esc(String(d[1] || '')), 500); break;
       case 'wheelGo': wheelSpin(clamp(Math.round(+d) || 0, 0, 9)); break;
     }
   } catch (e) { }
