@@ -2551,14 +2551,21 @@ function logLocal(html) {
   const l = $('#log-list'); const el = document.createElement('p'); el.innerHTML = html; l.prepend(el);
   while (l.children.length > 9) l.lastChild.remove();
 }
-let capTimer = null;
+let capTimer = null, capChain = Promise.resolve();
+// 大字幕：依字數給足讀的時間（電腦回合不再縮短），而且排隊一個一個出，不會被下一個馬上蓋掉
 function caption(big, sub = '', ms = 1600) {
   hostFx('cap', [big, sub, ms]);
-  const c = $('#caption');
-  c.innerHTML = `<span class="big">${big}</span>${sub ? `<span class="sub">${sub}</span>` : ''}`;
-  c.classList.remove('show'); void c.offsetWidth; c.classList.add('show');
-  clearTimeout(capTimer); capTimer = setTimeout(() => { c.innerHTML = ''; }, ms * speed() + 300);
-  return wait(ms * .7);
+  const len = String(big + sub).replace(/<[^>]*>/g, '').length;
+  const show = Math.max(ms, 1200 + len * 100) * (G && G.fast ? .6 : 1);
+  const p = capChain.then(() => {
+    const c = $('#caption');
+    c.innerHTML = `<span class="big">${big}</span>${sub ? `<span class="sub">${sub}</span>` : ''}`;
+    c.classList.remove('show'); void c.offsetWidth; c.classList.add('show');
+    clearTimeout(capTimer); capTimer = setTimeout(() => { c.innerHTML = ''; }, show + 300);
+    return new Promise(r => BGT.timeout(r, show * .85));
+  });
+  capChain = p.catch(() => { });
+  return p;
 }
 function say(p, key, text) {
   if (!p.bubble) return;
