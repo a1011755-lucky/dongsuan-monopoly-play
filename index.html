@@ -176,6 +176,17 @@ button{touch-action:manipulation}
 .mg-light{background:#2e7d32}.mg-light.red{background:#c62828}
 .mg-cash{position:relative;height:190px;border:3px solid var(--ink);border-radius:14px;background:#e8f5e9;overflow:hidden;font-size:34px}.mg-cash span{position:absolute}
 .mg-cash.hide{display:grid;place-items:center;height:110px;font-size:52px}
+.moles.four{grid-template-columns:repeat(4,1fr)}
+.moles button.gold{background:#fff3c4;box-shadow:0 0 0 3px #ffb300}
+.moles.fever{box-shadow:0 0 0 4px #ff7043;border-radius:14px;animation:pulse 1s infinite}
+.moles.boom{animation:nshake .3s}
+.mcombo{font-family:var(--display);font-weight:900;color:#e65100;font-size:15px;white-space:nowrap}
+#mgv{position:fixed;left:12px;bottom:130px;z-index:65;display:flex;flex-direction:column;gap:6px;pointer-events:none;width:min(300px,calc(100vw - 24px))}
+.mgvrow{display:flex;align-items:center;gap:8px;background:#fffaf0;border:3px solid var(--c);border-radius:12px;padding:5px 8px;box-shadow:3px 3px 0 #1d1633}
+.mgvrow img{width:34px;height:34px;border-radius:50%;flex:none}
+.mgvrow div{flex:1;min-width:0}.mgvrow b{display:block;font-size:12px;color:#1d1633;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mgvrow span{display:block;font-family:var(--display);font-weight:900;font-size:15px;color:#1d1633;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mgvrow i{display:block;height:5px;border-radius:3px;background:var(--c);margin-top:3px;transition:width .3s}
 .mg-coin{position:relative;height:210px;border:3px solid var(--ink);border-radius:14px;background:linear-gradient(#e3f2fd,#fffde7);overflow:hidden;margin-bottom:10px}
 .mg-coin .zone{position:absolute;left:0;right:0;bottom:6%;height:19%;background:rgba(67,160,71,.25);border-top:3px dashed #43a047}
 .mg-coin b{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);font-size:40px;line-height:1}
@@ -804,7 +815,7 @@ const LAYOUT = ['start', 'p', 'p', 'item', 'p', 'live', 'p', 'p', 'jail', 'p', '
   'fly', 'p', 'p', 'fest', 'p', 'quiz', 'p', 'p', 'hosp', 'p', 'p', 'bribe', 'p', 'shop', 'p', 'p'];
 const PRICES = [[2000, 1800, 3600, 2200, 2400], [2600, 2400, 2900, 2600, 3200], [3000, 2800, 3800, 3300, 4000], [1200, 1000, 1400, 1500, 1700]];
 const ZONE_STYLE = [{ color: '#ff5d5d', tint: '#ffd9d3' }, { color: '#ff9f1c', tint: '#ffe8c2' }, { color: '#3d8bff', tint: '#d5e6ff' }, { color: '#4cb944', tint: '#dff3c8' }];
-const SPECIAL_NAMES = { start: '凍蒜廣場', item: '道具箱', live: '直播抖內', jail: '檢調約談所', math: '常識擂台', news: '新聞快報', fest: '造勢晚會', quiz: '質詢台', hosp: '凍蒜醫院', bribe: '疑似賄選', shop: '軍火夜市' };
+const SPECIAL_NAMES = { start: '凍蒜廣場', item: '道具箱', live: '直播抖內', jail: '檢調・送綠島', math: '常識擂台', news: '新聞快報', fest: '造勢晚會', quiz: '質詢台', hosp: '凍蒜醫院', bribe: '疑似賄選', shop: '軍火夜市' };
 const hexagon = r => Array.from({ length: 6 }, (_, k) => { const a = (30 + 60 * k) * Math.PI / 180; return [r * Math.cos(a), r * Math.sin(a)]; });
 const MAPS = {
   tpe: {
@@ -1582,11 +1593,39 @@ function buildBoard(id) {
   const cornerProp = (i, build) => { const [x, z] = tilePos(i), [ix, iz] = tileIn(i); const g = new THREE.Group(); g.position.set(x - ix * 4.6, 0, z - iz * 4.6); g.rotation.y = tileTheta(i); BG.add(g); build(g); };
   cornerProp(0, g => { cyl(.3, .3, 3.6, '#ff4f79', -1.6, 1.8, 0, g); cyl(.3, .3, 3.6, '#ff4f79', 1.6, 1.8, 0, g); box(4.2, .7, .5, '#ffd23f', 0, 3.6, 0, g); });
   cornerProp(JAIL, g => {
-    box(3, 1.8, 2, '#4a4f5c', 0, .9, 0, g);
-    const s = textPlane('檢調', 2, .7, '#ffffff', '#1d1633', 120); s.position.set(0, 1.4, 1.02); g.add(s);
-    const siren = ball(.25, new THREE.MeshStandardMaterial({ color: '#ff2d2d', emissive: '#ff0000', emissiveIntensity: .6 }), 0, 2, 0, g);
-    boardAnims.push(t => { siren.material.emissiveIntensity = (Math.sin(t * 8) > 0) ? 1.2 : .1; });
+    // 檢調大樓：灰藍石造、門口兩根柱子、屋頂紅藍警示燈，旁邊碼頭停一艘「往綠島」的船
+    box(3.2, 2.2, 2.2, '#5c6b80', 0, 1.1, 0, g); box(3.5, .25, 2.5, '#3e4a5c', 0, 2.3, 0, g);
+    [-1.1, 1.1].forEach(x => cyl(.16, .18, 1.8, '#d7dde5', x, .9, 1.2, g, 10));
+    box(3.4, .2, .5, '#d7dde5', 0, 1.9, 1.25, g);
+    for (let k = 0; k < 3; k++) { box(.55, .55, .05, '#9fc3e6', -1 + k, 1.3, 1.11, g); [-.15, 0, .15].forEach(d => box(.04, .55, .06, '#2b313b', -1 + k + d, 1.3, 1.13, g)); }
+    const s = textPlane('檢調', 1.6, .5, '#ffffff', '#1d1633', 120); s.position.set(0, 2.3, 1.27); g.add(s);
+    const red = ball(.2, glow('#ff1744', 1), -.5, 2.6, 0, g), blue = ball(.2, glow('#2979ff', 1), .5, 2.6, 0, g);
+    const boat = new THREE.Group(); boat.position.set(2.6, 0, .4); g.add(boat);
+    box(1.6, .35, .7, '#eceff1', 0, .1, 0, boat); box(.6, .4, .5, '#1565c0', -.2, .45, 0, boat);
+    const bs = textPlane('往綠島 →', 1.3, .35, '#ffffff', '#2e7d32', 110); bs.position.set(0, 1, 0); boat.add(bs);
+    boardAnims.push(t => { const on = Math.sin(t * 8) > 0; red.material.emissiveIntensity = on ? 1.4 : .1; blue.material.emissiveIntensity = on ? .1 : 1.4; boat.position.y = Math.sin(t * 2) * .08; boat.rotation.z = Math.sin(t * 1.6) * .05; });
   });
+  // 綠島：外海一座小島，被約談的人關在這，出來要搭飛機
+  {
+    // 放在檢調那個角落的斜外側海上；壓到的山、樹先藏起來
+    const [jx, jz] = tilePos(JAIL), a1 = tileIn((JAIL + N - 1) % N), a2 = tileIn((JAIL + 1) % N);
+    let dx = -(a1[0] + a2[0]), dz = -(a1[1] + a2[1]); const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+    const cx = jx + dx * 14, cz = jz + dz * 14;
+    BOARD.island = [cx, cz];
+    const wp = new THREE.Vector3();
+    BG.traverse(o => { if (o.isMesh && o.geometry && o.geometry.type === 'ConeGeometry') { o.getWorldPosition(wp); if (Math.hypot(wp.x - cx, wp.z - cz) < 8) o.visible = false; } });
+    const g = new THREE.Group(); g.position.set(cx, 0, cz); BG.add(g);
+    cyl(4.6, 5.3, 1.4, '#ecdcae', 0, -.9, 0, g, 28); cyl(3.9, 4.3, .5, '#66bb6a', 0, -.25, 0, g, 24);
+    for (let k = 0; k < 4; k++) cyl(.42 - k * .04, .46 - k * .04, .7, k % 2 ? '#e53935' : '#ffffff', -2.4, .35 + k * .7, -1.3, g, 14);
+    cyl(.36, .36, .45, glow('#ffe082', 1.2), -2.4, 3.05, -1.3, g, 12); cone(.45, .5, '#37474f', -2.4, 3.5, -1.3, g, 12);
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(7, .25, .25), new THREE.MeshBasicMaterial({ color: '#fff59d', transparent: true, opacity: .35, depthWrite: false })); beam.position.set(-2.4, 3.05, -1.3); g.add(beam);
+    box(2.4, 1.3, 1.6, '#90a4ae', 1.3, .65, -1.4, g); box(2.6, .15, 1.8, '#607d8b', 1.3, 1.35, -1.4, g);
+    for (let k = 0; k < 7; k++) box(.05, 1, .05, '#263238', .35 + k * .32, .6, -.58, g);
+    const sg = textPlane('綠島', 1.6, .55, '#ffffff', '#2e7d32', 120); sg.position.set(1.3, 1.85, -.6); g.add(sg);
+    [[2.7, 1.6], [-1, 2.4]].forEach(([x, z]) => { const tr = cyl(.1, .14, 1.6, '#8d6e63', x, .8, z, g, 6); tr.rotation.z = .15; cone(.9, .6, '#43a047', x + .15, 1.75, z, g, 7); });
+    g.traverse(o => { if (o.isMesh && o !== beam) o.castShadow = true; });
+    boardAnims.push(t => { beam.rotation.y = t * 1.4; });
+  }
   cornerProp(16, g => {
     // 機場：小航廈＋塔台，上空一架拖著競選布條的飛機一直繞圈
     box(2.6, 1.2, 1.6, '#eceff1', 0, .6, -.6, g); box(2.8, .15, 1.8, '#3d8bff', 0, 1.25, -.6, g);
@@ -1596,8 +1635,17 @@ function buildBoard(id) {
     boardAnims.push(t => { const a = t * .5; pl.position.set(Math.cos(a) * 4, Math.sin(t * 1.3) * .4, Math.sin(a) * 4); pl.rotation.set(-.35, -a - Math.PI / 2, 0); });
   });
   cornerProp(HOSP, g => {
-    box(3, 2, 2, '#ffffff', 0, 1, 0, g);
-    box(.3, 1, .05, '#e53935', 0, 1.3, 1.03, g); box(1, .3, .05, '#e53935', 0, 1.3, 1.03, g);
+    // 凍蒜醫院：白色兩層樓、藍色玻璃窗、屋頂發光紅十字、門口雨遮，旁邊一台閃燈救護車
+    box(3.4, 2.6, 2.2, '#fafafa', 0, 1.3, 0, g); box(3.6, .2, 2.4, '#b3e5fc', 0, 2.7, 0, g);
+    for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) box(.5, .45, .05, '#81d4fa', -1.2 + c * .8, .9 + r * .95, 1.11, g);
+    box(.8, .9, .06, '#4fc3f7', 0, .45, 1.12, g); box(1.4, .08, .6, '#e53935', 0, 1.05, 1.35, g);
+    const cr = glow('#ff1744', 1.1); box(.25, .9, .25, cr, 0, 3.35, 0, g); box(.9, .25, .25, cr, 0, 3.35, 0, g);
+    const s = textPlane('凍蒜醫院', 2.2, .45, '#ffffff', '#e53935', 120); s.position.set(0, 2.25, 1.12); g.add(s);
+    const amb = new THREE.Group(); amb.position.set(2.5, 0, .6); amb.rotation.y = -.4; g.add(amb);
+    box(1.5, .8, .8, '#ffffff', 0, .55, 0, amb); box(.5, .55, .78, '#ffffff', .85, .45, 0, amb); box(1.52, .12, .82, '#e53935', 0, .55, 0, amb);
+    [[-.5, .42], [.5, .42], [-.5, -.42], [.5, -.42]].forEach(([x, z]) => { const w = cyl(.17, .17, .1, '#263238', x, .17, z, amb, 10); w.rotation.x = Math.PI / 2; });
+    const sl = ball(.12, glow('#2979ff', 1), 0, 1.02, 0, amb);
+    boardAnims.push(t => { cr.emissiveIntensity = .7 + Math.abs(Math.sin(t * 2)) * .8; sl.material.emissiveIntensity = Math.sin(t * 10) > 0 ? 1.5 : .1; });
   });
   if (G && G.tiles) TILES.forEach((t, i) => drawTile(i));
 }
@@ -2074,6 +2122,33 @@ function showDest(list) {
 function setDest(list) { hostFx('dest', list); showDest(list); }
 // 從現在位置走 n 步會停在哪一格（back＝逆時針）
 const destOf = (p, n, back) => back ? ((p.pos - n) % N + N) % N : (p.pos + n) % N;
+
+/* ---------- 住院受傷的樣子 ---------- */
+function emojiSprite(e, size) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d');
+  x.font = '100px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(e, 64, 70);
+  const t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, fog: false })); sp.scale.set(size, size, 1); sp.renderOrder = 4; return sp;
+}
+anim.push(t => {
+  if (!G || !G.players) return;
+  G.players.forEach(p => {
+    if (!p.mesh) return;
+    const hurt = p.where === 'hosp' && !p.out;
+    if (hurt && !p.hurtG) {
+      const g = new THREE.Group(); p.mesh.add(g); p.hurtG = g;
+      const face = emojiSprite('🤕', 1.3); face.position.set(.9, 3.9, 0); g.add(face);
+      const stars = new THREE.Group(); stars.position.y = 4.6; g.add(stars);
+      for (let k = 0; k < 3; k++) { const st = emojiSprite('💫', .6); st.position.set(Math.cos(k * 2.1) * .8, 0, Math.sin(k * 2.1) * .8); stars.add(st); }
+      const crutch = cyl(.05, .05, 1.9, '#b0bec5', .75, .95, .2, g, 6); crutch.rotation.z = -.12; box(.4, .08, .12, '#78909c', .7, 1.9, .2, g);
+      g.userData.stars = stars;
+    }
+    if (p.hurtG) p.hurtG.visible = hurt;
+    if (hurt) { p.mesh.rotation.z = Math.sin(t * 2.4 + p.seat) * .13; p.hurtG.userData.stars.rotation.y = t * 2.5; }
+    else if (p.wasHurt) p.mesh.rotation.z = 0;
+    p.wasHurt = hurt;
+  });
+});
 
 /* ---------- 陷阱、炸彈、特效 ---------- */
 const trapMeshes = {};
@@ -2874,7 +2949,26 @@ $('#rounds').querySelectorAll('button').forEach(b => b.onclick = () => { maxRoun
 // 同一格的站位：4 人以內站四個角，5～8 人排成 3×3 去掉中間
 const OFFS = [[-.8, -.8], [.8, -.8], [-.8, .8], [.8, .8]];
 const OFFS8 = [[-.95, -.95], [.95, -.95], [-.95, .95], [.95, .95], [0, -1.05], [0, 1.05], [-1.05, 0], [1.05, 0]];
-function spot(p, i) { const [x, z] = tilePos(i), o = (G.players.length > 4 ? OFFS8 : OFFS)[p.seat]; return [x + o[0], z + o[1]]; }
+function spot(p, i) {
+  const o = (G.players.length > 4 ? OFFS8 : OFFS)[p.seat];
+  if ((p.where === 'jail' || p.onIsland) && BOARD.island) { const [ix, iz] = BOARD.island; return [ix + o[0] * .7, iz + o[1] * .7]; }   // 在綠島
+  const [x, z] = tilePos(i); return [x + o[0], z + o[1]];
+}
+const ISLAND_FARE = 4000;   // 從綠島飛回本島的機票
+async function flyHome(p) {
+  p.onIsland = false;
+  await caption('✈️ 搭飛機離開綠島', `${p.char.name} 自己付機票 ${fmt(ISLAND_FARE)} 飛回本島`, 1300);
+  await charge(p, ISLAND_FARE, null); if (p.out) return;
+  say(p, 'release', pick(['終於回來了！', '綠島的咖啡太苦了！', '機票好貴…']));
+  hostFx('jump', [p.seat, JAIL]);
+  const pl = fancyPlane('#3d8bff', '綠島→本島'); pl.scale.setScalar(.55); scene.add(pl);
+  const from = p.mesh.position.clone(), [x, z] = spot(p, JAIL);
+  await tween(1300, k => {
+    const px = from.x + (x - from.x) * k, pz = from.z + (z - from.z) * k, py = Math.sin(k * Math.PI) * 9;
+    p.mesh.position.set(px, py, pz); pl.position.set(px, py + 2.6, pz); pl.rotation.y = Math.atan2(x - from.x, z - from.z) - Math.PI / 2;
+  });
+  scene.remove(pl); p.mesh.position.set(x, 0, z); p.pos = JAIL; updateHUD();
+}
 
 $('#btn-start').onclick = () => {
   if (NET.mode === 'client') return;
@@ -2920,7 +3014,7 @@ function startGame(cfg) {
     const n = { def, pos, mesh: g, person: pg }; const [x, z] = npcSpot(pos); g.position.set(x, .2, z); g.rotation.y = tileTheta(pos); scene.add(g); G.npcs.push(n);
     upgradeNPC(n);
   });
-  if (NET.mode !== 'client') for (let k = 0; k < 4; k++) dropWildMine();
+
   TILES.forEach((t, i) => drawTile(i));
   $('#setup').hidden = true;
   ['#hud-top', '#log', '#actions'].forEach(s => $(s).hidden = false);
@@ -3035,6 +3129,7 @@ async function takeTurn(p) {
     return;
   }
   if (p.where) { say(p, 'release'); p.where = null; }
+  if (p.onIsland) { await flyHome(p); if (p.out) return; }
   if (p.ghost > 0) p.ghost--;
   if (p.sk === 'tsai' && G.round % 4 === 0 && p.catRound !== G.round) {
     p.catRound = G.round; const id = pick(ITEM_KEYS); giveItem(p, id);
@@ -3908,7 +4003,7 @@ async function interrogate(p) {
   return false;
 }
 // 花錢提早出來：醫院自費 VIP 病房
-const buyOutCost = p => (p.where === 'hosp' ? 800 : 1000) * p.skip;
+const buyOutCost = p => (p.where === 'hosp' ? 6000 : 1000) * p.skip;   // 醫院自費 VIP 病房一天 6,000
 async function buyOut(p) {
   const cost = buyOutCost(p), hosp = p.where === 'hosp';
   if (p.cash < cost) return false;
@@ -3970,7 +4065,7 @@ async function sendTo0(p, corner, turns, where) {
   if (p.sk === 'lai' && where === 'hosp') turns = Math.max(0, turns - 1);
   if (p.sk === 'gz' && where === 'hosp') turns = Math.ceil(turns / 2);
   p.where = where; p.skip = turns;
-  if (where === 'jail') p.mockJail = true;
+  if (where === 'jail') { p.mockJail = true; p.onIsland = true; }
   hostFx('jump', [p.seat, corner]);
   const [x, z] = spot(p, corner);
   await tween(350, k => { p.mesh.position.y = k * 10; });
@@ -3978,6 +4073,7 @@ async function sendTo0(p, corner, turns, where) {
   await tween(350, k => { p.mesh.position.y = 10 * (1 - k * k); });
   p.mesh.position.y = 0;
   say(p, where === 'hosp' ? 'hosp' : 'jail');
+  if (where === 'jail') await caption('🏝️ 押送綠島！', `${p.char.name} 被送到綠島約談，出來要自己買機票（${fmt(ISLAND_FARE)}）`, 1500);
   if (!turns) { p.where = null; say(p, 'release'); }
   updateHUD();
 }
@@ -4355,7 +4451,7 @@ async function payRent(p, i) {
         <div class="cardrow"><span class="ic">✊</span><div><b>嗆聲對決</b><small>政見、抹黑、哭哭猜拳，靠心理戰。</small></div></div>
         <div class="cardrow"><span class="ic">🪢</span><div><b>造勢拔河</b><small>雙方狂點 8 秒，把繩子拉過來就贏，靠手速。</small></div></div>
         <div class="cardrow"><span class="ic">🎤</span><div><b>質詢對決</b><small>兩人答同一題（國學、政治、地理、數學），答對又答得快的人贏。</small></div></div>
-        <div class="cardrow"><span class="ic">🎲</span><div><b>隨機小遊戲</b><small>從 17 種小遊戲裡隨機抽一個：閃光燈、打假新聞、直播狂點、數字快手、精準蓋章、政見記憶、顏色陷阱、口號接龍、誰比較多、找不同、紅綠燈、點鈔大賽、準時發言、男生女生配、打手背、手背抓硬幣、007 裝子彈。</small></div></div>
+        <div class="cardrow"><span class="ic">🎲</span><div><b>隨機小遊戲</b><small>從 16 種小遊戲裡隨機抽一個：閃光燈、打假新聞、直播狂點、數字快手、精準蓋章、政見記憶、顏色陷阱、口號接龍、誰比較多、找不同、紅綠燈、點鈔大賽、準時發言、打手背、手背抓硬幣、007 裝子彈。</small></div></div>
       </div>
       <p style="font-size:13px;color:var(--muted)">贏了免付、地主民調 -5；輸了付兩倍、你的民調 -5。</p>`,
       [{ label: '乖乖付錢', value: 'pay' }, { label: '✊ 嗆聲對決', value: 'debate', cls: 'hot' }, { label: '🪢 造勢拔河', value: 'tug', cls: 'hot' }, { label: '🎤 質詢對決', value: 'quiz', cls: 'hot' }, { label: '🎲 隨機小遊戲', value: 'mini', cls: 'hot' }], p);
@@ -4453,6 +4549,7 @@ function tapGame(p) {
 function tapGame0(p) {
   if (viaNet(p)) return req(p, 'tap').then(n => clamp(+n || 0, 0, 80));
   return new Promise(res => {
+    setTimeout(() => mgvStart(p, '📱 直播狂點'), 50);
     mbox.style.setProperty('--c', p.char.color);
     mbox.innerHTML = `<span class="who">${p.char.name}（${esc(label(p))}）</span><h2>📱 直播中！狂點按讚！</h2>
       <div class="tapzone"><div class="tapcount" id="tapn">0</div><button class="tapbtn" id="tapbtn">❤ 按讚</button><div class="timer"><i id="tapbar"></i></div></div>`;
@@ -4860,15 +4957,15 @@ async function quizDuel(p, o) {
 }
 
 /* ---------- 全民小遊戲：每 2 回合一次，大家同時玩（搶答、打假新聞、閃光燈、狂點輪流換） ---------- */
-const ALL_GAMES = ['quiz', 'mole', 'color', 'point', 'react', 'order', 'slap', 'simon', 'tap', 'coin', 'memo', 'odd', 'gun', 'stamp', 'light', 'compare', 'count', 'clock'];
+const ALL_GAMES = ['quiz', 'mole', 'color', 'react', 'order', 'slap', 'simon', 'tap', 'coin', 'memo', 'odd', 'gun', 'stamp', 'light', 'compare', 'count', 'clock'];
 async function allGame() {
   const kind = ALL_GAMES[(G.round / 2 - 1) % ALL_GAMES.length | 0];
   if (kind === 'quiz') return allQuiz();
   const meta = {
-    mole: { name: '🔨 全民打假新聞', intro: '大家同時打 10 秒，分數最高 +1,500，最低的罰 800！', play: moleGame, ai: () => 5 + rnd(10), better: (a, b) => a > b, fmt: v => `${v} 分` },
+    mole: { name: '🔨 全民打假新聞', intro: '大家同時打 10 秒，分數最高 +1,500，最低的罰 800！', play: moleGame, ai: () => 8 + rnd(18), better: (a, b) => a > b, fmt: v => `${v} 分` },
     react: { name: '📸 全民閃光燈', intro: '閃光燈一亮就按！最快 +1,500，最慢和犯規的罰 800！', play: reactGame, ai: () => Math.random() < .1 ? 9999 : 260 + rnd(380), better: (a, b) => a < b, fmt: v => v >= 9000 ? '犯規' : `${(v / 1000).toFixed(2)} 秒` },
     tap: { name: '📱 全民直播狂點', intro: '5 秒狂點按讚！最多 +1,500，最少的罰 800！', play: tapGame, ai: () => 18 + rnd(16), better: (a, b) => a > b, fmt: v => `${v} 讚` },
-    ...Object.fromEntries(['order', 'stamp', 'memo', 'color', 'simon', 'compare', 'odd', 'light', 'count', 'clock', 'point', 'slap', 'coin', 'gun'].map(k => [k, { ...DUEL[k], name: DUEL[k].name.replace(' ', ' 全民'), intro: DUEL[k].intro.replace('的人贏', '的 +1,500，最差的罰 800！') }])),
+    ...Object.fromEntries(['order', 'stamp', 'memo', 'color', 'simon', 'compare', 'odd', 'light', 'count', 'clock', 'slap', 'coin', 'gun'].map(k => [k, { ...DUEL[k], name: DUEL[k].name.replace(' ', ' 全民'), intro: DUEL[k].intro.replace('的人贏', '的 +1,500，最差的罰 800！') }])),
   }[kind];
   SFX.fan();
   await caption(meta.name + '！', meta.intro, 2000);
@@ -5002,6 +5099,7 @@ function reactGame(p) {
 function reactGame0(p) {
   if (viaNet(p)) return req(p, 'react').then(v => clamp(+v || 9999, 80, 9999));
   return new Promise(res => {
+    setTimeout(() => mgvStart(p, '📸 閃光燈'), 50);
     mbox.style.setProperty('--c', p.char.color);
     mbox.innerHTML = `<span class="who">${p.char.name}（${esc(label(p))}）</span><h2>📸 記者會閃光燈</h2><p>畫面一亮就馬上按！太早按算犯規。</p><button class="react" id="reactbtn">準備……</button>`;
     modal.hidden = false;
@@ -5027,37 +5125,76 @@ function moleGame(p) {
   return moleGame0(p).then(n => { peekDone(p, { pick: `拿到 ${n} 分` }); return n; });
 }
 function moleGame0(p) {
-  if (viaNet(p)) return req(p, 'mole').then(n => clamp(+n || 0, -20, 40));
+  if (viaNet(p)) return req(p, 'mole').then(n => clamp(+n || 0, -30, 80));
   return new Promise(res => {
     mbox.style.setProperty('--c', p.char.color);
-    mbox.innerHTML = `<span class="who">${p.char.name}（${esc(label(p))}）</span><h2>🔨 打假新聞</h2><p>點 📰假新聞 +1 分，點到 ✅真新聞 -2 分！10 秒。</p>
-      <div class="mole-top"><b id="molen">0</b><div class="timer"><i id="molebar"></i></div></div>
-      <div class="moles">${Array.from({ length: 9 }, (_, k) => `<button data-k="${k}" aria-label="第 ${k + 1} 格"></button>`).join('')}</div>`;
-    modal.hidden = false;
-    const cells = [...mbox.querySelectorAll('.moles button')], D = 10000, t0 = performance.now(); let n = 0, done = false;
-    const clear = c => { delete c.dataset.v; c.textContent = ''; c.classList.remove('up'); };
-    const spawn = setInterval(() => {
+    mbox.innerHTML = `<span class="who">${p.char.name}（${esc(label(p))}）</span><h2>🔨 打假新聞</h2><p>📰 假新聞 +1、🌟 獨家假新聞 +3；✅ 真新聞 -2、🧨 鞭炮 -3！連打 3 下以上每下多 +1，<b>最後 3 秒狂熱時間雙倍</b>！</p>
+      <div class="mole-top"><b id="molen">0</b><span class="mcombo" id="molec"></span><div class="timer"><i id="molebar"></i></div></div>
+      <div class="moles four" id="moles">${Array.from({ length: 12 }, (_, k) => `<button data-k="${k}" aria-label="第 ${k + 1} 格"></button>`).join('')}</div>`;
+    modal.hidden = false; mgvStart(p, '🔨 打假新聞');
+    const cells = [...mbox.querySelectorAll('.moles button')], D = 10000, t0 = performance.now(); let n = 0, combo = 0, done = false;
+    const prog = () => Math.min(1, (performance.now() - t0) / D), fever = () => performance.now() - t0 > 7000;
+    const ICON = { f: '📰', g: '🌟', r: '✅', b: '🧨' };
+    const clear = c => { delete c.dataset.v; c.textContent = ''; c.classList.remove('up', 'gold'); };
+    const showCombo = () => { const el = $('#molec'); if (el) el.textContent = (combo >= 3 ? `🔥${combo} 連擊 ` : '') + (fever() ? '⚡狂熱×2' : ''); };
+    const spawn = () => {
       if (done) return;
-      const free = cells.filter(c => !c.dataset.v); if (!free.length) return;
-      const c = pick(free), real = Math.random() < .25;
-      c.dataset.v = real ? 'r' : 'f'; c.textContent = real ? '✅' : '📰'; c.classList.add('up');
-      const id = c.t = setTimeout(() => { if (c.t === id && c.dataset.v) clear(c); }, 700 + Math.random() * 450);
-    }, 380);
+      const free = cells.filter(c => !c.dataset.v);
+      if (free.length) {
+        const c = pick(free), r = Math.random(), v = r < .14 ? 'r' : r < .24 ? 'b' : r < .33 ? 'g' : 'f';
+        c.dataset.v = v; c.textContent = ICON[v]; c.classList.add('up'); if (v === 'g') c.classList.add('gold');
+        const stay = (950 - 450 * prog()) * (v === 'g' ? .6 : 1);
+        const id = c.t = setTimeout(() => { if (c.t === id && c.dataset.v) { if (c.dataset.v === 'f' || c.dataset.v === 'g') { combo = 0; showCombo(); } clear(c); } }, stay);
+      }
+      setTimeout(spawn, 430 - 230 * prog());
+    };
+    spawn();
     cells.forEach(c => c.onpointerdown = e => {
       e.preventDefault(); if (done || !c.dataset.v) return;
-      if (c.dataset.v === 'f') { n++; SFX.tap(); } else { n -= 2; SFX.bad(); }
-      const hitReal = c.dataset.v === 'r'; clear(c); c.textContent = hitReal ? '😱' : '💥'; c.t = 0;
+      const v = c.dataset.v, mult = fever() ? 2 : 1;
+      if (v === 'f' || v === 'g') { combo++; n += ((v === 'g' ? 3 : 1) + (combo >= 3 ? 1 : 0)) * mult; v === 'g' ? SFX.coin() : SFX.tap(); }
+      else { combo = 0; n -= (v === 'b' ? 3 : 2); SFX.bad(); if (v === 'b') { const m = $('#moles'); m.classList.remove('boom'); void m.offsetWidth; m.classList.add('boom'); } }
+      clear(c); c.textContent = v === 'r' ? '😱' : v === 'b' ? '💥' : v === 'g' ? '✨' : '💢'; c.t = 0;
       setTimeout(() => { if (!c.dataset.v) c.textContent = ''; }, 220);
-      $('#molen').textContent = n;
+      $('#molen').textContent = n; showCombo();
     });
-    const tick = () => { if (done) return; const r = 1 - (performance.now() - t0) / D; $('#molebar').style.width = Math.max(0, r * 100) + '%'; if (r <= 0) end(); else requestAnimationFrame(tick); };
-    function end() { if (done) return; done = true; clearInterval(spawn); cells.forEach(c => { c.disabled = true; }); setTimeout(() => { modal.hidden = true; res(n); }, 700); }
+    const tick = () => { if (done) return; const r = 1 - (performance.now() - t0) / D; $('#molebar').style.width = Math.max(0, r * 100) + '%'; const m = $('#moles'); if (m) m.classList.toggle('fever', fever()); showCombo(); if (r <= 0) end(); else requestAnimationFrame(tick); };
+    function end() { if (done) return; done = true; cells.forEach(c => { c.disabled = true; }); setTimeout(() => { modal.hidden = true; res(n); }, 700); }
     tick(); setTimeout(end, D + 150);
   });
 }
 /* ---------- 新小遊戲（每個都回傳一個分數；連線朋友用 req 在自己畫面玩） ---------- */
 // 共用外框：標題、說明、倒數條
+let mgvTimer = 0;
+function mgvStart(p, title) {
+  clearInterval(mgvTimer); if (!NET.named || !NET.started || !p) return;
+  const send = d => NET.named.emit('mgv', { s: p.seat, t: title, ...d }).catch(() => { });
+  mgvTimer = setInterval(() => {
+    if (modal.hidden) { clearInterval(mgvTimer); send({ end: 1 }); return; }
+    const sc = ($('#mgs') || $('#molen') || $('#tapn'));
+    const bar = $('#mgbar') || $('#molebar') || $('#tapbar');
+    const st = $('#mgnote') || $('#mghand') || $('#mgword') || $('#molec') || $('#reactbtn');
+    send({ sc: sc ? sc.textContent.slice(0, 14) : '', pct: bar ? parseFloat(bar.style.width) || 0 : -1, st: st ? st.textContent.slice(0, 24) : '' });
+  }, 350);
+}
+function mgvShow(d) {
+  const s = +d.s, q = G.players[s]; if (!q) return;
+  // PK 看板上有這個人：直接把即時分數寫在他那邊
+  if (pkEl && pkEl.className === 'on' && (+pkEl.dataset.l === s || +pkEl.dataset.r === s)) {
+    const el = pkEl.querySelector(+pkEl.dataset.l === s ? '#pkL' : '#pkR');
+    if (el && !d.end) el.textContent = `🎮 ${d.sc || 0}${d.st ? '・' + d.st : ''}`;
+    return;
+  }
+  let box = document.getElementById('mgv');
+  if (!box) { box = document.createElement('div'); box.id = 'mgv'; document.body.appendChild(box); }
+  let row = box.querySelector(`[data-s="${s}"]`);
+  if (d.end) { if (row) setTimeout(() => row.remove(), 1500); return; }
+  if (!row) { row = document.createElement('div'); row.className = 'mgvrow'; row.dataset.s = s; row.style.setProperty('--c', q.char.color); box.appendChild(row); }
+  row.innerHTML = `${faceURL[q.char.id] ? `<img src="${faceURL[q.char.id]}" alt="">` : ''}<div><b>📺 ${esc(q.char.name)}・${esc(d.t || '')}</b><span>${esc(d.sc || '0')}${d.st ? '　' + esc(d.st) : ''}</span>${d.pct >= 0 ? `<i style="width:${clamp(+d.pct || 0, 0, 100)}%"></i>` : ''}</div>`;
+  clearTimeout(row.t); row.t = setTimeout(() => row.remove(), 2500);
+}
 function gameBox(p, title, tip) {
+  mgvStart(p, title);
   mbox.style.setProperty('--c', p.char.color);
   mbox.innerHTML = `<span class="who">${p.char.name}（${esc(label(p))}）</span><h2>${title}</h2><p>${tip}</p><div class="mg-top"><b id="mgs">0</b><div class="timer"><i id="mgbar"></i></div></div><div id="mgbody"></div>`;
   modal.hidden = false;
@@ -5353,7 +5490,7 @@ const gun007 = mgWrap('gun', '🔫 007 裝子彈', p => new Promise(res => {
 // 兩人比賽（付過路費時用）：連線朋友同時玩；同一台電腦輪流玩；電腦隨機
 const DUEL = {
   react: { name: '📸 閃光燈反應', intro: '閃光燈一亮就按，反應快的人贏', ai: () => Math.random() < .1 ? 9999 : 260 + rnd(380), fmt: v => v >= 9000 ? '犯規' : `${(v / 1000).toFixed(3)} 秒`, better: (a, b) => a < b, play: reactGame },
-  mole: { name: '🔨 打假新聞', intro: '10 秒內分數高的人贏', ai: () => 5 + rnd(10), fmt: v => `${v} 分`, better: (a, b) => a > b, play: moleGame },
+  mole: { name: '🔨 打假新聞', intro: '10 秒內分數高的人贏', ai: () => 8 + rnd(18), fmt: v => `${v} 分`, better: (a, b) => a > b, play: moleGame },
   tap: { name: '📱 直播狂點', intro: '5 秒狂點按讚，點多的人贏', ai: () => 18 + rnd(16), fmt: v => `${v} 讚`, better: (a, b) => a > b, play: tapGame },
   order: { name: '🔢 數字快手', intro: '1 到 9 依序點完，快的人贏', ai: () => 4500 + rnd(5000), fmt: v => `${(v / 1000).toFixed(2)} 秒`, better: (a, b) => a < b, play: orderGame },
   stamp: { name: '🗳️ 精準蓋章', intro: '游標跑到圈圈正中間就蓋章，3 次總分高的人贏', ai: () => 110 + rnd(160), fmt: v => `${v} 分`, better: (a, b) => a > b, play: stampGame },
@@ -5365,7 +5502,6 @@ const DUEL = {
   light: { name: '🚦 紅綠燈', intro: '綠燈狂點、紅燈別點，分數高的人贏', ai: () => 8 + rnd(14), fmt: v => `${v} 分`, better: (a, b) => a > b, play: lightGame },
   count: { name: '💵 點鈔大賽', intro: '鈔票只閃 1.5 秒，數對多又快的人贏', ai: () => pick([10, 20, 20, 30, 30, 40, 45]), fmt: v => `數對 ${Math.min(4, Math.floor(v / 10))} 次`, better: (a, b) => a > b, play: countGame },
   clock: { name: '⏱️ 準時發言', intro: '心裡數 5 秒再按停，最接近 5 秒的人贏', ai: () => 150 + rnd(1200), fmt: v => `差 ${(v / 1000).toFixed(2)} 秒`, better: (a, b) => a < b, play: clockGame },
-  point: { name: '👉 男生女生配', intro: '輪流攻守猜方向，分數高的人贏', ai: () => 2 + rnd(6), fmt: v => `${v} 分`, better: (a, b) => a > b, play: pointGame },
   slap: { name: '👋 打手背', intro: '看到拍才縮手、別被假動作騙，閃過多的人贏', ai: () => 2 + rnd(5), fmt: v => `閃過 ${v} 次`, better: (a, b) => a > b, play: slapGame },
   coin: { name: '🪙 手背抓硬幣', intro: '硬幣掉進綠區就抓，抓到多的人贏', ai: () => 1 + rnd(5), fmt: v => `抓到 ${v} 次`, better: (a, b) => a > b, play: coinGame },
   gun: { name: '🔫 007 裝子彈', intro: '跟電腦打 007，越快打贏的人越高分', ai: () => pick([2, 4, 6, 10, 13, 15, 16]), fmt: v => v > 10 ? `第 ${20 - v} 拍打贏` : v === 10 ? '平手' : `撐 ${v} 拍`, better: (a, b) => a > b, play: gun007 },
@@ -5380,7 +5516,7 @@ function pkApply(d) {
     if (!pkEl) { pkEl = document.createElement('div'); pkEl.id = 'pk'; document.body.appendChild(pkEl); }
     const side = (q, k) => `<div class="pks ${k}" style="--c:${q.char.color}">${faceURL[q.char.id] ? `<img src="${faceURL[q.char.id]}" alt="">` : `<span class="g">${q.char.glyph}</span>`}<div><b>${q.char.name}</b><small id="pk${k}">${q.isAI ? '🤖 對戰中…' : '🎮 對戰中…'}</small></div></div>`;
     pkEl.innerHTML = `<div class="pkt">${esc(String(d.title || '對決'))}</div><div class="pkrow">${side(L, 'L')}<div class="pkvs">VS</div>${side(R, 'R')}</div>`;
-    pkEl.className = 'on';
+    pkEl.className = 'on'; pkEl.dataset.l = d.L; pkEl.dataset.r = d.R;
   } else if (pkEl && d.t === 'side') {
     const el = pkEl.querySelector('#pk' + (d.s === 'R' ? 'R' : 'L')); if (el) el.textContent = '✅ 完成，等對手…';
   } else if (pkEl && d.t === 'end') {
@@ -5624,7 +5760,7 @@ async function underdogAid() {
 }
 async function roundLaws() {
   await underdogAid();
-  if (Math.random() < .3) dropWildMine();
+
   if (lawOn('bento')) { alive().forEach(q => q.cash += 500); SFX.coin(); await caption('🍱 便當補助', '每個人 +500', 1200); }
   if (lawOn('ubi')) { alive().forEach(q => q.cash += 1500); SFX.coin(); await caption('💵 全民基本收入', '每個人 +1,500', 1200); }
   if (lawOn('lottery')) { const q = pick(alive()); if (q) { q.cash += 6000; SFX.fan(); say(q, 'win', '中獎了！'); await caption('🎰 公益彩券開獎！', `${q.char.name} 中了 6,000`, 1400); } }
@@ -5652,17 +5788,20 @@ async function roundLaws() {
   const was = cam.overview; cam.overview = true; SFX.fan();
   await caption('🏛️ 立法院表決！', '三個新法案三選一，多數決通過，生效 3 回合', 2200);
   const ballots = [];
+  const record = (p, v) => { if (!LAWS[v]) v = opts[0]; votes[v]++; ballots.push(`${p.char.name}→${LAWS[v].ic}`); say(p, 'roll', pick(['贊成！', '我投這個！', '這條好！'])); };
+  const voteAsk = p => ask(`<h2>🏛️ 立法院表決</h2><p>${p.char.name}，你要投哪一條？（生效第 ${G.round}～${G.round + 2} 回合）</p>`,
+    opts.map(k => ({ label: `${LAWS[k].ic} ${LAWS[k].name}`, value: k, card: { ic: LAWS[k].ic, name: LAWS[k].name, desc: LAWS[k].desc, go: '投這條 ▶' } })), p);
+  // 連線朋友：同時在自己的畫面投票（15 秒沒投就自動投第一條）
+  const remoteVotes = alive().filter(p => !p.isAI && viaNet(p)).map(p => Promise.race([voteAsk(p), nap(15000).then(() => opts[0])]).then(v => record(p, v)));
   for (const p of alive()) {
-    let v;
+    if (viaNet(p) && !p.isAI) continue;
     if (p.isAI) {
       // 電腦：有錢的不投富人稅，沒道具的愛投道具禁令，其他隨便投
       const ok = opts.filter(k => !(k === 'richtax' && p.cash >= Math.max(...alive().map(q => q.cash))) && !(k === 'noitem' && p.items.length > 2));
-      v = pick(ok.length ? ok : opts); await nap(250);
-    } else v = await ask(`<h2>🏛️ 立法院表決</h2><p>${p.char.name}，你要投哪一條？（生效第 ${G.round}～${G.round + 2} 回合）</p>`,
-      opts.map(k => ({ label: `${LAWS[k].ic} ${LAWS[k].name}`, value: k, card: { ic: LAWS[k].ic, name: LAWS[k].name, desc: LAWS[k].desc, go: '投這條 ▶' } })), p);
-    if (!LAWS[v]) v = opts[0];
-    votes[v]++; ballots.push(`${p.char.name}→${LAWS[v].ic}`); say(p, 'roll', pick(['贊成！', '我投這個！', '這條好！']));
+      record(p, pick(ok.length ? ok : opts));
+    } else record(p, await voteAsk(p));   // 同一台電腦的人只能輪流
   }
+  await Promise.all(remoteVotes);
   const top = Math.max(...opts.map(k => votes[k])), tied = opts.filter(k => votes[k] === top), win = pick(tied), L = LAWS[win];
   if (tied.length > 1) {
     await caption('⚖️ 平手！抽籤決定', tied.map(k => `${LAWS[k].ic} ${LAWS[k].name}（${votes[k]} 票）`).join('　vs　'), 1600);
@@ -5999,7 +6138,7 @@ function encodeState() {
     t: G.turn, r: G.round, ov: G.over ? 1 : 0,
     // 祕密任務只在公開後才放進來，免得朋友從資料偷看
     P: G.players.map(p => [p.cash, Math.round(p.poll), p.pos, p.items.join(','), p.skip, p.where || '', p.turtle, p.out ? 1 : 0, p.skillUsed ? 1 : 0,
-      p.ally, p.mPublic ? p.mission : '', p.mDone ? 1 : 0, p.mExposed ? 1 : 0, p.revenge, [p.stats.kos, p.stats.stabs, p.stats.sends, p.stats.combo3, p.stats.hits, p.stats.boom || 0, p.stats.quiz || 0, p.stats.jail || 0, p.stats.combo2 || 0, p.stats.laps || 0, p.stats.built || 0].join(','), p.ghost || 0, p.power || '', p.powerAt, p.autoOn ? 1 : 0]),
+      p.ally, p.mPublic ? p.mission : '', p.mDone ? 1 : 0, p.mExposed ? 1 : 0, p.revenge, [p.stats.kos, p.stats.stabs, p.stats.sends, p.stats.combo3, p.stats.hits, p.stats.boom || 0, p.stats.quiz || 0, p.stats.jail || 0, p.stats.combo2 || 0, p.stats.laps || 0, p.stats.built || 0].join(','), p.ghost || 0, p.power || '', p.powerAt, p.autoOn ? 1 : 0, p.onIsland ? 1 : 0]),
     T: G.tiles.map(s => (s.owner + 1) * 100 + s.level * 10 + (s.kind === 'hq' ? 1 : s.kind === 'stand' ? 2 : 0)),
     tr: G.traps, b: G.bomb, n: G.npcs.map(n => n.pos), m: G.mods, fe: G.fest || null, iw: G.instant || null, sc: G.scars || {},
   };
@@ -6232,7 +6371,7 @@ function applyState(s) {
     p.mDone = !!a[11]; p.mExposed = !!a[12]; p.revenge = Number.isInteger(a[13]) ? a[13] : -1;
     const st = String(a[14] || '').split(',').map(Number);
     p.ghost = +a[15] || 0;
-    p.power = POWERS[a[16]] ? a[16] : ''; p.powerAt = Number.isFinite(+a[17]) ? +a[17] : -9; p.autoOn = !!a[18];
+    p.power = POWERS[a[16]] ? a[16] : ''; p.powerAt = Number.isFinite(+a[17]) ? +a[17] : -9; p.autoOn = !!a[18]; p.onIsland = !!a[19];
     p.stats = { kos: st[0] || 0, stabs: st[1] || 0, sends: st[2] || 0, combo3: st[3] || 0, hits: st[4] || 0, boom: st[5] || 0, quiz: st[6] || 0, jail: st[7] || 0, combo2: st[8] || 0, laps: st[9] || 0, built: st[10] || 0 };
     if (a[7] && !p.out) {
       p.out = true; const m = p.mesh;
@@ -6511,6 +6650,7 @@ function setupChat() {
     const d = m.data; if (m.sameTab || m.isMe || !d || !NET.started || !EMOS[d.e | 0] || !okRate(m.peer, 300)) return;
     flyEmo(EMOS[d.e | 0], G.players[d.s | 0]);
   });
+  NET.named.on('mgv', m => { const d = m.data; if (m.sameTab || m.isMe || !d || !NET.started) return; mgvShow({ s: +d.s, t: String(d.t || '').slice(0, 20), sc: String(d.sc || '').slice(0, 14), st: String(d.st || '').slice(0, 24), pct: +d.pct, end: !!d.end }); });
   NET.named.on('chat', m => {
     const d = m.data; if (m.sameTab || m.isMe || !d || !NET.started) return;
     const s = d.s | 0, p = G.players[s]; if (!p || !okRate(m.peer, 800)) return;
