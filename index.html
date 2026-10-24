@@ -623,8 +623,6 @@ const VOICE = {
   chiang: { p: 1.15, r: 1.05, male: 1, fx: 'siren' },
   kc: { p: 1, r: 1.45, male: 1, fx: 'slap' },
   ko: { p: .9, r: 1.3, male: 1, fx: 'calc' },
-  su: { p: 1.4, r: 1.1, male: 0, fx: 'ding' },
-  '3q': { p: 1.55, r: 1.35, male: 1, fx: 'sparkle', q: t => /3Q/i.test(t) ? t : t + '，3Q！' },
   gz: { p: .45, r: .95, male: 1, fx: 'grunt', q: t => t.replace(/[。！!]?$/, '！') },
 };
 const MALE_RE = /\bmale\b|男|zhiwei|yunxi|yunyang|yunjian|yunze|yunhao|kangkang/i;
@@ -665,7 +663,7 @@ function speak(ch, line, prio = 1, vid = '') {
       speakUntil = now + 6000;
       vAudio.onloadedmetadata = () => { speakUntil = performance.now() + vAudio.duration * 1000 / vAudio.playbackRate + 500; showVsub(ch, line, vAudio.duration * 1000); };
       vAudio.onended = () => { speakUntil = Math.min(speakUntil, performance.now() + 500); };
-      vAudio.onerror = () => { speakUntil = 0; };
+      vAudio.onerror = () => { speakUntil = 0; speak(ch, line, 2); };   // 語音檔讀不到：改用瀏覽器語音
       vAudio.play().catch(() => { speakUntil = 0; });
       return;
     } catch (e) { }
@@ -687,7 +685,7 @@ function speak(ch, line, prio = 1, vid = '') {
 }
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
-const GAME_VER = '20261024b';   // 改角色名單、連線格式時要改這個
+const GAME_VER = '20261024c';   // 改角色名單、連線格式時要改這個
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -722,12 +720,6 @@ const CHARS = [
   { id: 'ko', name: '柯文哲', glyph: '柯', color: '#607d8b', title: '前台北市長', look: { hair: 'thin', extra: 'coat' },
     skill: '數學家：骰子擲出 1 點一律當 2 點算，不會走太慢。',
     lines: { sig: ['我是算過的。', '這個邏輯很簡單。', '白色力量！'], attack: ['從數學上來看，你要倒了。'], hit: ['這不科學！'], champion: ['機率計算完畢，我贏了。'] } },
-  { id: 'su', name: '蘇巧慧', glyph: '慧', color: '#9c4dcc', title: '立委', look: { hair: 'long', extra: 'mic' },
-    skill: '認真問政：買地一律 9 折。',
-    lines: { sig: ['認真做事最實在！', '新北加油！', '我來問清楚。'], attack: ['這是依程序處理。'], hit: ['我會堅持下去！'], champion: ['認真的人最美！'] } },
-  { id: '3q', name: '陳柏惟', glyph: '3Q', color: '#689f38', title: '3Q 哥', look: { hair: 'bald', extra: 'shine' },
-    skill: '3Q：付過路費時有 30% 機率，地主被你 3Q 到不好意思收錢。',
-    lines: { sig: ['3Q！3Q！', '光頭最閃亮！', '海線報到！'], attack: ['3Q 你的配合！'], hit: ['頭很亮，心很痛。'], champion: ['3Q 大家！'] } },
   { id: 'gz', name: '館長', glyph: '館', color: '#2d2d2d', title: '健身網紅', look: { hair: 'buzz', extra: 'muscle' },
     skill: '硬起來：住院天數減半，嗆聲對決平手算你贏。',
     lines: { sig: ['練起來！', '健身房開張啦！', '男人就是要硬！'], attack: ['吃我一拳…不對，吃我一顆火箭！'], hit: ['這點痛算什麼！'], champion: ['冠軍！蛋白質加倍！'] } },
@@ -746,8 +738,6 @@ const TAUNTS = {
   kc: ['我手上有資料！', '請你尊重人家發言好不好！', '你在講話我有在插話嗎？', '舉這個牌子真的很蠢！', '請正面回答！'],
   chiang: ['萬安演習，請大家就地避難！', '台北市長報到！', '台北隊，衝！', '今天也要帥帥的。'],
   puma: ['黑熊學院開課囉！', '大家要有韌性！', '全民防衛，從你我做起！', '準備好了嗎？演練開始！'],
-  su: ['認真做事最實在！', '我來問清楚！', '這題我有做功課！', '新北加油！'],
-  '3q': ['3Q！3Q！', '3Q 你的配合！', '光頭最閃亮！', '海線報到！'],
   gz: ['練起來！', '男人就是要硬！', '講那麼多，先去練腿！', '健身房開張啦！', '冠軍！蛋白質加倍！'],
 };
 // 角色配音台詞資料庫（voices/lines.json）和已錄好的語音清單（voices/manifest.json）；讀不到就照舊用內建台詞＋瀏覽器語音
@@ -1016,7 +1006,7 @@ function noise(d, freq = 2000, vol = .2, delay = 0, type = 'bandpass') {
     src.connect(f).connect(g).connect(A.destination); src.start(t);
   } catch (e) { }
 }
-// 角色出場音效：阿扁掌聲、馬英九腳踏車鈴、蔡英文貓叫、郭台銘喇叭、韓國瑜銅鑼、王世堅小提琴、賴清德心跳聲、沈伯洋熊吼、蔣萬安警報、黃國昌拍資料、柯文哲計算機、蘇巧慧叮咚、3Q 閃亮、館長使力
+// 角色出場音效：阿扁掌聲、馬英九腳踏車鈴、蔡英文貓叫、郭台銘喇叭、韓國瑜銅鑼、王世堅小提琴、賴清德心跳聲、沈伯洋熊吼、蔣萬安警報、黃國昌拍資料、柯文哲計算機、館長使力
 const CHAR_FX = {
   clap: () => { for (let k = 0; k < 6; k++) noise(.06, 1800 + rnd(800), .15, k * .07 + Math.random() * .03); },
   bell: () => { beep(1568, .25, 'triangle', .05); beep(1568, .25, 'triangle', .05, .18); },
@@ -1620,7 +1610,7 @@ function makeToken(ch) {
 const MODEL = {
   bian: ['male-a', ['glasses']], ma: ['male-d', ['headband']], tsai: ['female-d', []], gou: ['male-e', []],
   han: ['male-b', ['shine']], wsj: ['male-c', []], lai: ['male-a', []], puma: ['male-f', ['glasses']], chiang: ['male-c', []], kc: ['male-d', ['glasses']],
-  ko: ['male-e', []], su: ['female-f', []], '3q': ['male-b', ['shine']], gz: ['male-b', ['muscle']],
+  ko: ['male-e', []], gz: ['male-b', ['muscle']],
 };
 const KEY_ANIM = { buy: 'emote-yes', upgrade: 'emote-yes', earn: 'emote-yes', win: 'emote-yes', champion: 'emote-yes', start: 'emote-yes', live: 'emote-yes', release: 'emote-yes',
   pay: 'emote-no', lose: 'emote-no', hit: 'emote-no', jail: 'emote-no', broke: 'die', hosp: 'die', attack: 'attack-melee-right', item: 'interact-right', card: 'interact-right', defuse: 'pick-up', roll: 'jump' };
@@ -1637,7 +1627,7 @@ function loadGLB(url) {
 /* ---------- Q 版大頭照：從 models/portraits.jpg 切出每個人的臉（圓心 x、y、半徑） ---------- */
 const PORTRAIT = {
   ko: [290, 215, 125], ma: [985, 195, 120], tsai: [1330, 235, 125], gz: [1705, 205, 120],
-  kc: [235, 715, 120], '3q': [565, 695, 120], su: [890, 695, 115], chiang: [1210, 668, 118], puma: [1520, 695, 120],
+  kc: [235, 715, 120], chiang: [1210, 668, 118], puma: [1520, 695, 120],
 };
 // 第二張 Q 版大合照 models/portraits2.jpg（2000×1116）
 const PORTRAIT2 = { han: [570, 265, 130], lai: [890, 262, 120], gou: [1440, 285, 130], wsj: [1752, 760, 122] };
@@ -4125,7 +4115,7 @@ async function offerBuy(p, i) {
   const t = TILES[i];
   if (lawOn('nobuild')) { if (!p.isAI) await info(p, '🏗️ 建築凍結中', `立法院通過建築凍結，現在不能買 ${t.name}。`); return; }
   const auc = G.tiles[i].auction ? .5 : 1;
-  const price = Math.round((p.char.id === 'su' ? t.price * .9 : t.price) * auc / 10) * 10;
+  const price = Math.round(t.price * auc / 10) * 10;
   if (p.cash < price) { if (!p.isAI) await info(p, t.name, `要價 ${fmt(price)}，錢不夠買。`); return; }
   const cost = upCost(i), total = L => price + L * cost;
   let L;
@@ -4240,10 +4230,6 @@ async function payRent(p, i) {
   lookAtTile(i);
   if (p.ally === o.seat) {
     say(o, 'earn', '自己人，免啦！'); await caption('🤝 盟友免過路費', `${p.char.name} 踩到盟友 ${o.char.name} 的地`, 1100); lookBack(); return;
-  }
-  if (p.char.id === '3q' && Math.random() < .3) {
-    say(p, 'roll', '3Q！3Q！3Q！'); say(o, 'pay', '好啦好啦…這次算了。');
-    await caption('3Q 攻勢奏效', `${o.char.name} 不好意思收錢`, 1300); lookBack(); return;
   }
   if (p.items.includes('free')) {
     const use = p.isAI ? amt >= 600 : await ask(`<h2>要付 ${fmt(amt)} 過路費</h2><p>你有一張🎫免死金牌，要用掉它免付嗎？</p>`, [{ label: '免死金牌！', value: true, cls: 'primary' }, { label: '留著', value: false }], p);
