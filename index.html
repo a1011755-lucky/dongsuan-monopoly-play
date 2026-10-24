@@ -722,7 +722,7 @@ const CHARS = [
     skill: '發大財：每次經過起點，民調 +8。',
     lines: { sig: ['發大財！', '賣菜郎報到！', '貨出得去，人進得來！'], attack: ['這顆送你，發大財！'], hit: ['唉呀，頭好痛！', '沒關係，我很樂觀。'], champion: ['大家一起發大財！'] } },
   { id: 'wsj', name: '王世堅', glyph: '堅', color: '#6d4c41', title: '世堅哥', look: { hair: 'side', extra: 'mic' },
-    skill: '世堅神隱：自動隱身 2 回合（檢舉、網軍、炸彈、吸金…都打不到），之後冷卻 2 回合，再自動隱身，一直循環。',
+    skill: '世堅神隱：自動隱身 2 回合（檢舉、網軍、炸彈、吸金…都打不到），之後冷卻 3 回合，再自動隱身，一直循環。',
     lines: { sig: ['大家好，我是世堅！', '來，我唱一首給大家聽！', '世堅哥來了！'], attack: ['這一下，是我的真心！'], hit: ['我真的很生氣！', '心好痛…'], champion: ['謝謝大家，安可！'] } },
   { id: 'lai', name: '賴清德', glyph: '賴', color: '#2e7d32', title: '總統', look: { hair: 'short', extra: 'coat' },
     skill: '醫生出身：住院天數少 1 天。',
@@ -2994,9 +2994,9 @@ async function takeTurn(p) {
     p.catRound = G.round; const id = pick(ITEM_KEYS); giveItem(p, id);
     await caption('🐱 貓咪叼回🎁 一個神秘道具', p.char.name, 1100);
   }
-  if (p.sk === 'wsj' && !(p.ghost > 0) && G.round - (p.wsjAt === undefined ? -9 : p.wsjAt) >= 4) {
+  if (p.sk === 'wsj' && !(p.ghost > 0) && G.round - (p.wsjAt === undefined ? -9 : p.wsjAt) >= 5) {   // 隱身 2 回合＋冷卻 3 回合
     p.wsjAt = G.round; p.ghost = 2; CHAR_FX.violin(); updateHUD(); say(p, 'skill');
-    await caption('👻 世堅神隱！', `${p.char.name} 隱身 2 回合，攻擊都打不到他（之後冷卻 2 回合）`, 1300);
+    await caption('👻 世堅神隱！', `${p.char.name} 隱身 2 回合，攻擊都打不到他（之後冷卻 3 回合）`, 1300);
   }
   let g0 = null;
   if (p.isAI) { await wait(400); const f = await aiPreRoll(p); if (f && !p.skip && !p.out) return afterRoll(p, f, true); }
