@@ -979,7 +979,7 @@ const MISSIONS = {
   snake: { name: '背骨仔', desc: '背刺盟友 2 次（可以是同一個人）', prog: p => [p.stats.stabs, 2] },
   lord: { name: '大地主', desc: '同時擁有 5 塊地', prog: p => [G.tiles.filter(s => s.owner === p.seat).length, 5] },
   bomber: { name: '爆破專家', desc: '把對手送進醫院、約談所 3 次', prog: p => [p.stats.sends, 3] },
-  rich: { name: '黑金帝國', desc: '手上現金達到 90,000', prog: p => [p.cash, 90000] },
+  rich: { name: '黑金帝國', desc: '手上現金達到 70,000', prog: p => [p.cash, 70000] },
   combo: { name: '連段大師', desc: '同一回合連續打同一個人 2 下（連擊），做到 2 次', prog: p => [p.stats.combo2 || 0, 2] },
   quizking: { name: '名嘴之路', desc: '質詢搶答、常識擂台累積答對 8 題', prog: p => [p.stats.quiz || 0, 8] },
   traveler: { name: '台灣走透透', desc: '經過起點 3 次', prog: p => [p.stats.laps || 0, 3] },
@@ -2464,7 +2464,7 @@ function showTip(i, x, y) {
   let html = `<b>${t.name}</b><br>`;
   if (t.type === 'prop') {
     html += st.owner >= 0 ? `地主：${G.players[st.owner].char.name}<br>${buildingName(i)}・過路費 ${fmt(rentOf(i))}` : `空地・售價 ${fmt(t.price)}`;
-  } else html += ({ fest: '選一塊自己的地辦造勢晚會，過路費翻倍', math: '常識、國學、腦筋急轉彎 5 題，答對有錢拿', quiz: '質詢搶答，答對有錢拿', start: '經過領 2,000 元，剛好停下有拜票握手',item: '抽一個道具', live: '直播狂點賺抖內', news: '抽機會／命運卡，或發生新聞事件', jail: '停在這裡要被約談 1 回合', fly: '花 500 元飛到別區', shop: '買地雷、火箭、炸彈', bribe: '被檢舉疑似賄選', hosp: '健康檢查，民調 +3' })[t.type];
+  } else html += ({ fest: '選一塊自己的地辦造勢晚會，過路費翻倍', math: '常識、國學、腦筋急轉彎 5 題，答對有錢拿', quiz: '質詢搶答，答對有錢拿', start: '經過領 5,000 元，剛好停下有拜票握手',item: '抽一個道具', live: '直播狂點賺抖內', news: '抽機會／命運卡，或發生新聞事件', jail: '停在這裡要被約談 1 回合', fly: '花 500 元飛到別區', shop: '買地雷、火箭、炸彈', bribe: '被檢舉疑似賄選', hosp: '健康檢查，民調 +3' })[t.type];
   if (G.traps[i] && trapVisible(G.traps[i])) html += `<br>⚠️ 這格有${G.traps[i].k === 'mine' ? '你埋的地雷' : '路障'}`;
   const npc = G.npcs.find(n => n.pos === i); if (npc) html += `<br>🧍 ${npc.def.name}在這裡`;
   tip.innerHTML = html; tip.hidden = false;
@@ -2617,7 +2617,7 @@ function rentPreview(i, level, seat) {
   Object.assign(st, { owner: seat, level, kind: null });
   const r = rentOf(i); Object.assign(st, keep); return r;
 }
-const START_CASH = 50000, SALARY = 3000, POLL_VOTES = 100;
+const START_CASH = 50000, SALARY = 5000, POLL_VOTES = 100;
 function winRulesHtml() {
   return `<h2>🏆 怎麼贏？（${G.maxRounds} 回合）</h2>
     <div class="cardlist">
@@ -2673,6 +2673,15 @@ async function vestSave(v) {
 function takeItem(p, id) { const k = p.items.indexOf(id); if (k >= 0) p.items.splice(k, 1); }
 
 /* ---------- 介面 ---------- */
+// 💰 獎金池：住院 VIP、律師費、綠島機票、交保金、罰款的一半丟進來，下一場全民小遊戲的冠軍全部拿走
+function toPot(n) { if (!(n > 0)) return; G.pot = (G.pot || 0) + Math.round(n * .5 / 10) * 10; updateHUD(); }
+async function awardPot(p) {
+  const v = G.pot || 0; if (!p || v <= 0) return '';
+  p.cash += v; G.pot = 0; SFX.fan(); updateHUD();
+  log(`💰 <b>${p.char.name}</b> 抱走獎金池 ${fmt(v)}`);
+  await caption('💰 獎金池開獎！', `${p.char.name} 抱走住院費、律師費、機票累積的 ${fmt(v)}`, 1800);
+  return v;
+}
 function updateHUD() {
   $('#players').classList.toggle('many', G.players.length > 4);
   $('#players').innerHTML = G.players.map((p, k) => `
@@ -2689,7 +2698,7 @@ function updateHUD() {
     </div>`).join('');
   $('#round-chip').textContent = `第 ${Math.min(G.round, G.maxRounds)} / ${G.maxRounds} 回合`;
   refreshSide(); syncScars();
-  $('#mods').innerHTML = (finalNight() ? '<span>🌙 選前之夜：過路費 1.5 倍、軍火半價</span>' : '') + G.mods.filter(m => m.until >= G.round).map(m => `<span>${esc(m.label)}（到第 ${m.until} 回合）</span>`).join('');
+  $('#mods').innerHTML = (G.pot > 0 ? `<span>💰 獎金池 ${fmt(G.pot)}（下一場全民小遊戲冠軍拿走）</span>` : '') + (finalNight() ? '<span>🌙 選前之夜：過路費 1.5 倍、軍火半價</span>' : '') + G.mods.filter(m => m.until >= G.round).map(m => `<span>${esc(m.label)}（到第 ${m.until} 回合）</span>`).join('');
   G.tiles.forEach((st, i) => { if (st.owner >= 0) drawTile(i); });
   if (NET.mode !== 'client') { checkMissions(); checkInstant(); }
   if (NET.mode === 'host') scheduleState();
@@ -2958,7 +2967,7 @@ const ISLAND_FARE = 4000;   // 從綠島飛回本島的機票
 async function flyHome(p) {
   p.onIsland = false;
   await caption('✈️ 搭飛機離開綠島', `${p.char.name} 自己付機票 ${fmt(ISLAND_FARE)} 飛回本島`, 1300);
-  await charge(p, ISLAND_FARE, null); if (p.out) return;
+  await charge(p, ISLAND_FARE, null); toPot(ISLAND_FARE); if (p.out) return;
   say(p, 'release', pick(['終於回來了！', '綠島的咖啡太苦了！', '機票好貴…']));
   hostFx('jump', [p.seat, JAIL]);
   const pl = fancyPlane('#3d8bff', '綠島→本島'); pl.scale.setScalar(.55); scene.add(pl);
@@ -3973,7 +3982,7 @@ async function interrogate(p) {
       [{ label: `💼 付 ${fmt(fee)} 接受偵訊`, value: true, cls: 'hot' }, { label: '乖乖待著', value: false }], p);
   let pass = false;
   if (pay) {
-    p.cash -= fee; updateHUD(); SFX.coin();
+    p.cash -= fee; toPot(fee); updateHUD(); SFX.coin();
     log(`💼 <b>${p.char.name}</b> 付律師費 ${fmt(fee)} 接受偵訊`);
     const kind = pick(['quiz', 'react', 'mole']);
     if (p.isAI) { await caption('🕵️ 偵訊中…', `${p.char.name} 正在接受檢察官問話`, 1200); pass = Math.random() < .55; }
@@ -4012,7 +4021,7 @@ async function buyOut(p) {
       : `<h2>☕ 還要約談 ${p.skip} 回合</h2><p>要花 <b>${fmt(cost)}</b> 找關係「疏通」一下，馬上離開嗎？<br><small>（疑似賄賂：有兩成機率被抓包，錢沒了、民調 -5，還要多待 1 回合）</small></p>`,
       [{ label: `💸 花 ${fmt(cost)} 出來`, value: true, cls: 'hot' }, { label: '乖乖待著', value: false }], p);
   if (!yes) return false;
-  p.cash -= cost; updateHUD();
+  p.cash -= cost; toPot(cost); updateHUD();
   if (!hosp && Math.random() < .2) {
     p.skip += 1; addPoll(p, -5); SFX.bad(); say(p, 'lose', '這…這是政治獻金啦！');
     log(`☕ <b>${p.char.name}</b> 疏通被抓包，再約談 1 回合`);
@@ -4533,7 +4542,7 @@ async function bribeTile(p) {
       <div class="cardrow"><span class="ic">🚓</span><div><b>乖乖去約談</b><small>去檢調約談所停 2 回合，但大家覺得你很配合，民調 +5。</small></div></div>
       <div class="cardrow"><span class="ic">👉</span><div><b>甩鍋</b><small>指一位對手說是他幹的。一半機率他被帶走；失敗的話你要停 3 回合、民調 -10。</small></div></div>
     </div>`, [{ label: '交保', value: 'bail', cls: 'primary', disabled: p.cash < bail }, { label: '去約談', value: 'go' }, { label: '甩鍋！', value: 'blame', cls: 'hot', disabled: !opp.length }], p);
-  if (c === 'bail') { addPoll(p, -3); await caption('💰 交保', `${p.char.name} 付了 ${fmt(bail)}`, 1100); await charge(p, bail, null); return; }
+  if (c === 'bail') { addPoll(p, -3); await caption('💰 交保', `${p.char.name} 付了 ${fmt(bail)}`, 1100); await charge(p, bail, null); toPot(bail); return; }
   if (c === 'go') { addPoll(p, 5); await caption('🚓 配合調查', `${p.char.name} 去約談 2 回合`, 1100); await sendTo(p, JAIL, 2, 'jail'); return; }
   const target = p.isAI ? pick(opp) : await ask('<h2>👉 甩鍋給誰？</h2>', opp.map(q => ({ label: q.char.name, value: q, cls: 'primary' })), p);
   say(p, 'attack', `是${target.char.name}叫我發的！`);
@@ -4899,17 +4908,17 @@ async function quizTile(p) {
   let right = 0;
   if (p.isAI) { await caption('🎤 質詢搶答', `${p.char.name} 上台答題中…`, 1100); right = qs.filter(() => Math.random() < .6).length; }
   else {
-    await ask('<h2>🎤 質詢台：限時搶答</h2><p>3 題選擇題，每題 7 秒。答對一題 +800、民調 +3；<b>答錯一題 -400、民調 -2</b>；全對再送一個道具。</p>', [{ label: '開始質詢！', cls: 'hot' }], p);
+    await ask('<h2>🎤 質詢台：限時搶答</h2><p>3 題選擇題，每題 7 秒。答對一題 +1,500、民調 +3；<b>答錯一題 -400、民調 -2</b>；全對再送一個道具。</p>', [{ label: '開始質詢！', cls: 'hot' }], p);
     for (let k = 0; k < 3; k++) right += await quizQ(p, qs[k], k);
     modal.hidden = true;
   }
   const wrong = 3 - right, dp = right * 3 - wrong * 2;
-  p.cash += right * 800; addPoll(p, dp); p.stats.quiz += right;
+  p.cash += right * 1500; addPoll(p, dp); p.stats.quiz += right;
   let extra = '';
   if (right === 3) { const it = pick(ITEM_KEYS); giveItem(p, it); extra = p.isAI ? '全對！加送一個神秘道具。' : `全對！加送 ${ITEMS[it].icon}${ITEMS[it].name}。`; SFX.fan(); }
   updateHUD();
   say(p, right >= 2 ? 'win' : 'lose', right === 0 ? '這題…我回去研究一下。' : undefined);
-  await info(p, `答對 ${right} / 3 題`, `答對拿 ${fmt(right * 800)}${wrong ? `，答錯罰 ${fmt(wrong * 400)}` : ''}，民調 ${dp >= 0 ? '+' : ''}${dp}。${extra}`);
+  await info(p, `答對 ${right} / 3 題`, `答對拿 ${fmt(right * 1500)}${wrong ? `，答錯罰 ${fmt(wrong * 400)}` : ''}，民調 ${dp >= 0 ? '+' : ''}${dp}。${extra}`);
   if (wrong) await charge(p, wrong * 400, null);
 }
 
@@ -4920,17 +4929,17 @@ async function mathTile(p) {
   let right = 0;
   if (p.isAI) { await caption('📚 常識擂台', `${p.char.name} 正在絞盡腦汁…`, 1100); right = qs.filter(() => Math.random() < .55).length; }
   else {
-    await ask('<h2>📚 常識擂台</h2><p>基本常識、國學常識、腦筋急轉彎，隨機 5 題，每題 8 秒。答對一題 +500；<b>答錯一題 -300</b>；全對加送民調 +8 和一個道具！</p>', [{ label: '開始！', cls: 'hot' }], p);
+    await ask('<h2>📚 常識擂台</h2><p>基本常識、國學常識、腦筋急轉彎，隨機 5 題，每題 8 秒。答對一題 +1,000；<b>答錯一題 -300</b>；全對加送民調 +8 和一個道具！</p>', [{ label: '開始！', cls: 'hot' }], p);
     for (let k = 0; k < 5; k++) right += await quizQ(p, qs[k], k, 5, 8);
     modal.hidden = true;
   }
   const wrong = 5 - right;
-  p.cash += right * 500; p.stats.quiz += right;
+  p.cash += right * 1000; p.stats.quiz += right;
   let extra = '';
   if (right === 5) { addPoll(p, 8); const it = pick(ITEM_KEYS); giveItem(p, it); extra = p.isAI ? '全對！民調 +8，加送一個神秘道具。' : `全對！民調 +8，加送 ${ITEMS[it].icon}${ITEMS[it].name}。`; SFX.fan(); }
   updateHUD();
   say(p, right >= 3 ? 'win' : 'lose', right <= 1 ? '這題超綱了吧…' : undefined);
-  await info(p, `📚 答對 ${right} / 5 題`, `答對拿 ${fmt(right * 500)}${wrong ? `，答錯罰 ${fmt(wrong * 300)}` : ''}。${extra}`);
+  await info(p, `📚 答對 ${right} / 5 題`, `答對拿 ${fmt(right * 1000)}${wrong ? `，答錯罰 ${fmt(wrong * 300)}` : ''}。${extra}`);
   if (wrong) await charge(p, wrong * 300, null);
 }
 
@@ -4979,12 +4988,13 @@ async function allGame() {
   modal.hidden = true;
   const rank = [...ps].sort((a, b) => meta.better(res.get(a), res.get(b)) ? -1 : meta.better(res.get(b), res.get(a)) ? 1 : 0);
   const best = rank[0], worst = rank.length >= 3 ? rank[rank.length - 1] : null;
-  const prize = pick(['bomb', 'mine', 'rocket']); best.cash += 1500; addPoll(best, 5); giveItem(best, prize); say(best, 'win', '第一名就是我！');
+  const prize = pick(['bomb', 'mine', 'rocket']); best.cash += 3000; addPoll(best, 5); giveItem(best, prize); say(best, 'win', '第一名就是我！');
   rank.slice(1, worst ? -1 : undefined).forEach(p => { p.cash += 300; });
   updateHUD();
   log(`${meta.name}：${rank.map(p => `${p.char.name} ${meta.fmt(res.get(p))}`).join('、')}`);
   await caption(`🏆 ${best.char.name} 第一名！`, rank.map((p, k) => `${k + 1}. ${p.char.name} ${meta.fmt(res.get(p))}`).join('　') + '（第一名加送🎁 一個神秘道具）', 2800);
   if (worst) { addPoll(worst, -3); say(worst, 'lose', '我手機太爛了啦！'); SFX.bad(); await charge(worst, 800, null); }
+  await awardPot(best);
   updateHUD();
 }
 
@@ -5007,7 +5017,7 @@ async function allQuiz() {
   const fast = right[0], last = right.length >= 2 ? right[right.length - 1] : null;
   const lines = [];
   right.forEach(p => {
-    if (p === fast) { p.cash += 1500; addPoll(p, 5); say(p, 'win', '搶答王就是我！'); lines.push(`⚡ ${p.char.name} 最快（${res.get(p).t.toFixed(1)} 秒）+1,500`); }
+    if (p === fast) { p.cash += 3000; addPoll(p, 5); say(p, 'win', '搶答王就是我！'); lines.push(`⚡ ${p.char.name} 最快（${res.get(p).t.toFixed(1)} 秒）+3,000`); }
     else if (p !== last) { p.cash += 500; addPoll(p, 2); }
   });
   updateHUD();
@@ -5616,7 +5626,7 @@ const NEWS = [
   { t: '跑馬燈出現你的名字', run: p => { addPoll(p, 10); return `${p.char.name} 上了晚間新聞跑馬燈，民調 +10。`; } },
 ];
 // 機會（好事）／命運（倒楣事）：新聞格、路人都會抽到。台詞都是虛構搞笑，不影射真實事件
-const fine = n => async p => { await charge(p, n, null); };
+const fine = n => async p => { await charge(p, n, null); toPot(n); };
 const FATE = [
   // ⚡ 命運
   { d: 'bad', ic: '🗑️', t: '亂丟垃圾被拍到', w: '亂丟垃圾', txt: '影片上了爆料社團，環保局開罰 1,500 元。', run: fine(1500) },
@@ -5634,21 +5644,21 @@ const FATE = [
   { d: 'bad', ic: '🎂', t: '今天是你生日？', w: '請吃蛋糕', txt: '不，是你請大家吃蛋糕：付每個對手 300 元。', run: async p => { for (const q of others(p)) await charge(p, 300, q); } },
   { d: 'bad', ic: '🐕', t: '掃街被狗追', w: '被狗追', txt: '狂奔三條街，鞋子跑掉，民調 -4、花 600 元買新鞋。', run: async p => { addPoll(p, -4); await charge(p, 600, null); } },
   // 🍀 機會
-  { d: 'good', ic: '🧾', t: '發票中獎', w: '發票中獎', txt: '路邊撿到的發票中了 2,000 元！', run: async p => { p.cash += 2000; } },
+  { d: 'good', ic: '🧾', t: '發票中獎', w: '發票中獎', txt: '路邊撿到的發票中了 5,000 元！', run: async p => { p.cash += 5000; } },
   { d: 'good', ic: '👶', t: '抱小孩拍照爆紅', w: '抱嬰爆紅', txt: '照片被瘋狂轉傳，民調 +12。', run: async p => addPoll(p, 12) },
   { d: 'good', ic: '🎯', t: '夜市套圈圈', w: '套圈圈', txt: '套中一個隨機道具！', run: async p => { giveItem(p, pick(ITEM_KEYS.filter(k => !['rocket', 'missiles'].includes(k)))); } },
   { d: 'good', ic: '🙏', t: '廟口連擲三個聖筊', w: '三個聖筊', txt: '神明都挺你，民調 +8。', run: async p => addPoll(p, 8) },
-  { d: 'good', ic: '🎙️', t: 'KTV 歌聲被拍到', w: 'KTV爆紅', txt: '網友狂讚好聽，民調 +6，還收到 800 元抖內。', run: async p => { addPoll(p, 6); p.cash += 800; } },
+  { d: 'good', ic: '🎙️', t: 'KTV 歌聲被拍到', w: 'KTV爆紅', txt: '網友狂讚好聽，民調 +6，還收到 3,000 元抖內。', run: async p => { addPoll(p, 6); p.cash += 3000; } },
   { d: 'good', ic: '👵', t: '扶阿嬤過馬路', w: '扶阿嬤', txt: '上了晚間新聞，民調 +10。', run: async p => addPoll(p, 10) },
-  { d: 'good', ic: '💰', t: '小額捐款湧入', w: '小額捐款', txt: '支持者熱情贊助，+3,000 元。', run: async p => { p.cash += 3000; } },
-  { d: 'good', ic: '🧧', t: '大家包紅包給你', w: '收紅包', txt: '每個對手給你 500 元。', run: async p => { for (const q of others(p)) await charge(q, 500, p); } },
+  { d: 'good', ic: '💰', t: '小額捐款湧入', w: '小額捐款', txt: '支持者熱情贊助，+8,000 元。', run: async p => { p.cash += 8000; } },
+  { d: 'good', ic: '🧧', t: '大家包紅包給你', w: '收紅包', txt: '每個對手給你 1,500 元。', run: async p => { for (const q of others(p)) await charge(q, 1500, p); } },
   { d: 'good', ic: '🧋', t: '請全場喝珍奶', w: '請喝珍奶', txt: '花 1,000 元，但民調 +10。', run: async p => { addPoll(p, 10); await charge(p, 1000, null); } },
   { d: 'good', ic: '🚑', t: '律師朋友送你保釋卡', w: '保釋卡', txt: '拿到一張 🚑 保釋卡，下次被送醫或約談可以直接保出來。', run: async p => { giveItem(p, 'bail'); } },
   { d: 'good', ic: '🤢', t: '對手吃到過期便當', w: '過期便當', prep: p => ({ q: pick(others(p).filter(q => !q.where)) }), txt: (p, c) => c.q ? `${c.q.char.name} 吃壞肚子，送醫院 1 回合！` : '可惜大家都不在，便當沒人吃。', run: async (p, c) => { if (c.q) { say(c.q, 'hit', '肚子好痛…'); await sendTo(c.q, HOSP, 1, 'hosp'); } } },
   { d: 'good', ic: '🐴', t: '收到議員送的大禮', w: '木馬大禮', txt: '質詢台送來一隻巨型特洛伊木馬，打開跑出一個神秘道具！', run: async p => { giveItem(p, pick(ITEM_KEYS.filter(k => !['rocket', 'missiles'].includes(k)))); } },
   { d: 'good', ic: '🌀', t: '施展「時空背景不同」之術', w: '時空不同', txt: '以前說過的話都不算數！記恨你的人全部忘光光，民調 +5。', run: async p => { G.players.forEach(q => { if (q.revenge === p.seat) q.revenge = -1; }); addPoll(p, 5); } },
   { d: 'bad', ic: '🦌', t: '口誤上新聞', w: '鹿茸口誤', txt: '解釋鹿茸時說成「鹿耳朵裡面的毛」，被做成迷因，民調 -8。', run: async p => addPoll(p, -8) },
-  { d: 'good', ic: '📺', t: '上政論節目大放異彩', w: '上政論', txt: '名嘴都說你好，民調 +7，通告費 1,200 元。', run: async p => { addPoll(p, 7); p.cash += 1200; } },
+  { d: 'good', ic: '📺', t: '上政論節目大放異彩', w: '上政論', txt: '名嘴都說你好，民調 +7，通告費 4,000 元。', run: async p => { addPoll(p, 7); p.cash += 4000; } },
 ];
 let wheelEl = null, wheelState = null;
 function wheelData(d) {   // 朋友收到的轉盤資料先消毒
@@ -6140,7 +6150,7 @@ function encodeState() {
     P: G.players.map(p => [p.cash, Math.round(p.poll), p.pos, p.items.join(','), p.skip, p.where || '', p.turtle, p.out ? 1 : 0, p.skillUsed ? 1 : 0,
       p.ally, p.mPublic ? p.mission : '', p.mDone ? 1 : 0, p.mExposed ? 1 : 0, p.revenge, [p.stats.kos, p.stats.stabs, p.stats.sends, p.stats.combo3, p.stats.hits, p.stats.boom || 0, p.stats.quiz || 0, p.stats.jail || 0, p.stats.combo2 || 0, p.stats.laps || 0, p.stats.built || 0].join(','), p.ghost || 0, p.power || '', p.powerAt, p.autoOn ? 1 : 0, p.onIsland ? 1 : 0]),
     T: G.tiles.map(s => (s.owner + 1) * 100 + s.level * 10 + (s.kind === 'hq' ? 1 : s.kind === 'stand' ? 2 : 0)),
-    tr: G.traps, b: G.bomb, n: G.npcs.map(n => n.pos), m: G.mods, fe: G.fest || null, iw: G.instant || null, sc: G.scars || {},
+    tr: G.traps, b: G.bomb, pot: G.pot || 0, n: G.npcs.map(n => n.pos), m: G.mods, fe: G.fest || null, iw: G.instant || null, sc: G.scars || {},
   };
 }
 let stTimer = null;
@@ -6410,6 +6420,7 @@ function applyState(s) {
   const oldFest = G.fest ? G.fest.i : -1;
   G.fest = s.fe && Number.isInteger(s.fe.i) && TILES[s.fe.i] ? { i: s.fe.i, mult: clamp(+s.fe.mult || 2, 2, 4) } : null;
   if (oldFest >= 0) drawTile(oldFest);
+  G.pot = Math.max(0, +s.pot || 0);
   G.instant = s.iw && G.players[s.iw.seat] ? { seat: s.iw.seat, why: String(s.iw.why || ''), fled: s.iw.fled ? 1 : 0 } : null;
   cam.follow = G.players[G.turn] || cam.follow;
   updateHUD();
