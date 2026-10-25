@@ -3050,6 +3050,7 @@ function statusText(p) {
   if (G.bomb && G.bomb.holder === p.seat) bits.push(`<b>⏰${G.bomb.t}步</b>`);
   return bits.join('・');
 }
+// 政壇快訊：只記發生了什麼事（攻擊、任務、法案、對決結果…），角色講的話不記
 function log(html) { hostFx('log', html); logLocal(html); }
 function logLocal(html) {
   const l = $('#log-list'); const el = document.createElement('p'); el.innerHTML = html; l.prepend(el);
@@ -3098,7 +3099,6 @@ function sayLine(seat, line, key, vid = '') {
   const b = document.createElement('b'); b.textContent = p.char.name;
   p.bubble.replaceChildren(b, document.createTextNode(line)); p.bubble.classList.add('on');
   clearTimeout(p.bt); p.bt = setTimeout(() => p.bubble.classList.remove('on'), 2800);
-  logLocal(`<b style="color:${p.char.color}">${p.char.name}</b>：「${esc(line)}」`);
   // 誰講話的優先順序：當選感言最優先，輪到的人次之，其他人的反應有空才講
   // 互動反應（被收錢、被陷害、反制、收過路費）不能被吃掉：排隊等前一句講完
   const prio = key === 'champion' ? 2 : ['rentget', 'pay', 'hit', 'counter', 'broke', 'skill'].includes(key) ? 1.5 : G.players[G.turn] === p ? 1 : 0;
@@ -3479,7 +3479,6 @@ async function afterRoll(p, steps, forced) {
   if (back) { SFX.whoosh(); say(p, 'roll', pick(['咦？怎麼往回走？', '倒退嚕～', '這是戰略性撤退！'])); await caption('🔄 倒退嚕！', `${p.char.name} 這次逆時針走 ${steps} 步${lawOn('reverse') ? '（逆行令）' : ''}`, 1300); }
   const dest = destOf(p, steps, back);
   setDest([[dest, `🎯 ${steps} 步 → ${TILES[dest].name}`]]);
-  log(`🎯 <b>${p.char.name}</b> 走 ${steps} 步，目的地：${TILES[dest].name}`);
   await moveSteps(p, steps, back);
   setDest([]);
   if (p.out || p.where) return;
@@ -4365,6 +4364,7 @@ async function sendTo0(p, corner, turns, where) {
   if (p.sk === 'lai' && where === 'hosp') turns = Math.max(0, turns - 1);
   if (p.sk === 'gz' && where === 'hosp') turns = Math.ceil(turns / 2);
   p.where = where; p.skip = turns;
+  log(where === 'hosp' ? `🏥 <b>${p.char.name}</b> 住院 ${turns} 回合` : `🏝️ <b>${p.char.name}</b> 被押送綠島約談（第 ${p.stats.jail} 次）`);
   if (where === 'jail') { p.mockJail = true; p.onIsland = true; }
   hostFx('jump', [p.seat, corner]);
   p.pos = corner; await flyTo(p, corner);
@@ -4530,6 +4530,7 @@ async function moveSteps(p, n, back = false) {
       if (p.items.includes('vest')) { removeTrap(p.pos); await explosion(p.pos); await vestSave(p); continue; }
       const planter = G.players[trap.o];
       removeTrap(p.pos); await explosion(p.pos); say(p, 'hit');
+      log(`💥 <b>${p.char.name}</b> 在 ${TILES[p.pos].name} 踩到${planter && planter !== p ? ` <b>${planter.char.name}</b> 埋的` : ''}地雷`);
       await caption('💥 踩到地雷！', planter && planter !== p ? `是 ${planter.char.name} 埋的！${p.char.name} 被炸進醫院` : !planter ? `不明人士埋的野生地雷！${p.char.name} 被炸進醫院` : `${p.char.name} 踩到自己埋的地雷…`, 1500);
       if (planter && planter !== p) { planter.stats.sends++; planter.stats.hits++; planter.stats.boom++; }
       await mock(planter && planter !== p ? planter : null, p, 'mine');
@@ -4644,6 +4645,7 @@ async function offerBuy(p, i) {
   if (!(L >= 0)) return;
   p.cash -= total(L); Object.assign(G.tiles[i], { owner: p.seat, level: L, kind: null, auction: false }); SFX.coin();
   p.stats.built = (p.stats.built || 0) + L;
+  log(`🏠 <b>${p.char.name}</b> 買下 ${t.name}${L ? `，直接蓋${LEVEL_NAME[L]}` : ''}`);
   lookAtTile(i); rebuild(i); drawTile(i); say(p, L ? 'upgrade' : 'buy'); updateHUD();
   const [x, z] = tilePos(i); confetti(new THREE.Vector3(x, 1, z));
   await caption(`買下 ${t.name}${L ? '，蓋好' + LEVEL_NAME[L] : ''}！`, `花了 ${fmt(total(L))}，過路費 ${fmt(rentOf(i))}`, 1300);
@@ -4681,6 +4683,7 @@ async function offerUpgrade(p, i) {
   p.cash -= spend;
   if (typeof choice === 'number') { p.stats.built = (p.stats.built || 0) + (choice - st.level); st.level = choice; } else st.kind = choice;
   SFX.fan(); lookAtTile(i); await wait(250);
+  log(`🏗️ <b>${p.char.name}</b> 把 ${t.name} 蓋成${buildingName(i)}`);
   rebuild(i); drawTile(i); say(p, 'upgrade'); updateHUD();
   const [x, z] = tilePos(i), [ix, iz] = tileIn(i); confetti(new THREE.Vector3(x + ix * 3, 2, z + iz * 3));
   await caption(typeof choice === 'number' ? (st.level === 5 ? `${t.name} 地標摩天樓落成！🛡️` : `${LEVEL_NAME[st.level]}蓋好了`) : `${KINDS[choice].name}開張！`, fmt(spend), 1300);
@@ -4784,6 +4787,7 @@ async function payRent(p, i) {
     }
     if (r === 'lose') { amt *= 2; addPoll(p, -5); }
   }
+  if (amt >= 3000) log(`💸 <b>${p.char.name}</b> 付給 <b>${o.char.name}</b> 過路費 ${fmt(amt)}`);
   say(p, 'pay'); SFX.bad();
   setTimeout(() => say(o, 'rentget'), 900 * speed());
   await caption(`付過路費 ${fmt(amt)}`, `${p.char.name} → ${o.char.name}`, 1200);
@@ -6884,7 +6888,6 @@ function showChat(seat, text, voice, taunt) {
   const b = document.createElement('b'); b.textContent = p.char.name;
   p.bubble.replaceChildren(b, document.createTextNode((taunt ? '🗯️ ' : '') + text)); p.bubble.classList.add('on');
   clearTimeout(p.bt); p.bt = setTimeout(() => p.bubble.classList.remove('on'), 3200);
-  logLocal(`<b style="color:${p.char.color}">${p.char.name}</b>${voice ? ' 🎤' : taunt ? ' 🗯️嗆聲' : ' 💬'}：「${esc(text)}」`);
 }
 // t：招牌嗆聲的編號（自己角色的 TAUNTS）；k：通用喊話的編號
 const chatText = (p, d) => d.t !== undefined && d.t !== null ? (TAUNTS[p.char.id] || [])[d.t | 0] : PHRASES[d.k | 0];
