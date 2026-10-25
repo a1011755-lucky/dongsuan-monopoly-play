@@ -189,6 +189,52 @@ button{touch-action:manipulation}
 .moles.fever{box-shadow:0 0 0 4px #ff7043;border-radius:14px;animation:pulse 1s infinite}
 .moles.boom{animation:nshake .3s}
 .mcombo{font-family:var(--display);font-weight:900;color:#e65100;font-size:15px;white-space:nowrap}
+/* 觀戰大看板：沒在玩的人，畫面下方出現兩邊的即時分數與進度條 */
+#pk .live{display:none}
+#pk.big{top:auto;bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + 150px);width:min(680px,calc(100vw - 24px))}
+#pk.big .live{display:inline-block;background:#e53935;color:#fff;border-radius:999px;padding:1px 9px;margin-right:6px;font-size:12px;text-shadow:none;animation:pulse 1s infinite}
+#pk.big .pkt{font-size:18px}
+#pk.big .pks{padding:10px 12px;border-width:3px}
+#pk.big .pks img,#pk.big .pks .g{width:58px;height:58px}
+#pk.big .pks b{font-size:18px}
+#pk.big .pks small{font-family:var(--display);font-size:17px;color:#1d1633}
+#pk .pkb{display:block;height:6px;border-radius:4px;background:rgba(29,22,51,.12);margin-top:4px;overflow:hidden}
+#pk.big .pkb{height:12px;border:2px solid #1d1633}
+#pk .pkb u{display:block;height:100%;width:0;background:var(--c);transition:width .35s;text-decoration:none}
+#pk.big .pkvs{font-size:34px}
+/* 右側欄：政壇快訊＋神明附身面板 */
+#rcol{position:absolute;right:max(12px,env(safe-area-inset-right,0px));top:max(12px,env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:10px;z-index:5;width:260px;pointer-events:none}
+#rcol>*{pointer-events:auto}
+#rcol #log{position:static;width:auto}
+#godpanel{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+#godpanel h3{margin:0;font-family:var(--display);font-size:13px;letter-spacing:.08em;color:var(--muted)}
+.gd{--gb:#fff6d6;--gc:#f5b400;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:center;padding:8px;border-radius:14px;border:2px solid var(--ink);background:var(--gb)}
+.gd.bad{--gb:#e6e9f2;--gc:#5c6b8a}
+.gd .gi{grid-row:span 2;font-size:26px;line-height:1;width:44px;height:44px;display:grid;place-items:center;border-radius:50%;background:#fff;border:2px solid var(--ink)}
+.gd b{font-family:var(--display);font-size:15px;line-height:1.25}
+.gd b small{display:block;font-family:var(--body);font-size:11.5px;font-weight:700;color:var(--muted)}
+.gd .left{display:flex;gap:3px;align-items:center}
+.gd .left i{width:13px;height:8px;border-radius:3px;background:rgba(29,22,51,.15)}
+.gd .left i.on{background:var(--gc)}
+.gd .left em{font-style:normal;font-size:11.5px;font-weight:900;margin-left:4px}
+.gd ul{grid-column:1/-1;margin:2px 0 0;padding-left:18px;font-size:12px;line-height:1.5}
+@media (max-width:700px){#rcol{top:46%;width:200px}.gd ul{font-size:11px;padding-left:14px}}
+/* 遙控骰子：每顆按鈕寫走到哪、那格是誰的 */
+#modal .btns button.rd{flex:1 1 calc(33.3% - 8px);min-width:130px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:7px 10px;border-left-width:8px}
+#modal .btns button.rd b{font-size:12px;color:var(--muted)}
+#modal .btns button.rd span{font-size:15px;line-height:1.25}
+#modal .btns button.rd small{font-family:var(--body);font-weight:700;font-size:11.5px;color:#5a5270;line-height:1.35}
+#modal .btns button.rd-own{border-left-color:#4cb944}
+#modal .btns button.rd-enemy{border-left-color:#e53935;background:linear-gradient(180deg,#fff,#ffe9ec)}
+#modal .btns button.rd-empty{border-left-color:#3d8bff}
+#modal .btns button.rd-spec{border-left-color:#7c4dff}
+/* 對人道具：可以選的對手卡片發亮 */
+.pc.tgt{cursor:crosshair;box-shadow:0 0 0 4px #ff3b5c,0 0 18px 6px rgba(255,59,92,.55)!important;animation:tgt .7s ease-in-out infinite alternate}
+.pc.tgt::after{content:'🎯 點我';position:absolute;right:8px;top:50%;transform:translateY(-50%);font-family:var(--display);font-weight:900;font-size:12px;background:#ff3b5c;color:#fff;border-radius:999px;padding:2px 8px;border:2px solid var(--ink)}
+@keyframes tgt{to{transform:translateX(8px)}}
+/* 開票前衝票小遊戲 */
+.mg-street{position:relative;height:220px;border:3px solid var(--ink);border-radius:14px;background:linear-gradient(#e8f5e9,#fffde7);overflow:hidden;margin-bottom:8px}
+.mg-street .mg-voter{position:absolute;font-size:32px;padding:4px 7px;border-radius:50%;line-height:1;min-width:0}
 #mgv{position:fixed;left:12px;bottom:130px;z-index:65;display:flex;flex-direction:column;gap:6px;pointer-events:none;width:min(300px,calc(100vw - 24px))}
 .mgvrow{display:flex;align-items:center;gap:8px;background:#fffaf0;border:3px solid var(--c);border-radius:12px;padding:5px 8px;box-shadow:3px 3px 0 #1d1633}
 .mgvrow img{width:34px;height:34px;border-radius:50%;flex:none}
@@ -507,7 +553,7 @@ button{touch-action:manipulation}
   <div id="hud-top" hidden><span class="chip round" id="round-chip">第 1 / 25 回合</span><span class="chip" id="clock">00:00</span><button id="btn-rules">🏆 怎麼贏</button><button id="btn-restart">重新開始</button></div>
   <div id="mods"></div>
   <div id="players"></div>
-  <div id="log" class="panel" hidden><h3>政壇快訊</h3><div id="log-list"></div></div>
+  <div id="rcol"><div id="log" class="panel" hidden><h3>政壇快訊</h3><div id="log-list"></div></div><div id="godpanel" class="panel" hidden></div></div>
   <div id="aimbar" class="panel" hidden><span id="aim-text">點一格</span><button id="aim-cancel">✖ 取消</button></div>
   <div id="tip" class="panel" hidden></div>
   <div id="turn-hint" hidden></div>
@@ -600,7 +646,7 @@ button{touch-action:manipulation}
             <li>踩到別人的地，除了嗆聲和拔河，還能發動<b>🎤 質詢對決</b>：兩人答同一題，答對的贏。</li>
             <li><b>🎒 道具更多</b>：開局 3 個，每經過起點再送 1 個。新道具：🌀颱風、🧲吸金、🔄換位、👻隱身、🚑保釋、🎆飛彈雨、🏗️免費加蓋、📈民調灌水。</li>
             <li>地圖上會亂跑的路人：樁腳伯（停在他那格，4 種好康挑一個）。</li>
-            <li><b>🙏 神明附身</b>：大財神、土地公是好神，大窮神、大衰神是衰神。走路<b>經過</b>神明就會被附身 5 回合，新的神會把舊的趕走；大財神附身時，窮神、衰神近不了身。</li>
+            <li><b>🙏 神明附身</b>：大財神、土地公是好神，大窮神、大衰神是衰神。<b>停在</b>神明那格就會被附身 5 回合，新的神會把舊的趕走；大財神附身時，窮神、衰神近不了身。</li>
             <li>踩到「疑似賄選」要選：交保、乖乖去約談，或甩鍋給對手。</li>
             <li><b>🎯 祕密任務</b>：每人開局拿到一個別人看不到的任務（例如讓對手破產、背刺盟友兩次、打出 3 連擊）。完成就 +25,000 票，但任務會公開，大家會一起圍剿你；被📰爆料卡提早揭穿，獎勵減半。</li>
             <li><b>🤝 結盟與 🔪 背刺</b>：可以找人結盟，彼此免過路費；隨時能背刺盟友，直接搶走他 25% 現金。被背刺的人會記仇，下次打你第一下就算連擊。</li>
@@ -753,7 +799,7 @@ function speak(ch, line, prio = 1, vid = '') {
 }
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
-const GAME_VER = '20261025g';   // 改角色名單、連線格式時要改這個
+const GAME_VER = '20261025h';   // 改角色名單、連線格式時要改這個
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -1004,7 +1050,11 @@ function openSheet(p, focus) {
 $('#sheet-x').onclick = () => { $('#sheet').hidden = true; };
 if (window.ResizeObserver) new ResizeObserver(() => document.documentElement.style.setProperty('--ah', $('#actions').offsetHeight + 'px')).observe($('#actions'));
 $('#sheet').onclick = e => { if (e.target.id === 'sheet') $('#sheet').hidden = true; };
-$('#players').onclick = e => { const el = e.target.closest('.pc'); const p = el && G.players[+el.dataset.k]; if (p) openSheet(p, 'items'); };
+$('#players').onclick = e => {
+  const el = e.target.closest('.pc'); const p = el && G.players[+el.dataset.k];
+  if (aimingP) { if (p && aimingP.valid.has(p.seat)) endAimP(p); return; }
+  if (p) openSheet(p, 'items');
+};
 
 /* ---------- 祕密任務（勝利條件） ---------- */
 const MISSION_BONUS = 25000;
@@ -2245,7 +2295,7 @@ anim.push(t => {
     if (q.dog) q.dog.position.y = Math.abs(Math.sin(t * 12)) * .08;
   });
 });
-// 神明：經過就附身 GOD_TURNS 回合（舊的會被趕走）；n.host＝附身在哪個座位（-1＝在地圖上）
+// 神明：停在那格就附身 GOD_TURNS 回合（舊的會被趕走）；n.host＝附身在哪個座位（-1＝在地圖上）
 const GOD_TURNS = 5;
 const GODS = {
   cai: { name: '大財神', icon: '💰', good: true, fx: ['💰', '🧧', '✨', '🪙'], desc: '每回合送紅包 500～1,500；踩到別人的地免過路費，還幫你把自己一塊地免費加蓋；窮神、衰神近不了身；離開時送一個道具' },
@@ -2254,6 +2304,22 @@ const GODS = {
   shuai: { name: '大衰神', icon: '🌧️', good: false, fx: ['🌧️', '⚡', '💧', '☁️'], desc: '不能用任何道具；轉到命運一定是最慘的那張；經過別人埋的地雷會被吸過去踩中' },
 };
 // Q 版神明臉：好神瞇眼大笑、衰神垂眼苦瓜臉
+const GOD_LINES = {
+  cai: ['🧧 每回合紅包 500～1,500', '🆓 踩到別人的地免過路費', '🏗️ 還幫你免費加蓋一塊地', '🛡️ 窮神、衰神近不了身', '🎁 離開時送一個道具'],
+  land: ['🏗️ 停在自己的地免費加蓋', '🏴 強制收購打 7 折', '🎲 收購輸了一半機會翻盤', '💰 經過起點獻金加倍'],
+  poor: ['💸 每走一步掉 100～300 元', '📈 買地、蓋房貴 1.5 倍', '💸 過路費多付 3 成', '🎒 每 2 回合弄丟一個道具'],
+  shuai: ['🚫 道具全部用不出來', '🎡 命運一定抽到最慘的', '💥 別人的地雷會把你吸過去'],
+};
+// 右側神明面板：誰被附身、還剩幾回合、效果是什麼
+function renderGods() {
+  const el = $('#godpanel'); if (!el) return;
+  const ps = (G.players || []).filter(p => p.god && GODS[p.god] && !p.out);
+  el.hidden = !ps.length; if (!ps.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<h3>🙏 神明附身</h3>' + ps.map(p => {
+    const D = GODS[p.god];
+    return `<div class="gd ${D.good ? 'good' : 'bad'}"><span class="gi">${D.icon}</span><b>${D.name}<small>附身 ${esc(p.char.name)}</small></b><span class="left">${Array.from({ length: GOD_TURNS }, (_, k) => `<i class="${k < p.godLeft ? 'on' : ''}"></i>`).join('')}<em>剩 ${p.godLeft} 回合</em></span><ul>${GOD_LINES[p.god].map(l => `<li>${l}</li>`).join('')}</ul></div>`;
+  }).join('');
+}
 function godFaceTex(happy, skin) {
   return canvasTex(256, 192, (x, w, h) => {
     x.lineCap = 'round'; x.lineJoin = 'round';
@@ -2876,6 +2942,7 @@ canvas.addEventListener('pointermove', e => {
 canvas.addEventListener('pointerup', e => {
   const d = drag; drag = null;
   if (d && !d.moved) {
+    if (aimingP) { const pp = playerAt(e); if (pp && aimingP.valid.has(pp.seat)) endAimP(pp); return; }
     const i = tileAt(e);
     if (aiming) { if (i >= 0 && aiming.valid.has(i)) { const a = aiming; endAim(); a.resolve(i); } }
     else if (G.players.length) {
@@ -2902,7 +2969,22 @@ function showTip(i, x, y) {
   clearTimeout(tipTimer); tipTimer = setTimeout(() => tip.hidden = true, 2600);
 }
 
-let aiming = null;
+let aiming = null, aimingP = null, tgtRings = [];
+// 對人道具：對手的卡片和棋子發亮，點一下就發射
+function aimPlayer(opts, text) {
+  return new Promise(resolve => {
+    aimingP = { valid: new Set(opts.map(q => q.seat)), resolve };
+    $('#aim-text').textContent = text; $('#aimbar').hidden = false;
+    tgtRings = opts.filter(q => q.mesh).map(q => { const r = mesh(new THREE.TorusGeometry(1.15, .1, 8, 32), glow('#ff3b5c', 1.3), 0, .3, 0, scene); r.rotation.x = -Math.PI / 2; r.userData.q = q; return r; });
+    updateHUD();
+  });
+}
+function endAimP(v) {
+  const a = aimingP; aimingP = null; $('#aimbar').hidden = true;
+  tgtRings.forEach(r => { scene.remove(r); disposeTree(r); }); tgtRings = [];
+  updateHUD(); if (a) a.resolve(v);
+}
+anim.push(t => tgtRings.forEach(r => { const m = r.userData.q.mesh; r.position.set(m.position.x, m.position.y + .3, m.position.z); r.scale.setScalar(1 + Math.sin(t * 8) * .12); }));
 function aimTile(valid, text, p) {
   peek(p, { kind: 'aim', title: '🎯 選目標中', text });
   return aimTile0(valid, text, p).then(i => { peekDone(p, { pick: i >= 0 && TILES[i] ? TILES[i].name : '取消' }); return i; });
@@ -2921,7 +3003,7 @@ function endAim() {
   aiming = null; hiMeshes.forEach(h => { h.visible = false; h.scale.y = 1; });
   $('#aimbar').hidden = true; canvas.classList.remove('aim'); cam.overview = false;
 }
-$('#aim-cancel').onclick = () => { if (aiming) { const a = aiming; endAim(); a.resolve(-1); } };
+$('#aim-cancel').onclick = () => { if (aimingP) return endAimP(null); if (aiming) { const a = aiming; endAim(); a.resolve(-1); } };
 
 function updateCamera(dt, t) {
   let tgt = new THREE.Vector3(), az, h, d;
@@ -3120,9 +3202,10 @@ async function awardPot(p) {
   return v;
 }
 function updateHUD() {
+  renderGods();
   $('#players').classList.toggle('many', G.players.length > 4);
   $('#players').innerHTML = G.players.map((p, k) => `
-    <div data-k="${k}" class="pc ${G.turn === k ? 'active' : ''} ${p.out ? 'out' : ''}" style="--c:${p.char.color}">
+    <div data-k="${k}" class="pc ${G.turn === k ? 'active' : ''} ${p.out ? 'out' : ''} ${aimingP && aimingP.valid.has(k) ? 'tgt' : ''}" style="--c:${p.char.color}">
       ${relBadges(p)}
       ${G.turn === k && !p.out ? '<span class="turnb">🎲 輪到他</span>' : ''}
       ${avatar(p.char)}
@@ -3613,8 +3696,6 @@ async function godStep(p) {
     const v = G.coins[i]; delete G.coins[i]; p.cash += v; drawCoins(); SFX.coin(); updateHUD();
     localCaption('🪙 撿到錢！', `${p.char.name} +${fmt(v)}`, 700); hostFx('lcap', ['🪙 撿到錢！', `${p.char.name} +${fmt(v)}`]);
   }
-  const n = G.npcs.find(m => m.god && m.host < 0 && m.pos === i);
-  if (n && !p.out) await possess(p, n);
 }
 // 財神幫你把自己一塊地免費加蓋一層
 async function caiInvest(p) {
@@ -3860,7 +3941,7 @@ function armTimer() {
     const active = NET.mode === 'client' ? !!NET.pending : !!waiting;
     if (!active) { clearInterval(turnTimer); turnTimer = null; btn.textContent = base(); return; }
     const busy = NET.mode === 'client' ? false : waiting.busy;
-    if (busy || !modal.hidden || aiming || !$('#sheet').hidden || !$('#tut').hidden) { left = Math.max(left, 6); btn.textContent = base(); return; }
+    if (busy || !modal.hidden || aiming || aimingP || !$('#sheet').hidden || !$('#tut').hidden) { left = Math.max(left, 6); btn.textContent = base(); return; }
     left--; btn.textContent = `${base()} ⏱${Math.max(0, left)}`;
     if (left <= 3 && left > 0) beep(700, .05, 'square', .03);
     if (left <= 0) { clearInterval(turnTimer); turnTimer = null; btn.textContent = base(); rollClick(); }
@@ -4213,12 +4294,14 @@ async function wanAnDrill(p) {
 async function chooseTarget(p, id) {
   const it = ITEMS[id];
   if (id === 'dice') {
-    const n = await ask(`<h2>🎲 遙控骰子</h2><p>想走幾步？</p>`, [...Array.from({ length: 12 }, (_, k) => ({ label: String(k + 1), value: k + 1 })), { label: '✖ 取消', value: 0 }], p);
+    const btns = Array.from({ length: 12 }, (_, k) => { const f = diceForecast(p, k + 1); return { label: `<b>${k + 1} 步</b><span>${f.name}</span><small>${f.note}</small>`, value: k + 1, cls: 'rd rd-' + f.kind }; });
+    const n = await ask(`<h2>🎲 遙控骰子</h2><p>想走幾步？每顆按鈕都寫了會停在哪一格、那格現在的狀況。</p>`, [...btns, { label: '✖ 取消', value: 0 }], p);
     return n || null;
   }
   if (it.aim === 'player' || it.aim === 'near') {
     const opts = others(p).filter(q => it.aim !== 'near' || near(p.pos, q.pos) <= 6);
     if (!opts.length) { await ask(`<h2>${it.icon} ${it.name}</h2><p>${it.aim === 'near' ? '6 格內沒有對手，炸彈黏不上去。' : '沒有可以用的對象。'}</p>`, [{ label: '好吧', cls: 'primary' }], p); return null; }
+    if (!viaNet(p) && !p.isAI) return await aimPlayer(opts, `${it.icon} ${it.name}：點一位發亮的對手（左邊卡片或棋盤上的人）`);
     return await ask(`<h2>${it.icon} ${it.name}</h2><p>要對誰用？</p>`, [...opts.map(q => ({ label: q.char.name, value: q, cls: 'primary' })), { label: '✖ 取消', value: null }], p);
   }
   if (it.aim === 'zone') {
@@ -4231,7 +4314,25 @@ async function chooseTarget(p, id) {
     const i = await aimTile(valid, text, p);
     return i >= 0 ? i : null;
   }
-  return await ask(`<h2>${it.icon} ${it.name}</h2><p>${it.desc}</p>`, [{ label: `✅ 使用${it.name}`, value: true, cls: 'hot' }, { label: '✖ 取消', value: null }], p);
+  return true;   // 不用選目標的道具：點了就直接用
+}
+// 遙控骰子預知：從現在位置往前推 n 步（考慮逆行令、高鐵法案、烏龜卡），回傳地名、類型、狀況說明
+function diceForecast(p, n) {
+  const eff = p.turtle > 0 ? 1 : n + (lawOn('express') ? 2 : 0), i = destOf(p, eff, lawOn('reverse'));
+  const t = TILES[i], st = G.tiles[i], bits = []; let kind;
+  if (t.type === 'prop') {
+    if (st.owner < 0) { kind = 'empty'; bits.push(`空地 ${fmt(t.price)}`); }
+    else if (st.owner === p.seat) { kind = 'own'; bits.push(`自己的${buildingName(i)}`); }
+    else { kind = 'enemy'; bits.push(`${G.players[st.owner].char.name}的地・過路 ${fmt(rentOf(i))}`); }
+  } else { kind = 'spec'; bits.push(`${SPECIAL[t.type].icon} 特殊格`); }
+  const tr = G.traps[i];
+  if (tr && (tr.k !== 'mine' || tr.o === p.seat)) bits.push(tr.k === 'mine' ? '💥你埋的地雷' : '🚧路障');
+  const gn = G.npcs.find(m => m.pos === i);
+  if (gn) bits.push(gn.god ? `${GODS[gn.god].icon}${GODS[gn.god].name}` : '🧓樁腳伯');
+  if (G.coins && G.coins[i] > 0) bits.push(`🪙${fmt(G.coins[i])}`);
+  const others0 = G.players.filter(q => q !== p && !q.out && q.pos === i);
+  if (others0.length) bits.push('👥' + others0.map(q => q.char.name).join('、'));
+  return { i, kind, name: t.name, note: bits.join('・') };
 }
 function validTiles(p, id) {
   const out = [];
@@ -4748,6 +4849,7 @@ async function moveSteps(p, n, back = false) {
     const last = s === n || (p.god === 'shuai' && tr0 && tr0.k === 'mine' && tr0.o !== p.seat);   // 這一步是不是最後一步（停在這格）；衰神會被別人的地雷吸過去
     if (last && s < n) await caption('🌧️ 衰神作祟！', `${p.char.name} 被地雷吸過去了…`, 1000);
     const npc = G.npcs.find(m => !m.god && m.pos === p.pos);
+    if (last) { const gn = G.npcs.find(m => m.god && m.host < 0 && m.pos === p.pos); if (gn && !p.out) await possess(p, gn); }
     if (npc && last) { const stop = await meetNPC(p, npc); if (stop || p.where) break; }
     const trap = G.traps[p.pos], tk = trap && trap.k;
     if (tk === 'mine' && last) {
@@ -5018,7 +5120,7 @@ async function payRent(p, i) {
         <div class="cardrow"><span class="ic">✊</span><div><b>嗆聲對決</b><small>政見、抹黑、哭哭猜拳，靠心理戰。</small></div></div>
         <div class="cardrow"><span class="ic">🪢</span><div><b>造勢拔河</b><small>雙方狂點 8 秒，把繩子拉過來就贏，靠手速。</small></div></div>
         <div class="cardrow"><span class="ic">🎤</span><div><b>質詢對決</b><small>兩人答同一題（國學、政治、地理、數學），答對又答得快的人贏。</small></div></div>
-        <div class="cardrow"><span class="ic">🎲</span><div><b>隨機小遊戲</b><small>從 16 種小遊戲裡隨機抽一個：閃光燈、打假新聞、直播狂點、數字快手、精準蓋章、政見記憶、顏色陷阱、口號接龍、誰比較多、找不同、紅綠燈、點鈔大賽、準時發言、打手背、手背抓硬幣、007 裝子彈。</small></div></div>
+        <div class="cardrow"><span class="ic">🎲</span><div><b>隨機小遊戲</b><small>從 15 種小遊戲裡隨機抽一個：閃光燈、打假新聞、直播狂點、數字快手、精準蓋章、政見記憶、顏色陷阱、口號接龍、誰比較多、找不同、紅綠燈、點鈔大賽、準時發言、打手背、手背抓硬幣。</small></div></div>
       </div>
       <p style="font-size:13px;color:var(--muted)">贏了免付、地主民調 -5；輸了付兩倍、你的民調 -5。</p>`,
       [{ label: '乖乖付錢', value: 'pay' }, { label: '✊ 嗆聲對決', value: 'debate', cls: 'hot' }, { label: '🪢 造勢拔河', value: 'tug', cls: 'hot' }, { label: '🎤 質詢對決', value: 'quiz', cls: 'hot' }, { label: '🎲 隨機小遊戲', value: 'mini', cls: 'hot' }], p);
@@ -5525,7 +5627,7 @@ async function quizDuel(p, o) {
 }
 
 /* ---------- 全民小遊戲：每 2 回合一次，大家同時玩（搶答、打假新聞、閃光燈、狂點輪流換） ---------- */
-const ALL_GAMES = ['quiz', 'mole', 'color', 'react', 'order', 'slap', 'simon', 'tap', 'coin', 'memo', 'odd', 'gun', 'stamp', 'light', 'compare', 'count', 'clock'];
+const ALL_GAMES = ['quiz', 'mole', 'color', 'react', 'order', 'slap', 'simon', 'tap', 'coin', 'memo', 'odd', 'stamp', 'light', 'compare', 'count', 'clock'];
 async function allGame() {
   const kind = ALL_GAMES[(G.round / 2 - 1) % ALL_GAMES.length | 0];
   if (kind === 'quiz') return allQuiz();
@@ -5533,7 +5635,7 @@ async function allGame() {
     mole: { name: '🔨 全民打假新聞', intro: '大家同時打 10 秒，分數最高 +1,500，最低的罰 800！', play: moleGame, ai: () => 8 + rnd(18), better: (a, b) => a > b, fmt: v => `${v} 分` },
     react: { name: '📸 全民閃光燈', intro: '閃光燈一亮就按！最快 +1,500，最慢和犯規的罰 800！', play: reactGame, ai: () => Math.random() < .1 ? 9999 : 260 + rnd(380), better: (a, b) => a < b, fmt: v => v >= 9000 ? '犯規' : `${(v / 1000).toFixed(2)} 秒` },
     tap: { name: '📱 全民直播狂點', intro: '5 秒狂點按讚！最多 +1,500，最少的罰 800！', play: tapGame, ai: () => 18 + rnd(16), better: (a, b) => a > b, fmt: v => `${v} 讚` },
-    ...Object.fromEntries(['order', 'stamp', 'memo', 'color', 'simon', 'compare', 'odd', 'light', 'count', 'clock', 'slap', 'coin', 'gun'].map(k => [k, { ...DUEL[k], name: DUEL[k].name.replace(' ', ' 全民'), intro: DUEL[k].intro.replace('的人贏', '的 +1,500，最差的罰 800！') }])),
+    ...Object.fromEntries(['order', 'stamp', 'memo', 'color', 'simon', 'compare', 'odd', 'light', 'count', 'clock', 'slap', 'coin'].map(k => [k, { ...DUEL[k], name: DUEL[k].name.replace(' ', ' 全民'), intro: DUEL[k].intro.replace('的人贏', '的 +1,500，最差的罰 800！') }])),
   }[kind];
   SFX.fan();
   await caption(meta.name + '！', meta.intro, 2000);
@@ -5752,6 +5854,7 @@ function mgvShow(d) {
   if (pkEl && pkEl.className === 'on' && (+pkEl.dataset.l === s || +pkEl.dataset.r === s)) {
     const el = pkEl.querySelector(+pkEl.dataset.l === s ? '#pkL' : '#pkR');
     if (el && !d.end) el.textContent = `🎮 ${d.sc || 0}${d.st ? '・' + d.st : ''}`;
+    if (!d.end && d.pct >= 0) pkSide(+pkEl.dataset.l === s ? 'L' : 'R', undefined, 100 - d.pct);
     return;
   }
   let box = document.getElementById('mgv');
@@ -5780,6 +5883,132 @@ const mgWrap = (kind, title, run0, lo, hi, show) => p => {
   const go = viaNet(p) ? req(p, kind).then(v => clamp(+v || 0, lo, hi)) : run0(p);
   return go.then(v => { peekDone(p, { pick: show(v) }); return v; });
 };
+
+/* ---------- 🗳️ 開票前最後衝刺：5 款衝票小遊戲（分數都是越高越好） ---------- */
+// 1. 狂蓋選票：6 秒狂點
+const voteTap = mgWrap('vtap', '🗳️ 狂蓋選票', p => new Promise(res => {
+  const body = gameBox(p, '🗳️ 狂蓋選票', '6 秒內狂點「蓋章」，每點一下就是一張票！（空白鍵也可以）');
+  body.innerHTML = `<div class="mg-word" id="mgword" style="font-size:56px">🗳️</div><button class="primary mg-big" id="mgbtn">✍️ 蓋章！</button>`;
+  let n = 0, done = false;
+  const hit = e => { if (e) e.preventDefault(); if (done) return; n++; $('#mgs').textContent = n; $('#mgword').textContent = n % 2 ? '📩' : '🗳️'; beep(500 + (n % 8) * 40, .03, 'square', .02); };
+  const key = e => { if (e.code === 'Space' || e.code === 'Enter') hit(e); };
+  addEventListener('keydown', key); $('#mgbtn').onpointerdown = hit;
+  mgTimer(6000, () => { done = true; removeEventListener('keydown', key); setTimeout(() => { modal.hidden = true; res(n); }, 500); });
+}), 0, 150, v => `${v} 票`);
+// 2. 掃街拜票：選民在街上亂跳，點到 +1；點到反對者 -1
+const voteChase = mgWrap('vchase', '📣 掃街拜票', p => new Promise(res => {
+  const body = gameBox(p, '📣 掃街拜票', '選民在街上亂跑，8 秒內點到越多個越好！點到 🙅 反對者扣 1 票。');
+  body.innerHTML = `<div class="mg-street" id="mgst"></div>`;
+  const st = $('#mgst'); let n = 0, done = false, tm = 0;
+  const spawn = () => {
+    if (done) return; clearTimeout(tm); st.innerHTML = '';
+    const bad = Math.random() < .22, b = document.createElement('button');
+    b.className = 'mg-voter'; b.textContent = bad ? '🙅' : pick(['🙋', '🙋‍♂️', '👵', '👴', '🧑‍🎓', '👩‍🍳']);
+    b.style.left = (4 + Math.random() * 78) + '%'; b.style.top = (4 + Math.random() * 66) + '%';
+    b.onpointerdown = e => { e.preventDefault(); if (done) return; n = Math.max(0, n + (bad ? -1 : 1)); $('#mgs').textContent = n; (bad ? SFX.bad : SFX.coin)(); spawn(); };
+    st.appendChild(b); tm = setTimeout(spawn, bad ? 900 : 1100);
+  };
+  spawn();
+  mgTimer(8000, () => { done = true; clearTimeout(tm); setTimeout(() => { modal.hidden = true; res(n); }, 500); });
+}), 0, 60, v => `拜到 ${v} 票`);
+// 3. 開票精準停：得票率來回跳，停在 50.1%（過半）越近越高分，3 次
+const voteStop = mgWrap('vstop', '🎯 開票精準停', p => new Promise(res => {
+  const body = gameBox(p, '🎯 開票精準停', '得票率一直跳，剛好跳到 <b>50.1%（過半！）</b>時按停。3 次，越接近分數越高。');
+  body.innerHTML = `<div class="mg-clock" id="mgword">0.0%</div><button class="primary mg-big" id="mgbtn">✋ 停！</button><p class="mg-note" id="mgnote">第 1 / 3 次</p>`;
+  let round = 0, total = 0, v = 0, dir = 1, run = true, done = false, speed = 60, last = performance.now(), raf = 0;
+  const finish = () => { if (done) return; done = true; cancelAnimationFrame(raf); clearInterval(iv); removeEventListener('keydown', key); setTimeout(() => { modal.hidden = true; res(total); }, 900); };
+  const step = now => { const dt = Math.min(.05, (now - last) / 1000); last = now; if (run) { v += dir * speed * dt; if (v >= 100) { v = 100; dir = -1; } if (v <= 0) { v = 0; dir = 1; } const w = $('#mgword'); if (w) w.textContent = v.toFixed(1) + '%'; } };
+  const loop = now => { step(now); if (!done) raf = requestAnimationFrame(loop); };
+  raf = requestAnimationFrame(loop);
+  const iv = setInterval(() => step(performance.now()), 50);   // 分頁在背景時 requestAnimationFrame 會停，用計時器補
+  const press = e => {
+    if (e) e.preventDefault(); if (done || !run) return;
+    run = false; const d = Math.abs(v - 50.1), pts = Math.max(0, Math.round(100 - d * 4)); total += pts;
+    $('#mgs').textContent = total; $('#mgnote').textContent = `差 ${d.toFixed(1)}%：+${pts} 分`; (pts >= 80 ? SFX.coin : SFX.bad)();
+    round++; if (round >= 3) return finish();
+    setTimeout(() => { if (done) return; speed += 25; run = true; $('#mgnote').textContent = `第 ${round + 1} / 3 次`; }, 900);
+  };
+  const key = e => { if (e.code === 'Space' || e.code === 'Enter') press(e); };
+  addEventListener('keydown', key); $('#mgbtn').onpointerdown = press;
+  mgTimer(20000, finish);
+}), 0, 300, v => `${v} 分`);
+// 4. 唱票快手：票一張張閃過，記住 ⭕ 有幾張，5 題
+const voteCount = mgWrap('vcount', '🧮 唱票快手', p => new Promise(res => {
+  const body = gameBox(p, '🧮 唱票快手', '選票會一張張閃過，記住<b>你的票 ⭕</b> 有幾張！5 題，答對越多越好。');
+  body.innerHTML = `<div class="mg-word" id="mgword" style="font-size:48px;min-height:64px">🗳️</div><div class="btns" id="mgopts"></div><p class="mg-note" id="mgnote">第 1 / 5 題</p>`;
+  let q = 0, sc = 0, done = false;
+  const finish = () => { if (done) return; done = true; setTimeout(() => { modal.hidden = true; res(sc); }, 600); };
+  const next = () => {
+    if (done) return; if (q >= 5) return finish();
+    q++; $('#mgnote').textContent = `第 ${q} / 5 題`; $('#mgopts').innerHTML = '';
+    const n = 3 + rnd(5), total = n + 4 + rnd(4), other = pick(['❌', '🔺', '⬛']);
+    const arr = shuffle([...Array(n).fill('⭕'), ...Array(total - n).fill(other)]); let k = 0;
+    const show = () => {
+      if (done) return; const w = $('#mgword'); if (!w) return;
+      if (k >= arr.length) {
+        w.textContent = '⭕ 有幾張？';
+        const opts = shuffle([...new Set([n, n + 1, n - 1, n + 2])].filter(x => x > 0)).slice(0, 4);
+        $('#mgopts').innerHTML = opts.map(x => `<button data-v="${x}">${x} 張</button>`).join('');
+        $('#mgopts').querySelectorAll('button').forEach(b => b.onclick = () => { if (done) return; if (+b.dataset.v === n) { sc++; $('#mgs').textContent = sc; SFX.coin(); } else SFX.bad(); next(); });
+        return;
+      }
+      w.textContent = arr[k++]; setTimeout(show, Math.max(200, 360 - q * 30));
+    };
+    show();
+  };
+  next();
+  mgTimer(45000, finish);
+}), 0, 5, v => `答對 ${v} 題`);
+// 5. 搶頭香：廟門一開就按，3 次，越快越高分（太早按 0 分）
+const voteRush = mgWrap('vrush', '🔔 搶頭香', p => new Promise(res => {
+  const body = gameBox(p, '🔔 搶頭香', '廟門打開（🔔 開！）的瞬間按！3 次，越快分數越高；太早按算 0 分。');
+  body.innerHTML = `<div class="mg-word" id="mgword" style="font-size:54px">🚪</div><button class="primary mg-big" id="mgbtn">🙏 搶！</button><p class="mg-note" id="mgnote">第 1 / 3 次</p>`;
+  let round = 0, total = 0, state = 'wait', t0 = 0, tm = 0, done = false;
+  const next = () => {
+    if (round >= 3) { done = true; removeEventListener('keydown', key); setTimeout(() => { modal.hidden = true; res(total); }, 700); return; }
+    round++; state = 'wait'; $('#mgword').textContent = '🚪'; $('#mgnote').textContent = `第 ${round} / 3 次：等廟門打開…`;
+    tm = setTimeout(() => {
+      state = 'go'; t0 = performance.now(); $('#mgword').textContent = '🔔 開！'; SFX.whoosh();
+      tm = setTimeout(() => { if (state === 'go') { state = 'x'; $('#mgnote').textContent = '太慢了！0 分'; setTimeout(next, 700); } }, 1500);
+    }, 1000 + rnd(2200));
+  };
+  const press = e => {
+    if (e) e.preventDefault(); if (done || state === 'x') return; clearTimeout(tm);
+    if (state === 'wait') { state = 'x'; $('#mgword').textContent = '😳'; $('#mgnote').textContent = '太早了！0 分'; SFX.bad(); setTimeout(next, 800); return; }
+    state = 'x'; const ms = performance.now() - t0, pts = Math.max(0, Math.round(1000 - ms)); total += pts;
+    $('#mgs').textContent = total; $('#mgnote').textContent = `${(ms / 1000).toFixed(2)} 秒：+${pts} 分`; SFX.coin(); setTimeout(next, 800);
+  };
+  const key = e => { if (e.code === 'Space' || e.code === 'Enter') press(e); };
+  addEventListener('keydown', key); $('#mgbtn').onpointerdown = press;
+  next();
+}), 0, 3000, v => `${v} 分`);
+const RUSH = {
+  vtap: { name: '🗳️ 狂蓋選票', intro: '6 秒狂點蓋章，票數最多的贏', play: voteTap, ai: () => 26 + rnd(20), fmt: v => `${v} 票` },
+  vchase: { name: '📣 掃街拜票', intro: '8 秒內點最多選民，點到反對者扣分', play: voteChase, ai: () => 6 + rnd(9), fmt: v => `${v} 票` },
+  vstop: { name: '🎯 開票精準停', intro: '得票率跳到 50.1% 時按停，3 次越準越高分', play: voteStop, ai: () => 120 + rnd(150), fmt: v => `${v} 分` },
+  vcount: { name: '🧮 唱票快手', intro: '記住閃過的 ⭕ 有幾張，5 題答對最多的贏', play: voteCount, ai: () => 2 + rnd(4), fmt: v => `答對 ${v} 題` },
+  vrush: { name: '🔔 搶頭香', intro: '廟門一開就搶，3 次反應最快的贏', play: voteRush, ai: () => 1100 + rnd(900), fmt: v => `${v} 分` },
+};
+const RUSH_BONUS = [12000, 6000, 3000];
+// 開票前：大家一起玩一場隨機衝票小遊戲，前三名加票（直接加進現金＝得票）
+async function rushVotes() {
+  const kind = pick(Object.keys(RUSH)), m = RUSH[kind];
+  SFX.fan(); cam.shake = .3;
+  await caption('🗳️ 開票前最後衝刺！', `${m.name}：${m.intro}。第 1 名 +12,000 票、第 2 名 +6,000、第 3 名 +3,000`, 2800);
+  const ps = alive(), res = new Map();
+  const remote = ps.filter(p => viaNet(p)).map(p => m.play(p).then(v => res.set(p, v)));
+  for (const p of ps) {
+    if (p.isAI) res.set(p, m.ai());
+    else if (!viaNet(p)) res.set(p, await m.play(p));
+  }
+  await Promise.all(remote);
+  modal.hidden = true;
+  const rank = shuffle([...ps]).sort((a, b) => res.get(b) - res.get(a));
+  rank.forEach((p, k) => { const b = RUSH_BONUS[k] || 0; if (b) p.cash += b; });
+  say(rank[0], 'win', '最後一哩路，凍蒜！'); updateHUD();
+  log(`🗳️ 衝票${m.name}：${rank.map((p, k) => `${p.char.name} ${m.fmt(res.get(p))}${RUSH_BONUS[k] ? `（+${fmt(RUSH_BONUS[k])}）` : ''}`).join('、')}`);
+  await caption(`🏆 衝票王：${rank[0].char.name}！`, rank.map((p, k) => `${k + 1}. ${p.char.name} ${m.fmt(res.get(p))}${RUSH_BONUS[k] ? ` +${fmt(RUSH_BONUS[k])}` : ''}`).join('　'), 3000);
+}
 
 // 🔢 數字快手：1～9 依序點完，越快越好（點錯 +1 秒）
 const orderGame = mgWrap('order', '🔢 數字快手', p => new Promise(res => {
@@ -6073,27 +6302,44 @@ const DUEL = {
   clock: { name: '⏱️ 準時發言', intro: '心裡數 5 秒再按停，最接近 5 秒的人贏', ai: () => 150 + rnd(1200), fmt: v => `差 ${(v / 1000).toFixed(2)} 秒`, better: (a, b) => a < b, play: clockGame },
   slap: { name: '👋 打手背', intro: '看到拍才縮手、別被假動作騙，閃過多的人贏', ai: () => 2 + rnd(5), fmt: v => `閃過 ${v} 次`, better: (a, b) => a > b, play: slapGame },
   coin: { name: '🪙 手背抓硬幣', intro: '硬幣掉進綠區就抓，抓到多的人贏', ai: () => 1 + rnd(5), fmt: v => `抓到 ${v} 次`, better: (a, b) => a > b, play: coinGame },
-  gun: { name: '🔫 007 裝子彈', intro: '跟電腦打 007，越快打贏的人越高分', ai: () => pick([2, 4, 6, 10, 13, 15, 16]), fmt: v => v > 10 ? `第 ${20 - v} 拍打贏` : v === 10 ? '平手' : `撐 ${v} 拍`, better: (a, b) => a > b, play: gun007 },
 };
 /* ---------- PK 看板：對決時畫面上方左右兩邊各一人，中間 VS ---------- */
 let pkEl = null, pkHide = 0;
+// 這台裝置上有沒有人在玩這場（有的話他看自己的小遊戲；沒有的話就是觀眾，給大看板）
+const localPlays = q => !!q && !q.isAI && (NET.mode === 'client' ? q === myPlayer() : !isRemote(q));
+const pkLive = { L: 0, R: 0 };
+function pkSide(side, sc, pg) {
+  if (!pkEl) return;
+  const t = pkEl.querySelector('#pk' + side), b = pkEl.querySelector('#pk' + side + 'b');
+  if (t && sc !== undefined && sc !== '') t.textContent = sc;
+  if (b && pg >= 0) b.style.width = clamp(pg, 0, 100) + '%';
+}
+// 電腦也「現場打」：4 秒左右慢慢把進度條推滿，大家看得到兩邊在拚
+async function aiLive(D, side) {
+  const v = D.ai(), hi = typeof v === 'number' && D.better(v + 1, v), T = 3200 + rnd(2200), steps = 8;
+  for (let k = 1; k <= steps; k++) { await wait(T / steps); pk({ t: 'live', s: side, pg: k / steps * 100, sc: hi ? `🤖 ${Math.round(v * k / steps)}` : `🤖 奮戰中${'.'.repeat(k % 4)}` }); }
+  return v;
+}
 function pkApply(d) {
   if (!d || !d.t) return;
   if (d.t === 'show') {
     const L = G.players[+d.L], R = G.players[+d.R]; if (!L || !R) return;
     clearTimeout(pkHide);
     if (!pkEl) { pkEl = document.createElement('div'); pkEl.id = 'pk'; document.body.appendChild(pkEl); }
-    const side = (q, k) => `<div class="pks ${k}" style="--c:${q.char.color}">${faceURL[q.char.id] ? `<img src="${faceURL[q.char.id]}" alt="">` : `<span class="g">${q.char.glyph}</span>`}<div><b>${q.char.name}</b><small id="pk${k}">${q.isAI ? '🤖 對戰中…' : '🎮 對戰中…'}</small></div></div>`;
-    pkEl.innerHTML = `<div class="pkt">${esc(String(d.title || '對決'))}</div><div class="pkrow">${side(L, 'L')}<div class="pkvs">VS</div>${side(R, 'R')}</div>`;
-    pkEl.className = 'on'; pkEl.dataset.l = d.L; pkEl.dataset.r = d.R;
+    const side = (q, k) => `<div class="pks ${k}" style="--c:${q.char.color}">${faceURL[q.char.id] ? `<img src="${faceURL[q.char.id]}" alt="">` : `<span class="g">${q.char.glyph}</span>`}<div><b>${q.char.name}</b><small id="pk${k}">${q.isAI ? '🤖 對戰中…' : '🎮 對戰中…'}</small><i class="pkb"><u id="pk${k}b"></u></i></div></div>`;
+    pkEl.innerHTML = `<div class="pkt"><span class="live">🔴 LIVE 觀戰中</span>${esc(String(d.title || '對決'))}</div><div class="pkrow">${side(L, 'L')}<div class="pkvs">VS</div>${side(R, 'R')}</div>`;
+    pkEl.className = 'on' + (!localPlays(L) && !localPlays(R) ? ' big' : ''); pkEl.dataset.l = d.L; pkEl.dataset.r = d.R;
+  } else if (pkEl && d.t === 'live') {
+    pkSide(d.s === 'R' ? 'R' : 'L', String(d.sc || ''), +d.pg);
   } else if (pkEl && d.t === 'side') {
-    const el = pkEl.querySelector('#pk' + (d.s === 'R' ? 'R' : 'L')); if (el) el.textContent = '✅ 完成，等對手…';
+    const el = pkEl.querySelector('#pk' + (d.s === 'R' ? 'R' : 'L')); if (el) el.textContent = '✅ 完成，等對手…'; pkSide(d.s === 'R' ? 'R' : 'L', undefined, 100);
   } else if (pkEl && d.t === 'end') {
     const a = pkEl.querySelector('#pkL'), b = pkEl.querySelector('#pkR');
     if (a) a.textContent = String(d.a || (d.w === 'L' ? '贏了！' : d.w === 'R' ? '輸了' : '平手'));
     if (b) b.textContent = String(d.b || (d.w === 'R' ? '贏了！' : d.w === 'L' ? '輸了' : '平手'));
     pkEl.querySelectorAll('.pks').forEach(e => e.classList.remove('win', 'lose'));
     if (d.w === 'L' || d.w === 'R') { pkEl.querySelector('.pks.' + d.w).classList.add('win'); pkEl.querySelector('.pks.' + (d.w === 'L' ? 'R' : 'L')).classList.add('lose'); }
+    pkSide('L', undefined, 100); pkSide('R', undefined, 100);
     pkHide = setTimeout(() => { if (pkEl) pkEl.className = ''; }, 3500);
   }
 }
@@ -6102,9 +6348,9 @@ async function miniDuel(kind, p, o, note) {
   const D = DUEL[kind];
   pk({ t: 'show', title: D.name, L: p.seat, R: o.seat });
   await caption(`${D.name}！`, `${p.char.name} 對 ${o.char.name}：${D.intro}`, 1400);
-  const run = who => (who.isAI ? Promise.resolve(D.ai()) : D.play(who)).then(v => { pk({ t: 'side', s: who === p ? 'L' : 'R' }); return v; });
+  const run = who => (who.isAI ? aiLive(D, who === p ? 'L' : 'R') : D.play(who)).then(v => { pk({ t: 'side', s: who === p ? 'L' : 'R' }); return v; });
   let a, b;
-  if (viaNet(p) || viaNet(o)) [a, b] = await Promise.all([run(p), run(o)]);
+  if (viaNet(p) || viaNet(o) || p.isAI || o.isAI) [a, b] = await Promise.all([run(p), run(o)]);
   else { a = await run(p); b = await run(o); }
   modal.hidden = true;
   const r = D.better(a, b) ? 'win' : D.better(b, a) ? 'lose' : 'tie';
@@ -6613,6 +6859,7 @@ async function electionNight(E) {
 async function endGame() {
   if (G.instant && G.instant.fled) { /* 落跑已經演過了 */ }
   else if (G.instant && G.players[G.instant.seat]) { SFX.fan(); cam.shake = .6; await caption(`⚡ 立即凍蒜！`, `${G.players[G.instant.seat].char.name} ${G.instant.why}`, 2400); }
+  if (!G.instant && alive().length > 1) await rushVotes();   // 開票前最後衝刺：前三名加票
   G.over = true; waiting = null; refreshActions();
   G.players.forEach(p => { p.mPublic = true; });   // 結算時公開所有人的祕密任務
   // 回合打完才開票；立即凍蒜、落跑、只剩一個人就直接結算
@@ -6870,6 +7117,11 @@ async function handleReq(r) {
       case 'slap': v = await slapGame(me); break;
       case 'coin': v = await coinGame(me); break;
       case 'gun': v = await gun007(me); break;
+      case 'vtap': v = await voteTap(me); break;
+      case 'vchase': v = await voteChase(me); break;
+      case 'vstop': v = await voteStop(me); break;
+      case 'vcount': v = await voteCount(me); break;
+      case 'vrush': v = await voteRush(me); break;
       case 'tug': v = await tugUI(r.cfg || {}); break;
     }
   } catch (e) { v = null; }
@@ -6913,7 +7165,7 @@ function playFx(m) {
       case 'godfx': if (GODS[d]) godFx(d); break;
       case 'lcap': if (Array.isArray(d)) localCaption(esc(String(d[0] || '')), esc(String(d[1] || '')), 500); break;
       case 'dest': if (Array.isArray(d)) showDest(d.slice(0, 2).filter(x => Array.isArray(x) && TILES[+x[0]]).map(x => [+x[0], String(x[1] || '').slice(0, 30)])); break;
-      case 'pk': if (d && typeof d === 'object') pkApply({ t: String(d.t || ''), title: String(d.title || ''), L: +d.L, R: +d.R, s: String(d.s || ''), w: String(d.w || ''), a: String(d.a || '').slice(0, 30), b: String(d.b || '').slice(0, 30) }); break;
+      case 'pk': if (d && typeof d === 'object') pkApply({ t: String(d.t || ''), title: String(d.title || ''), L: +d.L, R: +d.R, s: String(d.s || ''), w: String(d.w || ''), a: String(d.a || '').slice(0, 30), b: String(d.b || '').slice(0, 30), sc: String(d.sc || '').slice(0, 20), pg: +d.pg }); break;
       case 'wheelGo': wheelSpin(clamp(Math.round(+d) || 0, 0, 9)); break;
     }
   } catch (e) { }
