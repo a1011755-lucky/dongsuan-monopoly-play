@@ -684,7 +684,7 @@ body.practicing #modal{z-index:40}
             <li>踩到別人的地，除了嗆聲和拔河，還能發動<b>🎤 質詢對決</b>：兩人答同一題，答對的贏。</li>
             <li><b>🎒 道具更多</b>：開局 3 個，每經過起點再送 1 個。新道具：🌀颱風、🧲吸金、🔄換位、👻隱身、🚑保釋、🎆飛彈雨、🏗️免費加蓋、📈民調灌水。</li>
             <li>地圖上會亂跑的路人：樁腳伯（停在他那格，4 種好康挑一個）、🕵️ 檢調（停在他那格會被突擊搜索：查扣武器，或繳總資產 1 成的交保金／原地停一回合）。</li>
-            <li><b>🙏 神明附身</b>：大財神、土地公是好神，大窮神、大衰神是衰神。<b>停在</b>神明那格就會被附身 5 回合，新的神會把舊的趕走；大財神附身時，窮神、衰神近不了身。</li>
+            <li><b>🙏 神明附身</b>：大財神、土地公是好神，大窮神、大衰神是衰神。<b>停在</b>神明那格就會被附身 2 回合，新的神會把舊的趕走；大財神附身時，窮神、衰神近不了身。</li>
             <li>踩到「疑似賄選」要選：交保、乖乖去約談，或甩鍋給對手。</li>
             <li><b>🎯 祕密任務</b>：每人開局拿到一個別人看不到的任務（例如讓對手破產、背刺盟友兩次、打出 3 連擊）。完成就 +25,000 票，但任務會公開，大家會一起圍剿你；被📰爆料卡提早揭穿，獎勵減半。</li>
             <li><b>🤝 結盟與 🔪 背刺</b>：可以找人結盟，彼此免過路費；隨時能背刺盟友，直接搶走他 25% 現金。被背刺的人會記仇，下次打你第一下就算連擊。</li>
@@ -1101,7 +1101,7 @@ const MISSIONS = {
   killer: { name: '政壇殺手', desc: '用道具、地雷、炸彈打中對手 6 次', prog: p => [p.stats.hits, 6] },
   tycoon: { name: '炒地皮大亨', desc: '蓋出 1 棟摩天樓地標', prog: p => [G.tiles.filter(s => s.owner === p.seat && s.level === 5).length, 1] },
   idol: { name: '民調天王', desc: '民調衝到 80% 以上', prog: p => [Math.round(p.poll), 80] },
-  snake: { name: '背骨仔', desc: '背刺盟友 2 次（可以是同一個人）', prog: p => [p.stats.stabs, 2] },
+  snake: { name: '背骨仔', desc: '先結盟，再背刺盟友 1 次', prog: p => [p.stats.stabs, 1] },
   lord: { name: '大地主', desc: '同時擁有 5 塊地', prog: p => [G.tiles.filter(s => s.owner === p.seat).length, 5] },
   bomber: { name: '爆破專家', desc: '把對手送進醫院、約談所 3 次', prog: p => [p.stats.sends, 3] },
   rich: { name: '黑金帝國', desc: '手上現金達到 70,000', prog: p => [p.cash, 70000] },
@@ -2375,18 +2375,18 @@ anim.push(t => {
   });
 });
 // 神明：停在那格就附身 GOD_TURNS 回合（舊的會被趕走）；n.host＝附身在哪個座位（-1＝在地圖上）
-const GOD_TURNS = 5;
+const GOD_TURNS = 2;
 const GODS = {
   cai: { name: '大財神', icon: '💰', good: true, fx: ['💰', '🧧', '✨', '🪙'], desc: '每回合送紅包 500～1,500；踩到別人的地免過路費，還幫你把自己一塊地免費加蓋；窮神、衰神近不了身；離開時送一個道具' },
   land: { name: '土地公', icon: '🧓', good: true, fx: ['🏯', '✨', '🧧', '🌟'], desc: '回到自己的地免費加蓋一層；強制收購打 7 折，輸了還有一半機會翻盤；經過起點政治獻金加倍' },
-  poor: { name: '大窮神', icon: '🥣', good: false, fx: ['💸', '🪙', '💸', '🥣'], desc: '每走一步掉 100～300 元在路上（別人經過可以撿）；買地蓋房貴 1.5 倍、過路費多付 3 成；每 2 回合弄丟一個道具' },
+  poor: { name: '大窮神', icon: '🥣', good: false, fx: ['💸', '🪙', '💸', '🥣'], desc: '每走一步掉 100～300 元在路上（別人經過可以撿）；買地蓋房貴 1.5 倍、過路費多付 3 成；附身期間會弄丟一個道具' },
   shuai: { name: '大衰神', icon: '🌧️', good: false, fx: ['🌧️', '⚡', '💧', '☁️'], desc: '不能用任何道具；轉到命運一定是最慘的那張；經過別人埋的地雷會被吸過去踩中' },
 };
 // Q 版神明臉：好神瞇眼大笑、衰神垂眼苦瓜臉
 const GOD_LINES = {
   cai: ['🧧 每回合紅包 500～1,500', '🆓 踩到別人的地免過路費', '🏗️ 還幫你免費加蓋一塊地', '🛡️ 窮神、衰神近不了身', '🎁 離開時送一個道具'],
   land: ['🏗️ 停在自己的地免費加蓋', '🏴 強制收購打 7 折', '🎲 收購輸了一半機會翻盤', '💰 經過起點獻金加倍'],
-  poor: ['💸 每走一步掉 100～300 元', '📈 買地、蓋房貴 1.5 倍', '💸 過路費多付 3 成', '🎒 每 2 回合弄丟一個道具'],
+  poor: ['💸 每走一步掉 100～300 元', '📈 買地、蓋房貴 1.5 倍', '💸 過路費多付 3 成', '🎒 附身時會弄丟一個道具'],
   shuai: ['🚫 道具全部用不出來', '🎡 命運一定抽到最慘的', '💥 別人的地雷會把你吸過去'],
 };
 // 右側神明面板：誰被附身、還剩幾回合、效果是什麼
@@ -4297,7 +4297,7 @@ async function allyFlow(p) {
     [...opts.map(x => ({ label: x.char.name, value: x, cls: 'primary' })), { label: '算了', value: null }], p);
   if (!q) return false;
   say(p, 'roll', `${q.char.name}，我們聯手吧！`);
-  const yes = q.isAI ? (score(q) < score(p) * 1.15 || Math.random() < .35)
+  const yes = q.isAI ? (score(q) < score(p) * 1.15 || Math.random() < (p.mission === 'snake' ? .75 : .35))
     : await ask(`<h2>🤝 ${p.char.name} 想跟你結盟</h2><p>結盟後彼此免過路費。不過……他隨時可能背刺你，你也可以背刺他。要答應嗎？</p>`,
       [{ label: '好，聯手！', value: true, cls: 'primary' }, { label: '不要，我信不過你', value: false }], q);
   if (!yes) { say(q, 'lose', '我才不要跟你同一國！'); await caption('結盟被拒絕', `${q.char.name} 不買帳`, 1200); return true; }
@@ -4791,7 +4791,7 @@ async function aiPreRoll(p) {
     const q = pick(others(p).filter(x => x.ally < 0));
     if (q) {
       say(p, 'roll', `${q.char.name}，我們聯手吧！`);
-      const yes = q.isAI ? (score(q) < score(p) * 1.15 || Math.random() < .35)
+      const yes = q.isAI ? (score(q) < score(p) * 1.15 || Math.random() < (p.mission === 'snake' ? .75 : .35))
         : await ask(`<h2>🤝 ${p.char.name} 想跟你結盟</h2><p>結盟後彼此免過路費。不過……他隨時可能背刺你，你也可以背刺他。要答應嗎？</p>`,
           [{ label: '好，聯手！', value: true, cls: 'primary' }, { label: '不要，我信不過你', value: false }], q);
       if (yes) { p.ally = q.seat; q.ally = p.seat; say(q, 'win', '好！一起凍蒜！'); SFX.fan(); updateHUD(); await caption('🤝 結盟成立！', `${p.char.name} × ${q.char.name}：彼此免過路費`, 1400); }
@@ -5237,18 +5237,17 @@ async function payRent(p, i) {
         <div class="cardrow"><span class="ic">🎤</span><div><b>質詢對決</b><small>兩人答同一題（國學、政治、地理、數學），答對又答得快的人贏。</small></div></div>
         <div class="cardrow"><span class="ic">🎲</span><div><b>隨機小遊戲</b><small>從 15 種小遊戲裡隨機抽一個：閃光燈、打假新聞、直播狂點、數字快手、精準蓋章、政見記憶、顏色陷阱、口號接龍、誰比較多、找不同、紅綠燈、點鈔大賽、準時發言、打手背、手背抓硬幣。</small></div></div>
       </div>
-      <p style="font-size:13px;color:var(--muted)">贏了免付、地主民調 -5；輸了付兩倍、你的民調 -5。</p>`,
+      <p style="font-size:13px;color:var(--muted)">贏了過路費<b>打 5 折</b>；輸了<b>付兩倍</b>、地主民調 +5、你的民調 -5；平手照常付。</p>`,
       [{ label: '乖乖付錢', value: 'pay' }, { label: '✊ 嗆聲對決', value: 'debate', cls: 'hot' }, { label: '🪢 造勢拔河', value: 'tug', cls: 'hot' }, { label: '🎤 質詢對決', value: 'quiz', cls: 'hot' }, { label: '🎲 隨機小遊戲', value: 'mini', cls: 'hot' }], p);
   if (choice && choice !== 'pay') {
     if (choice === 'debate' || choice === 'quiz') pk({ t: 'show', title: choice === 'debate' ? '✊ 嗆聲對決' : '🎤 質詢對決', L: p.seat, R: o.seat });
     const r = choice === 'debate' ? await debate(p, o) : choice === 'tug' ? await tugWar(p, o) : choice === 'mini' ? await miniDuel(pick(Object.keys(DUEL)), p, o) : DUEL[choice] ? await miniDuel(choice, p, o) : await quizDuel(p, o);
     if (choice === 'debate' || choice === 'quiz') pk({ t: 'end', w: r === 'win' ? 'L' : r === 'lose' ? 'R' : 'tie' });
-    if (r === 'win') {
-      addPoll(p, 5); addPoll(o, -5);
+    if (r === 'win') {   // 挑戰成功：過路費打 5 折（地主還是有收到錢）
+      amt = Math.round(amt * .5 / 10) * 10; addPoll(p, 3);
       if (p.sk === 'kc' && o.items.length) { const it = o.items.splice(rnd(o.items.length), 1)[0]; giveItem(p, it); await caption('我手上有資料！', `沒收 ${o.char.name} 的一個道具`, 1200); }
-      updateHUD(); lookBack(); return;
     }
-    if (r === 'lose') { amt *= 2; addPoll(p, -5); }
+    if (r === 'lose') { amt *= 2; addPoll(p, -5); addPoll(o, 5); }   // 挑戰失敗：付兩倍，地主民調 +5
   }
   if (amt >= 3000) log(`💸 <b>${p.char.name}</b> 付給 <b>${o.char.name}</b> 過路費 ${fmt(amt)}`);
   say(p, 'pay'); SFX.bad();
@@ -5270,7 +5269,7 @@ async function debate(p, o) {
   if (r === 'tie' && p.sk === 'gz') { r = 'win'; note = '平手！館長硬起來，算他贏。'; }
   else if (r === 'tie' && o.sk === 'gz') { r = 'lose'; note = '平手！地主館長硬起來，算地主贏。'; }
   const head = r === 'win' ? `${p.char.name} 嗆贏了！` : r === 'lose' ? `${p.char.name} 被嗆爆…` : '平手，照常付錢';
-  const sub = r === 'win' ? '過路費免付' : r === 'lose' ? '過路費變兩倍' : '';
+  const sub = r === 'win' ? '過路費打 5 折' : r === 'lose' ? '過路費變兩倍，地主民調 +5' : '';
   if (r === 'win') { say(p, 'win'); SFX.fan(); setTimeout(() => say(o, 'lose'), 800 * speed()); }
   if (r === 'lose') { say(o, 'win'); SFX.bad(); setTimeout(() => say(p, 'lose'), 800 * speed()); }
   const vs = `<div class="vs"><div><div class="mv">${a.ic}</div>${p.char.name}<br>${a.n}</div><div class="vsx">對決</div><div><div class="mv">${b.ic}</div>${o.char.name}<br>${b.n}</div></div>`;
@@ -5869,7 +5868,7 @@ function tugWar(p, o) {
       if (r === 'lose') { say(o, 'win'); SFX.bad(); setTimeout(() => say(p, 'lose'), 700); }
       setTimeout(async () => {
         modal.hidden = true;
-        await ask(`<h2>${r === 'win' ? `${p.char.name} 拉贏了！` : r === 'lose' ? `${o.char.name} 拉贏了！` : '平手，照常付錢'}</h2><p>${r === 'win' ? '過路費免付。' : r === 'lose' ? '過路費變兩倍。' : ''}</p>`, [{ label: '繼續', cls: 'primary' }]);
+        await ask(`<h2>${r === 'win' ? `${p.char.name} 拉贏了！` : r === 'lose' ? `${o.char.name} 拉贏了！` : '平手，照常付錢'}</h2><p>${r === 'win' ? '過路費打 5 折。' : r === 'lose' ? '過路費變兩倍。' : ''}</p>`, [{ label: '繼續', cls: 'primary' }]);
         res(r);
       }, 700);
     }
@@ -6546,7 +6545,7 @@ async function miniDuel(kind, p, o, note) {
   log(`${D.name}：${p.char.name} ${D.fmt(a)} 對 ${o.char.name} ${D.fmt(b)}`);
   if (r === 'win') { say(p, 'win'); SFX.fan(); setTimeout(() => say(o, 'lose'), 700); }
   if (r === 'lose') { say(o, 'win'); SFX.bad(); setTimeout(() => say(p, 'lose'), 700); }
-  await caption(r === 'win' ? `${p.char.name} 贏了！` : r === 'lose' ? `${o.char.name} 贏了！` : '平手，照常付錢', `${p.char.name} ${D.fmt(a)}：${o.char.name} ${D.fmt(b)}${note ? note[r] : r === 'win' ? '，過路費免付' : r === 'lose' ? '，過路費變兩倍' : ''}`, 2000);
+  await caption(r === 'win' ? `${p.char.name} 贏了！` : r === 'lose' ? `${o.char.name} 贏了！` : '平手，照常付錢', `${p.char.name} ${D.fmt(a)}：${o.char.name} ${D.fmt(b)}${note ? note[r] : r === 'win' ? '，過路費打 5 折' : r === 'lose' ? '，過路費變兩倍' : ''}`, 2000);
   return r;
 }
 
@@ -7200,7 +7199,7 @@ async function onlineTug(p, o) {
   const a = L * cfg.strL, b = R * cfg.strR, r = a > b ? 'win' : a < b ? 'lose' : 'tie';
   if (r === 'win') { say(p, 'win'); SFX.fan(); setTimeout(() => say(o, 'lose'), 700); }
   if (r === 'lose') { say(o, 'win'); SFX.bad(); setTimeout(() => say(p, 'lose'), 700); }
-  await caption(r === 'win' ? `${p.char.name} 拉贏了！` : r === 'lose' ? `${o.char.name} 拉贏了！` : '拔河平手', `${Math.round(a)} 比 ${Math.round(b)}${r === 'win' ? '，過路費免付' : r === 'lose' ? '，過路費變兩倍' : ''}`, 1800);
+  await caption(r === 'win' ? `${p.char.name} 拉贏了！` : r === 'lose' ? `${o.char.name} 拉贏了！` : '拔河平手', `${Math.round(a)} 比 ${Math.round(b)}${r === 'win' ? '，過路費打 5 折' : r === 'lose' ? '，過路費變兩倍' : ''}`, 1800);
   return r;
 }
 // 拔河畫面（房主本機和朋友手機共用）：自己點的次數放在 presence，畫面加總所有人的
