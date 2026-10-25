@@ -242,6 +242,14 @@ button{touch-action:manipulation}
 .pk-o span.ok{background:#b9f6ca}.pk-o span.bad{background:#ffcdd2;text-decoration:line-through}.pk-o span.pick{background:var(--sun)}
 .pk-r{font-size:12px;font-weight:900;margin-top:4px;color:var(--ink)}
 @keyframes pkin{from{transform:translateY(-8px);opacity:0}to{transform:none;opacity:1}}
+#godfx{position:absolute;inset:0;pointer-events:none;z-index:9;opacity:0;overflow:hidden}
+#godfx.good{background:radial-gradient(circle at 50% 40%,rgba(255,232,130,.8),rgba(255,190,40,.28) 38%,rgba(255,190,40,0) 70%)}
+#godfx.bad{background:radial-gradient(circle at 50% 40%,rgba(70,80,110,.55),rgba(25,28,45,.5) 55%,rgba(10,12,22,.65))}
+#godfx.on{animation:godflash 1.8s ease-out}
+@keyframes godflash{0%{opacity:0}12%{opacity:1}70%{opacity:.6}100%{opacity:0}}
+#godfx .gp{position:absolute;left:50%;top:40%;font-size:clamp(26px,4vw,40px);line-height:1;animation:godp 1.5s cubic-bezier(.15,.7,.3,1) forwards;filter:drop-shadow(0 3px 0 rgba(29,22,51,.35))}
+@keyframes godp{0%{transform:translate(-50%,-50%) scale(.3);opacity:1}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.25) rotate(var(--r));opacity:0}}
+@media (prefers-reduced-motion:reduce){#godfx .gp{display:none}}
 #caption{position:absolute;left:0;right:0;top:28%;text-align:center;pointer-events:none;z-index:8;padding:0 16px}
 #caption .big{display:inline-block;font-family:var(--display);font-weight:900;font-size:clamp(30px,6vw,58px);color:var(--sun);-webkit-text-stroke:9px var(--ink);paint-order:stroke fill;line-height:1.2;text-wrap:balance}
 #caption .sub{display:block;margin-top:6px;font-family:var(--display);font-weight:900;font-size:clamp(16px,2.6vw,22px);color:#fff;-webkit-text-stroke:6px var(--ink);paint-order:stroke fill}
@@ -591,7 +599,8 @@ button{touch-action:manipulation}
             <li>小遊戲格：📱直播抖內（狂點按讚）、🎤質詢台（國學／政治／地理／數學 3 題）、📚常識擂台（常識、國學、急轉彎 5 題）、🏁剛好停在凍蒜廣場（拜票握手）。<b>每 3 回合全民搶答</b>，所有人一起答。</li>
             <li>踩到別人的地，除了嗆聲和拔河，還能發動<b>🎤 質詢對決</b>：兩人答同一題，答對的贏。</li>
             <li><b>🎒 道具更多</b>：開局 3 個，每經過起點再送 1 個。新道具：🌀颱風、🧲吸金、🔄換位、👻隱身、🚑保釋、🎆飛彈雨、🏗️免費加蓋、📈民調灌水。</li>
-            <li>地圖上會亂跑的路人角色：雞鴨販（賣你凍蒜雞）、檢調（搜索沒收道具）、樁腳伯（發紅包）。</li>
+            <li>地圖上會亂跑的路人：樁腳伯（停在他那格，4 種好康挑一個）。</li>
+            <li><b>🙏 神明附身</b>：大財神、土地公是好神，大窮神、大衰神是衰神。走路<b>經過</b>神明就會被附身 5 回合，新的神會把舊的趕走；大財神附身時，窮神、衰神近不了身。</li>
             <li>踩到「疑似賄選」要選：交保、乖乖去約談，或甩鍋給對手。</li>
             <li><b>🎯 祕密任務</b>：每人開局拿到一個別人看不到的任務（例如讓對手破產、背刺盟友兩次、打出 3 連擊）。完成就 +25,000 票，但任務會公開，大家會一起圍剿你；被📰爆料卡提早揭穿，獎勵減半。</li>
             <li><b>🤝 結盟與 🔪 背刺</b>：可以找人結盟，彼此免過路費；隨時能背刺盟友，直接搶走他 25% 現金。被背刺的人會記仇，下次打你第一下就算連擊。</li>
@@ -744,7 +753,7 @@ function speak(ch, line, prio = 1, vid = '') {
 }
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
-const GAME_VER = '20261025f';   // 改角色名單、連線格式時要改這個
+const GAME_VER = '20261025g';   // 改角色名單、連線格式時要改這個
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -2236,6 +2245,123 @@ anim.push(t => {
     if (q.dog) q.dog.position.y = Math.abs(Math.sin(t * 12)) * .08;
   });
 });
+// 神明：經過就附身 GOD_TURNS 回合（舊的會被趕走）；n.host＝附身在哪個座位（-1＝在地圖上）
+const GOD_TURNS = 5;
+const GODS = {
+  cai: { name: '大財神', icon: '💰', good: true, fx: ['💰', '🧧', '✨', '🪙'], desc: '每回合送紅包 500～1,500；踩到別人的地免過路費，還幫你把自己一塊地免費加蓋；窮神、衰神近不了身；離開時送一個道具' },
+  land: { name: '土地公', icon: '🧓', good: true, fx: ['🏯', '✨', '🧧', '🌟'], desc: '回到自己的地免費加蓋一層；強制收購打 7 折，輸了還有一半機會翻盤；經過起點政治獻金加倍' },
+  poor: { name: '大窮神', icon: '🥣', good: false, fx: ['💸', '🪙', '💸', '🥣'], desc: '每走一步掉 100～300 元在路上（別人經過可以撿）；買地蓋房貴 1.5 倍、過路費多付 3 成；每 2 回合弄丟一個道具' },
+  shuai: { name: '大衰神', icon: '🌧️', good: false, fx: ['🌧️', '⚡', '💧', '☁️'], desc: '不能用任何道具；轉到命運一定是最慘的那張；經過別人埋的地雷會被吸過去踩中' },
+};
+// Q 版神明臉：好神瞇眼大笑、衰神垂眼苦瓜臉
+function godFaceTex(happy, skin) {
+  return canvasTex(256, 192, (x, w, h) => {
+    x.lineCap = 'round'; x.lineJoin = 'round';
+    x.fillStyle = 'rgba(255,110,130,.45)'; [58, 198].forEach(cx => { x.beginPath(); x.ellipse(cx, 118, 26, 14, 0, 0, 7); x.fill(); });
+    x.strokeStyle = '#2b1d16'; x.lineWidth = 11;
+    if (happy) {
+      [80, 176].forEach(cx => { x.beginPath(); x.arc(cx, 92, 22, Math.PI * 1.1, Math.PI * 1.9); x.stroke(); });
+      x.fillStyle = '#b3203f'; x.beginPath(); x.moveTo(84, 128); x.quadraticCurveTo(128, 196, 172, 128); x.closePath(); x.fill(); x.stroke();
+      x.fillStyle = '#ff8fa3'; x.beginPath(); x.ellipse(128, 160, 20, 9, 0, 0, 7); x.fill();
+    } else {
+      x.lineWidth = 12; x.beginPath(); x.moveTo(52, 52); x.lineTo(102, 70); x.moveTo(204, 52); x.lineTo(154, 70); x.stroke();
+      x.lineWidth = 10; [80, 176].forEach(cx => { x.beginPath(); x.arc(cx, 84, 18, Math.PI * .15, Math.PI * .85); x.stroke(); });
+      x.strokeStyle = 'rgba(40,40,80,.35)'; x.lineWidth = 7; [80, 176].forEach(cx => { x.beginPath(); x.arc(cx, 104, 16, Math.PI * .2, Math.PI * .8); x.stroke(); });
+      x.strokeStyle = '#2b1d16'; x.lineWidth = 10; x.beginPath(); x.moveTo(96, 156); x.quadraticCurveTo(128, 128, 160, 156); x.stroke();
+    }
+  });
+}
+function godLabel(text, bg) {
+  const tex = canvasTex(256, 72, (x, w, h) => {
+    x.fillStyle = bg; x.strokeStyle = '#1d1633'; x.lineWidth = 8;
+    x.beginPath(); x.roundRect ? x.roundRect(6, 6, w - 12, h - 12, 30) : x.rect(6, 6, w - 12, h - 12); x.fill(); x.stroke();
+    x.fillStyle = '#ffffff'; x.font = `900 40px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineWidth = 7; x.strokeText(text, w / 2, h / 2 + 2); x.fillText(text, w / 2, h / 2 + 2);
+  });
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false })); sp.scale.set(1.5, .42, 1); return sp;
+}
+function makeGod(k) {
+  const g = new THREE.Group(), happy = GODS[k].good;
+  const skin = k === 'shuai' ? '#8fa3c7' : '#ffd9b5';
+  const robe = { cai: '#d32f2f', land: '#c9a04a', poor: '#7d7f86', shuai: '#3f4656' }[k];
+  cyl(.36, .66, 1.25, robe, 0, .62, 0, g, 18);
+  [-1, 1].forEach(sd => { const a = cyl(.13, .16, .7, robe, sd * .5, .95, .1, g, 10); a.rotation.z = sd * .6; a.rotation.x = -.5; ball(.13, skin, sd * .72, .72, .32, g); });
+  const head = new THREE.Group(); head.position.set(0, 1.62, 0); g.add(head);
+  ball(.52, skin, 0, 0, 0, head);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(.78, .58), new THREE.MeshBasicMaterial({ map: godFaceTex(happy, skin), transparent: true, depthWrite: false })); face.position.set(0, -.02, .5); head.add(face);
+  ball(.08, '#ff9b8a', 0, -.04, .52, head);   // 紅鼻子
+  if (k === 'cai') {
+    cyl(.58, .58, .12, '#ffca28', 0, .82, 0, g, 18);
+    const sash = box(.16, 1.1, .05, '#ffd23f', 0, .78, .5, g); sash.rotation.z = .55; const st = textPlane('凍蒜', .5, .2, '#c62828', null, 120); st.position.set(.02, .78, .54); st.rotation.z = .55 - Math.PI / 2; g.add(st);
+    const beard = cone(.34, .7, '#2b1d16', 0, -.42, .3, head, 10); beard.rotation.x = Math.PI + .25;
+    cyl(.44, .5, .42, '#c62828', 0, .48, -.02, head, 18); cyl(.52, .52, .1, '#ffca28', 0, .32, 0, head, 18); ball(.09, '#2e7d32', 0, .36, .5, head);
+    [-1, 1].forEach(sd => { box(.55, .14, .1, '#c62828', sd * .7, .55, -.1, head); ball(.11, '#ffca28', sd * .98, .55, -.1, head); });
+    const ingot = new THREE.Mesh(new THREE.SphereGeometry(.24, 16, 10), glow('#ffd23f', .55)); ingot.scale.set(1.5, .7, 1); ingot.position.set(.55, 1.05, .5); g.add(ingot);
+    const ring = mesh(new THREE.TorusGeometry(.9, .05, 8, 32), glow('#ffd23f', 1), 0, .05, 0, g); ring.rotation.x = Math.PI / 2;
+    const sp = [0, 1, 2, 3].map(j => mesh(new THREE.OctahedronGeometry(.09), glow('#fff59d', 1.4), 0, 0, 0, g));
+    anim.push(t => { sp.forEach((o, j) => { const a = t * 1.6 + j * Math.PI / 2; o.position.set(Math.cos(a) * 1, 1.2 + Math.sin(t * 3 + j) * .4, Math.sin(a) * 1); o.rotation.y = t * 4; }); ingot.rotation.y = t; });
+  } else if (k === 'land') {
+    cyl(.6, .6, .1, '#b71c1c', 0, .9, 0, g, 18);
+    const beard = cone(.38, 1, '#ffffff', 0, -.55, .28, head, 12); beard.rotation.x = Math.PI + .2;
+    [-1, 1].forEach(sd => { const b = box(.22, .06, .05, '#ffffff', sd * .2, .2, .5, head); b.rotation.z = -sd * .25; });
+    cyl(.42, .48, .32, '#c62828', 0, .44, 0, head, 18); cyl(.49, .49, .08, '#ffca28', 0, .3, 0, head, 18); ball(.08, '#2e7d32', 0, .44, .44, head);
+    cyl(.05, .07, 2.3, '#6d4c41', .78, 1.05, .25, g, 8); const curl = mesh(new THREE.TorusGeometry(.16, .06, 8, 16, Math.PI * 1.6), M('#6d4c41'), .78, 2.28, .25, g); curl.rotation.y = Math.PI / 2;
+    const halo = mesh(new THREE.TorusGeometry(.78, .05, 8, 36), glow('#ffe082', 1.1), 0, 1.65, -.3, g);
+    const ring = mesh(new THREE.TorusGeometry(.9, .05, 8, 32), glow('#ffe082', .8), 0, .05, 0, g); ring.rotation.x = Math.PI / 2;
+    anim.push(t => { halo.scale.setScalar(1 + Math.sin(t * 2) * .06); halo.material.emissiveIntensity = .8 + Math.sin(t * 3) * .4; });
+  } else if (k === 'poor') {
+    [['#a1887f', -.25, .6], ['#5d6d7e', .3, .35], ['#8d6e63', .1, 1]].forEach(([c, x, y]) => box(.26, .22, .05, c, x, y, .5 - (y - .3) * .2, g));
+    for (let j = 0; j < 9; j++) { const a = j / 9 * Math.PI * 2; const h = cone(.13, .45, '#9e9e9e', Math.cos(a) * .36, .3 + Math.random() * .1, Math.sin(a) * .36 - .05, head, 5); h.rotation.set(Math.sin(a) * .9, 0, -Math.cos(a) * .9); }
+    const bowl = new THREE.Mesh(new THREE.SphereGeometry(.24, 14, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), M('#8d6e63')); bowl.position.set(-.6, .95, .45); g.add(bowl);
+    const bills = [0, 1, 2].map(j => { const b = new THREE.Mesh(new THREE.PlaneGeometry(.38, .2), new THREE.MeshStandardMaterial({ color: '#81c784', side: THREE.DoubleSide, transparent: true })); g.add(b); return b; });
+    anim.push(t => bills.forEach((b, j) => { const u = (t * .45 + j / 3) % 1; b.position.set(Math.cos(j * 2.1) * (.5 + u * 1.2), 1 + u * 1.8, Math.sin(j * 2.1) * (.5 + u * 1.2)); b.rotation.set(t * 3 + j, t * 2, 0); b.material.opacity = 1 - u; }));
+  } else {
+    head.rotation.x = .28; head.position.z = .08;
+    cyl(.06, .06, .5, '#3f4656', 0, .26, 0, head, 8);
+    const cloud = new THREE.Group(); cloud.position.set(0, 2.85, 0); g.add(cloud);
+    [[0, 0, .42], [-.42, -.05, .32], [.42, -.05, .32], [.18, .2, .3], [-.2, .18, .28]].forEach(([x, y, r]) => { const c = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), FM('#5d6472')); c.position.set(x, y, 0); cloud.add(c); });
+    const bolt = new THREE.Group(); bolt.position.set(.1, -.45, 0); cloud.add(bolt);
+    const bm = glow('#ffd23f', 1.4); [[0, 0, .5], [-.08, -.28, -.5], [0, -.52, .5]].forEach(([x, y, r]) => { const b = box(.08, .32, .05, bm, x, y, 0, bolt); b.rotation.z = r; });
+    const drops = [0, 1, 2, 3, 4].map(j => box(.03, .14, .03, '#90caf9', (j - 2) * .2, 0, (j % 2) * .15, cloud));
+    anim.push(t => { bolt.visible = (t * 1.3) % 1 < .18; drops.forEach((d, j) => { d.position.y = -.3 - ((t * 1.6 + j * .23) % 1) * 1.1; }); cloud.position.x = Math.sin(t * .8) * .08; });
+  }
+  const lb = godLabel(GODS[k].name, happy ? (k === 'cai' ? '#e53935' : '#c58b1c') : (k === 'poor' ? '#6d6f78' : '#3f4f7a')); lb.position.y = k === 'shuai' ? 3.55 : 2.85; g.add(lb);
+  g.traverse(o => { if (o.isMesh && !o.material.transparent) o.castShadow = true; });
+  const off = Math.random() * 6;
+  anim.push(t => { g.position.y = (g.userData.base || .2) + Math.abs(Math.sin(t * 2 + off)) * .12; });   // 輕輕上下飄
+  return g;
+}
+// 神明降臨／附身：畫面閃光＋表情符號往外噴
+function godFx(k) {
+  const D = GODS[k]; if (!D) return;
+  let el = $('#godfx'); if (!el) { el = document.createElement('div'); el.id = 'godfx'; $('#app').appendChild(el); }
+  el.className = D.good ? 'good' : 'bad'; el.innerHTML = '';
+  void el.offsetWidth; el.classList.add('on');
+  for (let j = 0; j < 18; j++) {
+    const sp = document.createElement('span'); sp.className = 'gp'; sp.textContent = D.fx[j % D.fx.length];
+    const a = Math.random() * Math.PI * 2, r = 160 + Math.random() * 260;
+    sp.style.setProperty('--dx', Math.cos(a) * r + 'px'); sp.style.setProperty('--dy', Math.sin(a) * r * (D.good ? .8 : .6) + (D.good ? 0 : 120) + 'px'); sp.style.setProperty('--r', (Math.random() * 120 - 60) + 'deg');
+    sp.style.animationDelay = (Math.random() * .25) + 's'; el.appendChild(sp);
+  }
+  clearTimeout(el._t); el._t = setTimeout(() => { el.classList.remove('on'); el.innerHTML = ''; }, 2000);
+}
+// 附身中的神明跟在玩家頭上飄（縮小、慢慢轉）
+anim.push(t => G.npcs && G.npcs.forEach(n => {
+  if (!n.god) return;
+  const h = n.host >= 0 && G.players[n.host] && G.players[n.host].mesh;
+  if (h) { n.mesh.userData.base = h.position.y + 3.3; n.mesh.position.x = h.position.x; n.mesh.position.z = h.position.z; n.mesh.scale.setScalar(.45); n.mesh.rotation.y = t * 1.2; n.mesh.visible = !G.players[n.host].out; }
+  else { n.mesh.userData.base = .2; if (n.mesh.scale.x !== 1) n.mesh.scale.setScalar(1); n.mesh.visible = true; }
+}));
+// 窮神掉在路上的錢：一疊金幣，別人經過可以撿
+const coinMeshes = {};
+function drawCoins() {
+  Object.keys(coinMeshes).forEach(i => { if (!(G.coins && G.coins[i] > 0)) { scene.remove(coinMeshes[i]); disposeTree(coinMeshes[i]); delete coinMeshes[i]; } });
+  Object.keys(G.coins || {}).forEach(i => {
+    if (coinMeshes[i] || !(G.coins[i] > 0)) return;
+    const g = new THREE.Group(), [x, z] = tilePos(+i), [ix, iz] = tileIn(+i); g.position.set(x - ix * 1.1 + iz * .9, .22, z - iz * 1.1 - ix * .9);
+    for (let j = 0; j < 4; j++) { const c = cyl(.22, .22, .07, glow('#ffca28', .35), (j % 2) * .05, .04 + j * .075, 0, g, 16); c.rotation.y = j; }
+    scene.add(g); coinMeshes[i] = g;
+  });
+}
 function npcSpot(i) { const [x, z] = tilePos(i), [ix, iz] = tileIn(i); return [x + ix * 1.1, z + iz * 1.1]; }
 
 /* ---------- 骰子 ---------- */
@@ -3071,6 +3197,7 @@ function statusText(p) {
   if (p.items.length && canSeeMission(p)) bits.push(p.items.map(id => ITEMS[id].icon).join(''));   // 道具保密：只有自己看得到
   if (p.skip) bits.push(`<b>${p.where === 'hosp' ? '住院' : p.where === 'jail' ? '約談' : '停'} ${p.skip}</b>`);
   if (p.turtle) bits.push(`<b>🐢${p.turtle}</b>`);
+  if (p.god && GODS[p.god]) bits.push(`<b style="color:${GODS[p.god].good ? '#c58b1c' : '#3f4f7a'}">${GODS[p.god].icon}${GODS[p.god].name.replace('大', '')} ${p.godLeft}</b>`);
   if (p.ghost > 0) bits.push(`<b>👻${p.ghost}</b>`);
   if (p.autoOn) bits.push('<b>🤖託管</b>');
   if (G.bomb && G.bomb.holder === p.seat) bits.push(`<b>⏰${G.bomb.t}步</b>`);
@@ -3316,7 +3443,7 @@ function startGame(cfg) {
     const ms = shuffle(MISSION_KEYS); players.forEach((p, k) => { p.mission = ms[k % ms.length]; });
     const pw = shuffle(Object.keys(POWERS)); players.forEach((p, k) => { p.power = pw[k % pw.length]; });
   }
-  G = { tiles: blankTiles(), players, turn: 0, round: 1, maxRounds: cfg.rounds, mods: [], traps: {}, npcs: [], bomb: null, scars: {}, fast: !h, t0: cfg.t0 || Date.now() };
+  G = { tiles: blankTiles(), players, turn: 0, round: 1, maxRounds: cfg.rounds, mods: [], traps: {}, npcs: [], coins: {}, bomb: null, scars: {}, fast: !h, t0: cfg.t0 || Date.now() };
   NET.started = true;
   showChatbar();
   players.forEach(p => {
@@ -3330,11 +3457,15 @@ function startGame(cfg) {
     if (NET.mode !== 'client') [pick(['bomb', 'mine', 'bomb', 'mine', 'rocket']), ...shuffle(ATTACK_KEYS.filter(k => !['expose', 'rocket', 'missiles'].includes(k))).slice(0, 2)].forEach(id => p.items.push(id));
     upgradeToken(p);
   });
-  // 路人只放 2 個：軍火販子、樁腳伯（太多會一直被打斷）
-  [[10, 0], [26, 2]].forEach(([pos, k]) => {
+  // 路人只放樁腳伯；另外四位神明在地圖上散步，經過就附身
+  [[26, 2]].forEach(([pos, k]) => {
     const def = NPCS[k], g = new THREE.Group(), pg = new THREE.Group(); pg.position.set(...def.model.at); g.add(pg); def.build(g, pg); g.traverse(o => { if (o.isMesh) o.castShadow = true; });
     const n = { def, pos, mesh: g, person: pg }; const [x, z] = npcSpot(pos); g.position.set(x, .2, z); g.rotation.y = tileTheta(pos); scene.add(g); G.npcs.push(n);
     upgradeNPC(n);
+  });
+  [['cai', 5], ['land', 13], ['poor', 19], ['shuai', 29]].forEach(([k, pos]) => {
+    const g = makeGod(k), n = { def: { id: 'god', name: GODS[k].name }, god: k, host: -1, pos, mesh: g, person: g };
+    const [x, z] = npcSpot(pos); g.position.set(x, .2, z); g.rotation.y = tileTheta(pos); scene.add(g); G.npcs.push(n);
   });
 
   TILES.forEach((t, i) => drawTile(i));
@@ -3415,6 +3546,7 @@ async function gameLoop() {
 
 async function moveNPCs() {
   for (const n of G.npcs) {
+    if (n.host >= 0) continue;   // 附身中的神明不在地圖上
     const steps = 1 + rnd(3);
     for (let s = 0; s < steps; s++) {
       n.pos = (n.pos + (Math.random() < .7 ? 1 : N - 1)) % N;
@@ -3433,6 +3565,67 @@ function relocateNPC(n) {
   if (NET.mode === 'host') scheduleState();
 }
 
+async function possess(p, n) {
+  const k = n.god, D = GODS[k];
+  if (!D.good && p.god === 'cai') {
+    SFX.coin(); say(p, 'counter', '財神爺罩我，閃邊去！');
+    await caption('💰 財神護體！', `${D.name}想附身 ${p.char.name}，被大財神一腳踢開`, 1400); relocateNPC(n); return;
+  }
+  if (p.god) await godLeave(p, true);
+  p.god = k; p.godLeft = GOD_TURNS; n.host = p.seat; n.pos = -1;
+  hostFx('godfx', k); godFx(k); (D.good ? SFX.fan : SFX.bad)();
+  burst(p.mesh.position.clone().setY(1.5), D.good ? ['#ffd23f', '#ff8a1c', '#ffffff'] : ['#5d6472', '#90caf9', '#3f4656'], LITE ? 8 : 16, .3);
+  say(p, D.good ? 'win' : 'lose', D.good ? pick(['神明保佑！', '發了發了！', '凍蒜有望！']) : pick(['怎麼這麼衰…', '誰來救我啊！', '我要去拜拜…']));
+  log(`${D.icon} <b>${D.name}</b>附身 <b>${p.char.name}</b>（${GOD_TURNS} 回合）`);
+  updateHUD(); sendState();
+  await caption(D.good ? `${D.icon} ${D.name}降臨！` : `${D.icon} ${D.name}附身！`, `${p.char.name}：${D.desc}（${GOD_TURNS} 回合）`, 2800);
+}
+async function godLeave(p, replaced) {
+  const k = p.god; if (!k) return; const D = GODS[k], n = G.npcs.find(m => m.god === k);
+  p.god = ''; p.godLeft = 0;
+  if (n) { n.host = -1; relocateNPC(n); }
+  if (replaced) { await caption(`${D.icon} ${D.name}被趕走了`, `新的神明要附身 ${p.char.name}`, 1100); return; }
+  log(`${D.icon} <b>${D.name}</b>離開 <b>${p.char.name}</b>`);
+  if (k === 'cai') {
+    const id = pick(ITEM_KEYS.filter(x => !['rocket', 'missiles'].includes(x))); giveItem(p, id); SFX.fan();
+    await caption('💰 財神爺要回天庭了', `臨走前送 ${p.char.name}🎁 一個神秘道具`, 1400);
+  } else await caption(`${D.icon} ${D.name}離開了`, D.good ? `${p.char.name} 的好運告一段落` : `${p.char.name} 終於擺脫了！`, 1200);
+  updateHUD();
+}
+// 每回合開始：財神發紅包、窮神偷道具，附身倒數
+async function godTurn(p) {
+  if (!p.god) return;
+  const k = p.god;
+  if (k === 'cai') { const v = 500 + rnd(11) * 100; p.cash += v; SFX.coin(); say(p, 'earn'); await caption('🧧 凍蒜紅包', `大財神塞給 ${p.char.name} ${fmt(v)}`, 1100); }
+  if (k === 'poor' && p.godLeft % 2 === 0 && p.items.length) {
+    p.items.splice(rnd(p.items.length), 1); SFX.bad(); say(p, 'lose', '我的道具咧？');
+    await caption('🥣 道具不見了！', `大窮神把 ${p.char.name} 的一個道具拿去當掉了`, 1300);
+  }
+  p.godLeft--; updateHUD();
+  if (p.godLeft <= 0) await godLeave(p, false);
+}
+// 每走一步：窮神漏財、撿路上的錢、經過神明就被附身
+async function godStep(p) {
+  const i = p.pos;
+  if (p.god === 'poor' && p.cash > 0) {
+    const v = Math.min(p.cash, (10 + rnd(21)) * 10); p.cash -= v; G.coins[i] = (G.coins[i] || 0) + v; drawCoins(); SFX.bad(); updateHUD();
+  } else if (G.coins[i] > 0) {
+    const v = G.coins[i]; delete G.coins[i]; p.cash += v; drawCoins(); SFX.coin(); updateHUD();
+    localCaption('🪙 撿到錢！', `${p.char.name} +${fmt(v)}`, 700); hostFx('lcap', ['🪙 撿到錢！', `${p.char.name} +${fmt(v)}`]);
+  }
+  const n = G.npcs.find(m => m.god && m.host < 0 && m.pos === i);
+  if (n && !p.out) await possess(p, n);
+}
+// 財神幫你把自己一塊地免費加蓋一層
+async function caiInvest(p) {
+  if (lawOn('nobuild')) return;
+  const mine = G.tiles.map((st, i) => i).filter(i => G.tiles[i].owner === p.seat && !G.tiles[i].kind && G.tiles[i].level < 5);
+  if (!mine.length) { p.cash += 1000; await caption('💰 加碼投資', `${p.char.name} 還沒有地，財神改塞 1,000 元`, 1100); return; }
+  const i = pick(mine), st = G.tiles[i]; st.level++; p.stats.built = (p.stats.built || 0) + 1;
+  lookAtTile(i); rebuild(i); drawTile(i); SFX.fan();
+  log(`💰 大財神幫 <b>${p.char.name}</b> 把 ${TILES[i].name} 免費蓋成${buildingName(i)}`);
+  await caption('💰 財神加碼投資！', `${TILES[i].name} 免費蓋成${buildingName(i)}`, 1300);
+}
 async function takeTurn(p) {
   cam.follow = p; lookBack(); updateHUD();
   p.rerolled = false; G.hits = {};
@@ -3443,6 +3636,7 @@ async function takeTurn(p) {
   }
   await wait(300);
   if (G.bomb && G.bomb.holder === p.seat) await caption(`⏰ 炸彈剩 ${G.bomb.t} 步！`, `${p.char.name}，快去碰別人把炸彈傳出去！`, 1200);
+  await godTurn(p); if (p.out) return;
   if (p.where === 'jail') { const out = await interrogate(p); if (!out) { updateHUD(); return; } }
   if (p.skip > 0 && p.where === 'hosp') await buyOut(p);
   if (p.skip > 0) {
@@ -4063,6 +4257,7 @@ function dropLevel(i) {
 
 async function useItem(p, id, arg, free) {
   if (lawOn('noitem') && !free) { await caption('🚫 道具禁令中', '現在不能使用道具', 1000); return null; }
+  if (p.god === 'shuai' && !free) { SFX.bad(); await caption('🌧️ 衰神附身', `${p.char.name} 的道具通通用不出來`, 1100); return null; }
   if (!free) takeItem(p, id);
   updateHUD();
   const it = ITEMS[id];
@@ -4433,6 +4628,7 @@ async function aiPreRoll(p) {
   return null;
 }
 function aiPickItem(p) {
+  if (p.god === 'shuai') return null;
   const opp = others(p).filter(q => q.seat !== p.ally); if (!opp.length) return null;
   const has = id => p.items.includes(id);
   const hitNow = opp.find(q => G.hits && G.hits[q.seat]);
@@ -4536,6 +4732,7 @@ async function moveSteps(p, n, back = false) {
     SFX.step(); hostFx('hop', [p.seat, p.pos, back ? 1 : 0]);
     await hopTo(p, to, tileTheta(p.pos) + (back ? Math.PI : 0));
     if (p.pos === 0 && !back) await passStart(p);
+    await godStep(p); if (p.out) { p.moving = false; return; }
     // 炸彈：拿著的人每走一步少 1，到 0 就爆
     if (G.bomb && G.bomb.holder === p.seat) {
       G.bomb.t--; drawBombLabel(G.bomb.t);
@@ -4547,8 +4744,10 @@ async function moveSteps(p, n, back = false) {
       const mates = alive().filter(q => q !== p && q.pos === p.pos);
       if (G.bomb.holder === p.seat && mates.length) { G.bomb.holder = mates[0].seat; SFX.whoosh(); say(mates[0], 'hit', '炸彈怎麼跑到我身上了！'); caption('⏰ 炸彈傳出去了！', `${p.char.name} → ${mates[0].char.name}`, 1000); updateHUD(); }
     }
-    const last = s === n;   // 這一步是不是最後一步（停在這格）
-    const npc = G.npcs.find(m => m.pos === p.pos);
+    const tr0 = G.traps[p.pos];
+    const last = s === n || (p.god === 'shuai' && tr0 && tr0.k === 'mine' && tr0.o !== p.seat);   // 這一步是不是最後一步（停在這格）；衰神會被別人的地雷吸過去
+    if (last && s < n) await caption('🌧️ 衰神作祟！', `${p.char.name} 被地雷吸過去了…`, 1000);
+    const npc = G.npcs.find(m => !m.god && m.pos === p.pos);
     if (npc && last) { const stop = await meetNPC(p, npc); if (stop || p.where) break; }
     const trap = G.traps[p.pos], tk = trap && trap.k;
     if (tk === 'mine' && last) {
@@ -4574,7 +4773,7 @@ async function moveSteps(p, n, back = false) {
 }
 
 async function passStart(p) {
-  let pay = (SALARY + (p.sk === 'gou' ? 1000 : 0)) * (lawOn('salary2') ? 2 : 1);
+  let pay = (SALARY + (p.sk === 'gou' ? 1000 : 0)) * (lawOn('salary2') ? 2 : 1) * (p.god === 'land' ? 2 : 1);   // 土地公：結緣紅包加倍
   p.stats.laps = (p.stats.laps || 0) + 1;
   if (p.sk === 'han') addPoll(p, 8);
   p.cash += pay; SFX.coin(); say(p, 'start');
@@ -4610,16 +4809,23 @@ async function meetNPC(p, n) {
     await info(p, '🕵️ 撞見檢調！', `「依法搜索！」${lost ? `${ITEMS[lost].icon} ${ITEMS[lost].name}被沒收，` : '身上什麼都沒搜到，'}原地停下配合調查。`);
     relocateNPC(n); updateHUD(); return true;
   }
-  if (Math.random() < .6) {
-    say(p, 'earn', '阿伯好！');
-    await drawFate(p, 'good', '<p style="font-size:13px;margin:0 0 6px">🧓 樁腳伯拍拍你的肩膀：「少年耶，阿伯幫你喬一下！」</p>');
-    relocateNPC(n); updateHUD(); return false;
-  }
-  // 樁腳伯：送錢，再偷偷塞一個武器
-  const gift = pick(['bomb', 'mine', 'bomb', 'mine', 'rocket']);
-  p.cash += 500; addPoll(p, 5); giveItem(p, gift); SFX.coin();
-  say(p, 'earn', '多謝阿伯！');
-  await info(p, '🧓 遇到樁腳伯', `「少年耶，阿伯挺你！」拿到 500 元、民調 +5，阿伯還偷偷塞給你${p.isAI ? '一個神秘武器' : `一個 ${ITEMS[gift].icon}${ITEMS[gift].name}`}：「拿去對付對手！」`);
+  // 樁腳伯：辦造勢、發紅包、送道具、灌水民調，4 選 1
+  const opts = [
+    { v: 'rally', ic: '🎉', name: '辦造勢', desc: '民調 +8，每個對手民調 -2' },
+    { v: 'red', ic: '🧧', name: '發紅包', desc: '現金 +2,000' },
+    { v: 'gift', ic: '🎁', name: '送道具', desc: '一個武器＋一個隨機道具' },
+    { v: 'poll', ic: '📈', name: '灌水民調', desc: '民調 +12' },
+  ];
+  say(p, 'earn', '阿伯好！');
+  const c = p.isAI ? pick(opts).v : await ask(`<h2>🧓 遇到樁腳伯</h2><p>「少年耶，阿伯挺你！要哪一款？」</p>`, opts.map(o => ({ label: `${o.ic} ${o.name}`, value: o.v, card: { ic: o.ic, name: o.name, desc: o.desc, go: '就這個 ▶' } })), p);
+  const o = opts.find(x => x.v === c) || opts[1];
+  if (o.v === 'rally') { addPoll(p, 8); others(p).forEach(q => addPoll(q, -2)); }
+  else if (o.v === 'red') p.cash += 2000;
+  else if (o.v === 'gift') { giveItem(p, pick(['bomb', 'mine', 'rocket'])); giveItem(p, pick(ITEM_KEYS.filter(k => !['rocket', 'missiles'].includes(k)))); }
+  else addPoll(p, 12);
+  SFX.coin(); say(p, 'earn', '多謝阿伯！');
+  log(`🧓 樁腳伯幫 <b>${p.char.name}</b> ${o.ic}${o.name}`);
+  await caption(`🧓 樁腳伯：${o.ic} ${o.name}`, `${p.char.name} ${o.desc}`, 1400);
   relocateNPC(n); updateHUD(); return false;
 }
 
@@ -4658,9 +4864,9 @@ async function offerBuy(p, i) {
   const t = TILES[i];
   if (lawOn('nobuild')) { if (!p.isAI) await info(p, '🏗️ 建築凍結中', `立法院通過建築凍結，現在不能買 ${t.name}。`); return; }
   const auc = G.tiles[i].auction ? .5 : 1;
-  const price = Math.round(t.price * auc / 10) * 10;
+  const price = Math.round(t.price * auc * (p.god === 'poor' ? 1.5 : 1) / 10) * 10;   // 窮神：買地貴 1.5 倍
   if (p.cash < price) { if (!p.isAI) await info(p, t.name, `要價 ${fmt(price)}，錢不夠買。`); return; }
-  const cost = upCost(i), total = L => price + L * cost;
+  const cost = Math.round(upCost(i) * (p.god === 'poor' ? 1.5 : 1) / 10) * 10, total = L => price + L * cost;
   let L;
   if (p.isAI) { await wait(400); L = -1; for (let k = 3; k >= 0; k--) if (p.cash - total(k) >= 3000 || (k === 0 && p.cash - total(0) >= 800)) { L = k; break; } }
   else {
@@ -4681,8 +4887,15 @@ async function offerBuy(p, i) {
 
 // 回到自己的地：可以一次往上蓋好幾層；空地也可以改建特殊建築
 async function offerUpgrade(p, i) {
-  const t = TILES[i], st = G.tiles[i], cost = upCost(i);
+  const t = TILES[i], st = G.tiles[i], cost = Math.round(upCost(i) * (p.god === 'poor' ? 1.5 : 1) / 10) * 10;
   if (lawOn('nobuild')) { if (!p.isAI) await info(p, '🏗️ 建築凍結中', '立法院通過建築凍結，現在不能蓋房子。'); return; }
+  if (p.god === 'land' && !st.kind && st.level < 5) {   // 土地公：免費加蓋一層
+    st.level++; p.stats.built = (p.stats.built || 0) + 1;
+    SFX.fan(); lookAtTile(i); rebuild(i); drawTile(i); say(p, 'upgrade', '土地公保庇！');
+    log(`🧓 土地公幫 <b>${p.char.name}</b> 把 ${t.name} 免費蓋成${buildingName(i)}`);
+    const [x, z] = tilePos(i), [ix, iz] = tileIn(i); confetti(new THREE.Vector3(x + ix * 3, 2, z + iz * 3));
+    await caption('🧓 土地公免費蓋大樓！', `${t.name} 升級成${buildingName(i)}`, 1400); lookBack(); return;
+  }
   if (st.kind || st.level >= 5) {
     const bonus = Math.round(rentOf(i) * .3 / 10) * 10; p.cash += bonus; SFX.coin();
     say(p, 'earn', '回到自己的地盤，爽！'); await caption(`${buildingName(i)}人氣滿滿`, `${p.char.name} 收到營業額 ${fmt(bonus)}`, 1000); return;
@@ -4720,7 +4933,7 @@ async function offerUpgrade(p, i) {
 async function offerTakeover(p, i) {
   const st = G.tiles[i], o = G.players[st.owner], t = TILES[i];
   if (!o || o === p || p.out || st.level >= 5) return;
-  const cost = Math.round(tileValue(i) * 1.5 / 10) * 10;
+  const cost = Math.round(tileValue(i) * 1.5 * (p.god === 'land' ? .7 : 1) / 10) * 10;   // 土地公：收購打 7 折
   if (p.cash < cost) return;
   let yes;
   if (p.isAI) {
@@ -4737,7 +4950,8 @@ async function offerTakeover(p, i) {
   // 先跟地主比一場小遊戲：贏了才能收購；輸了或平手要賠地主 3 成收購價，地也買不到
   const fine = Math.round(cost * .3 / 10) * 10;
   await caption(`🏴 ${p.char.name} 想收購 ${t.name}！`, `先跟地主 ${o.char.name} 比一場，贏了才能買`, 1600);
-  const r = await miniDuel(pick(Object.keys(DUEL)), p, o, { win: '，收購挑戰成功！', lose: `，收購失敗，賠 ${fmt(fine)}`, tie: `，平手算失敗，賠 ${fmt(fine)}` });
+  let r = await miniDuel(pick(Object.keys(DUEL)), p, o, { win: '，收購挑戰成功！', lose: `，收購失敗，賠 ${fmt(fine)}`, tie: `，平手算失敗，賠 ${fmt(fine)}` });
+  if (r !== 'win' && p.god === 'land' && Math.random() < .5) { SFX.fan(); await caption('🧓 土地公出手！', `地是土地公管的，這場算 ${p.char.name} 贏`, 1400); r = 'win'; }
   if (r !== 'win') {
     say(o, 'counter'); SFX.bad();
     log(`🏴 <b>${p.char.name}</b> 收購 ${t.name} 失敗，賠給 <b>${o.char.name}</b> ${fmt(fine)}`);
@@ -4784,6 +4998,12 @@ async function payRent(p, i) {
   const st = G.tiles[i], o = G.players[st.owner];
   let amt = rentOf(i);
   lookAtTile(i);
+  if (p.god === 'cai' && amt > 0) {
+    say(p, 'win', '財神爺罩我！'); SFX.coin();
+    await caption('💰 免稅金牌', `大財神幫 ${p.char.name} 擋掉 ${o.char.name} 的過路費`, 1200);
+    await caiInvest(p); lookBack(); return;
+  }
+  if (p.god === 'poor') amt = Math.round(amt * 1.3 / 10) * 10;   // 窮神：過路費多付 3 成
   if (amt <= 0) { await caption('🆓 免過路費', `${p.char.name} 踩到 ${o.char.name} 的地，這段期間免付`, 1100); lookBack(); return; }
   if (p.ally === o.seat) {
     say(o, 'earn', '自己人，免啦！'); await caption('🤝 盟友免過路費', `${p.char.name} 踩到盟友 ${o.char.name} 的地`, 1100); lookBack(); return;
@@ -6053,7 +6273,11 @@ async function drawFate(p, kind, intro = '') {
   // 轉盤上放 5 張機會、5 張命運交錯；kind＝'good' 時（樁腳伯幫你喬）一定轉到機會
   const goods = shuffle(FATE.filter(x => x.d === 'good')).slice(0, 5), bads = shuffle(FATE.filter(x => x.d === 'bad')).slice(0, 5), slots = [];
   for (let k = 0; k < 5; k++) slots.push(goods[k], bads[k]);
-  const idx = kind ? pick(slots.map((x, k) => k).filter(k => slots[k].d === kind)) : rnd(10);
+  let idx = kind ? pick(slots.map((x, k) => k).filter(k => slots[k].d === kind)) : rnd(10);
+  if (p.god === 'shuai' && kind !== 'good') {   // 衰神：一定轉到最慘的命運（會被送醫院或約談的優先）
+    const worst = FATE.filter(x => x.d === 'bad' && /sendTo|HOSP|JAIL/.test(String(x.run)));
+    if (worst.length) slots[1] = pick(worst); idx = 1;
+  }
   const wd = { id: 'w' + Date.now() + rnd(1000), name: p.char.name, intro: plainText(intro), s: slots.map(x => [x.ic, x.w || x.t, x.d === 'good' ? 1 : 0]) };
   hostFx('wheel', wd); wheelOpen(wd, false);
   if (p.isAI) await nap(1100);
@@ -6487,9 +6711,9 @@ function encodeState() {
     t: G.turn, r: G.round, ov: G.over ? 1 : 0,
     // 祕密任務只在公開後才放進來，免得朋友從資料偷看
     P: G.players.map(p => [p.cash, Math.round(p.poll), p.pos, p.items.join(','), p.skip, p.where || '', p.turtle, p.out ? 1 : 0, p.skillUsed ? 1 : 0,
-      p.ally, p.mPublic ? p.mission : '', p.mDone ? 1 : 0, p.mExposed ? 1 : 0, p.revenge, [p.stats.kos, p.stats.stabs, p.stats.sends, p.stats.combo3, p.stats.hits, p.stats.boom || 0, p.stats.quiz || 0, p.stats.jail || 0, p.stats.combo2 || 0, p.stats.laps || 0, p.stats.built || 0].join(','), p.ghost || 0, p.power || '', p.powerAt, p.autoOn ? 1 : 0, p.onIsland ? 1 : 0]),
+      p.ally, p.mPublic ? p.mission : '', p.mDone ? 1 : 0, p.mExposed ? 1 : 0, p.revenge, [p.stats.kos, p.stats.stabs, p.stats.sends, p.stats.combo3, p.stats.hits, p.stats.boom || 0, p.stats.quiz || 0, p.stats.jail || 0, p.stats.combo2 || 0, p.stats.laps || 0, p.stats.built || 0].join(','), p.ghost || 0, p.power || '', p.powerAt, p.autoOn ? 1 : 0, p.onIsland ? 1 : 0, p.god || '', p.godLeft || 0]),
     T: G.tiles.map(s => (s.owner + 1) * 100 + s.level * 10 + (s.kind === 'hq' ? 1 : s.kind === 'stand' ? 2 : 0)),
-    tr: G.traps, b: G.bomb, pot: G.pot || 0, n: G.npcs.map(n => n.pos), m: G.mods, fe: G.fest || null, iw: G.instant || null, sc: G.scars || {},
+    tr: G.traps, b: G.bomb, pot: G.pot || 0, n: G.npcs.map(n => n.host >= 0 ? -(n.host + 1) : n.pos), co: G.coins || {}, m: G.mods, fe: G.fest || null, iw: G.instant || null, sc: G.scars || {},
   };
 }
 let stTimer = null;
@@ -6686,6 +6910,7 @@ function playFx(m) {
       case 'peekEnd': if (d && G.players[+d.s] && G.players[+d.s] !== myPlayer()) showPeekEnd(d); break;
       case 'wheel': if (d && Array.isArray(d.s)) { const w = wheelData(d); if (!(wheelState && wheelState.id === w.id && wheelState.inter)) wheelOpen(w, false); } break;
       case 'emoAt': if (Array.isArray(d)) emoAtLocal(+d[0], [...String(d[1] || '')].slice(0, 2).join('')); break;
+      case 'godfx': if (GODS[d]) godFx(d); break;
       case 'lcap': if (Array.isArray(d)) localCaption(esc(String(d[0] || '')), esc(String(d[1] || '')), 500); break;
       case 'dest': if (Array.isArray(d)) showDest(d.slice(0, 2).filter(x => Array.isArray(x) && TILES[+x[0]]).map(x => [+x[0], String(x[1] || '').slice(0, 30)])); break;
       case 'pk': if (d && typeof d === 'object') pkApply({ t: String(d.t || ''), title: String(d.title || ''), L: +d.L, R: +d.R, s: String(d.s || ''), w: String(d.w || ''), a: String(d.a || '').slice(0, 30), b: String(d.b || '').slice(0, 30) }); break;
@@ -6719,7 +6944,7 @@ function applyState(s) {
     p.mDone = !!a[11]; p.mExposed = !!a[12]; p.revenge = Number.isInteger(a[13]) ? a[13] : -1;
     const st = String(a[14] || '').split(',').map(Number);
     p.ghost = +a[15] || 0;
-    p.power = POWERS[a[16]] ? a[16] : ''; p.powerAt = Number.isFinite(+a[17]) ? +a[17] : -9; p.autoOn = !!a[18]; p.onIsland = !!a[19];
+    p.power = POWERS[a[16]] ? a[16] : ''; p.powerAt = Number.isFinite(+a[17]) ? +a[17] : -9; p.autoOn = !!a[18]; p.onIsland = !!a[19]; p.god = GODS[a[20]] ? a[20] : ''; p.godLeft = +a[21] || 0;
     p.stats = { kos: st[0] || 0, stabs: st[1] || 0, sends: st[2] || 0, combo3: st[3] || 0, hits: st[4] || 0, boom: st[5] || 0, quiz: st[6] || 0, jail: st[7] || 0, combo2: st[8] || 0, laps: st[9] || 0, built: st[10] || 0 };
     if (a[7] && !p.out) {
       p.out = true; const m = p.mesh;
@@ -6746,8 +6971,12 @@ function applyState(s) {
   G.bomb = s.b && G.players[s.b.holder] ? s.b : null;
   if (G.bomb && G.bomb.t !== hadT) drawBombLabel(G.bomb.t);
   if (!G.bomb) bombObj.visible = false;
+  G.coins = {}; if (s.co && typeof s.co === 'object') Object.keys(s.co).forEach(i => { if (+i >= 0 && +i < N && +s.co[i] > 0) G.coins[i] = +s.co[i]; }); drawCoins();
   (s.n || []).forEach((pos, k) => {
-    const n = G.npcs[k]; if (!n || n.pos === pos) return;
+    const n = G.npcs[k]; if (!n) return;
+    if (pos < 0) { n.host = -pos - 1; n.pos = -1; return; }
+    const was = n.host; n.host = -1;
+    if (n.pos === pos && !(was >= 0)) return;
     n.pos = pos % N; const from = n.mesh.position.clone(), [x, z] = npcSpot(n.pos);
     n.mesh.rotation.y = tileTheta(n.pos);
     tween(300, k2 => n.mesh.position.set(from.x + (x - from.x) * k2, .2 + Math.sin(k2 * Math.PI) * 1.5, from.z + (z - from.z) * k2));
