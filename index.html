@@ -314,6 +314,18 @@ button{touch-action:manipulation}
 .bubble.on{opacity:1}
 .bubble b{display:block;font-size:11px;color:var(--bc);letter-spacing:.06em}
 
+/* 小遊戲練習場 */
+body.practicing #modal{z-index:40}
+.pr-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+.pr-tabs button{padding:4px 12px;font-size:14px;border-radius:999px}
+.pr-tabs button.on{background:linear-gradient(180deg,#fff4a8,#ffd84a 50%,#ffbf1f)}
+.pr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;max-height:min(52vh,420px);overflow:auto;padding:4px 4px 8px}
+.pr-grid button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:8px 10px;font-size:15px;min-width:0}
+.pr-grid button small{font-family:var(--body);font-weight:700;font-size:11.5px;color:#5a5270;line-height:1.35}
+.pr-grid button em{font-style:normal;font-size:11px;font-weight:900;color:#2e7d32}
+.pr-res{text-align:center;margin:6px 0 4px}
+.pr-res b{display:block;font-family:var(--display);font-size:40px;line-height:1.2}
+.pr-res .nb{display:inline-block;margin-top:6px;padding:2px 12px;border-radius:999px;background:#ffd23f;border:2px solid var(--ink);font-family:var(--display);font-weight:900;animation:pop .4s}
 #modal{position:absolute;inset:0;display:grid;place-items:center;background:rgba(29,22,51,.28);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);z-index:20;padding:16px}
 .lite #modal{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(29,22,51,.35)}
 #modal .box{width:min(460px,100%);max-height:calc(100% - 20px);overflow:auto;padding:20px 22px;animation:pop .3s cubic-bezier(.2,1.5,.4,1)}
@@ -657,7 +669,7 @@ button{touch-action:manipulation}
           </ul>
         </details>
       </div>
-      <div class="go-row"><button id="btn-start">開始競選！</button><p class="note" id="guest-wait" hidden>等房主按「開始競選」…</p></div>
+      <div class="go-row"><button id="btn-start">開始競選！</button><button id="btn-practice" class="primary">🎮 小遊戲練習場</button><p class="note" id="guest-wait" hidden>等房主按「開始競選」…</p></div>
       <p class="note">本遊戲是政治諷刺搞笑創作。人物台詞全部是虛構的，不是本人說過的話；遊戲裡的賄選、搜索、爆炸等事件都是隨機的遊戲機制，跟任何真實人物、真實事件無關。<br>拖曳畫面旋轉視角，滾輪縮放，點格子看地價。<br>人物 3D 模型：Kenney「Mini Characters」（CC0 免費授權，kenney.nl）。</p>
     </div>
   </div>
@@ -6303,6 +6315,64 @@ const DUEL = {
   slap: { name: '👋 打手背', intro: '看到拍才縮手、別被假動作騙，閃過多的人贏', ai: () => 2 + rnd(5), fmt: v => `閃過 ${v} 次`, better: (a, b) => a > b, play: slapGame },
   coin: { name: '🪙 手背抓硬幣', intro: '硬幣掉進綠區就抓，抓到多的人贏', ai: () => 1 + rnd(5), fmt: v => `抓到 ${v} 次`, better: (a, b) => a > b, play: coinGame },
 };
+/* ---------- 🎮 小遊戲練習場：開局前隨便玩，不影響遊戲 ---------- */
+const PR_CATS = [['all', '全部'], ['react', '⚡ 反應'], ['speed', '👆 手速'], ['brain', '🧠 腦力記憶'], ['aim', '🎯 精準'], ['vote', '🗳️ 開票衝票'], ['quiz', '📚 問答']];
+const PR_CAT_OF = { react: 'react', light: 'react', slap: 'react', coin: 'react', clock: 'react', tap: 'speed', mole: 'speed', hand: 'speed', order: 'brain', memo: 'brain', simon: 'brain', color: 'brain', compare: 'brain', odd: 'brain', count: 'brain', stamp: 'aim', quiz5: 'quiz', vtap: 'vote', vchase: 'vote', vstop: 'vote', vcount: 'vote', vrush: 'vote' };
+function practiceGames() {
+  const g = {};
+  Object.entries(DUEL).forEach(([k, D]) => { g[k] = { name: D.name, intro: D.intro, play: D.play, fmt: D.fmt, better: D.better }; });
+  Object.entries(RUSH).forEach(([k, D]) => { g[k] = { name: D.name, intro: D.intro, play: D.play, fmt: D.fmt, better: (a, b) => a > b }; });
+  g.hand = { name: '🤝 拜票握手', intro: '7 秒狂握手，看到雞蛋別點', play: p => handshakeGame0(p).then(([n, e]) => Math.max(0, n - e)), fmt: v => `${v} 分`, better: (a, b) => a > b };
+  g.quiz5 = { name: '📚 常識擂台', intro: '常識、國學、腦筋急轉彎 5 題，每題 8 秒', fmt: v => `答對 ${v} 題`, better: (a, b) => a > b,
+    play: async p => { const qs = shuffle(TRIVIA).slice(0, 5); let n = 0; for (let k = 0; k < 5; k++) { const r = await quizQT(p, qs[k], k, 5, 8); if (r && r.ok) n++; } modal.hidden = true; return n; } };
+  return g;
+}
+const prBest = k => { try { const v = localStorage.getItem('ds-best-' + k); return v === null ? null : +v; } catch (e) { return null; } };
+const prSave = (k, v) => { try { localStorage.setItem('ds-best-' + k, String(v)); } catch (e) { } };
+function practiceMenu(games, cat) {
+  return new Promise(res => {
+    mbox.style.setProperty('--c', '#7c4dff');
+    const keys = Object.keys(games).filter(k => cat === 'all' || PR_CAT_OF[k] === cat);
+    mbox.innerHTML = `<h2>🎮 小遊戲練習場</h2><p style="font-size:13px">挑一個小遊戲試玩，不會影響正式遊戲。電腦會記住你的個人最佳！</p>
+      <div class="pr-tabs">${PR_CATS.map(([c, n]) => `<button data-c="${c}" class="${c === cat ? 'on' : ''}">${n}</button>`).join('')}</div>
+      <div class="pr-grid">${keys.map(k => { const b = prBest(k); return `<button data-k="${k}"><span>${games[k].name}</span><small>${games[k].intro}</small>${b !== null ? `<em>🏅 最佳：${games[k].fmt(b)}</em>` : ''}</button>`; }).join('')}</div>
+      <div class="btns"><button data-x="1">✖ 離開練習場</button></div>`;
+    modal.hidden = false;
+    mbox.querySelectorAll('[data-c]').forEach(b => b.onclick = () => res({ cat: b.dataset.c }));
+    mbox.querySelectorAll('[data-k]').forEach(b => b.onclick = () => res({ k: b.dataset.k }));
+    mbox.querySelector('[data-x]').onclick = () => res(null);
+  });
+}
+let practicing = false;
+async function practice() {
+  if (practicing || !modal.hidden) return;
+  practicing = true; document.body.classList.add('practicing');
+  const r0 = roster && roster[0], ch = CHARS[r0 && CHARS[r0.ci] ? r0.ci : 0];
+  const p = { seat: -1, char: ch, isAI: false, ctl: 'local', humanNo: 1, nick: '', items: [], stats: {} };
+  const games = practiceGames();
+  let cat = 'all';
+  try {
+    while (true) {
+      const pick0 = await practiceMenu(games, cat);
+      if (!pick0) break;
+      if (pick0.cat) { cat = pick0.cat; continue; }
+      const k = pick0.k, g = games[k];
+      let again = 'again';
+      while (again === 'again') {
+        let v = await g.play(p); modal.hidden = true;
+        v = +v || 0;
+        const best = prBest(k), isNew = best === null || g.better(v, best);
+        if (isNew) prSave(k, v);
+        (isNew ? SFX.fan : SFX.coin)();
+        again = await ask(`<h2>${g.name}</h2><div class="pr-res"><b>${g.fmt(v)}</b>${isNew ? '<span class="nb">🏅 新紀錄！</span>' : `<small>個人最佳：${g.fmt(best)}</small>`}</div>`,
+          [{ label: '🔁 再玩一次', value: 'again', cls: 'primary' }, { label: '🎮 換別的遊戲', value: 'menu' }, { label: '✖ 離開', value: 'exit' }]);
+      }
+      if (again === 'exit') break;
+    }
+  } finally { modal.hidden = true; practicing = false; document.body.classList.remove('practicing'); }
+}
+$('#btn-practice').onclick = () => practice();
+
 /* ---------- PK 看板：對決時畫面上方左右兩邊各一人，中間 VS ---------- */
 let pkEl = null, pkHide = 0;
 // 這台裝置上有沒有人在玩這場（有的話他看自己的小遊戲；沒有的話就是觀眾，給大看板）
