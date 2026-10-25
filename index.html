@@ -658,6 +658,12 @@ body.practicing #modal{z-index:40}
         <div class="rounds maps" id="maps"></div>
         <h4>幾個人參選？<small>（房主決定，2～8 人）</small></h4>
         <div class="rounds seats" id="seats"></div>
+        <h4>地圖大小</h4>
+        <div class="rounds" id="sizes">
+          <button data-s="s">小地圖 24 格<small>每區 4 塊地・適合 10 回合</small></button>
+          <button data-s="m" aria-pressed="true">中地圖 32 格<small>每區 5 塊地・適合 13 回合</small></button>
+          <button data-s="l">大地圖 40 格<small>每區 6 塊地・適合 16 回合</small></button>
+        </div>
         <h4>這局要玩多久？</h4>
         <div class="rounds" id="rounds">
           <button data-r="10">閃電局 10 回合<small>約 15 分鐘</small></button>
@@ -837,7 +843,7 @@ function speak(ch, line, prio = 1, vid = '') {
 }
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
-const GAME_VER = '20261026a';   // 改角色名單、連線格式時要改這個
+const GAME_VER = '20261026b';   // 改角色名單、連線格式時要改這個
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -914,12 +920,21 @@ const GENERIC = {
 };
 
 /* ---------- 地圖：台北／桃園／台中／高雄 ---------- */
-// 每張地圖都是 32 格、特殊格位置相同；地區、地名、棋盤形狀、中間的地標各自不同
-const LAYOUT = ['start', 'p', 'p', 'item', 'p', 'live', 'p', 'p', 'jail', 'p', 'p', 'math', 'p', 'news', 'p', 'p',
-  'fly', 'p', 'p', 'fest', 'p', 'quiz', 'p', 'p', 'hosp', 'p', 'p', 'bribe', 'p', 'shop', 'p', 'p'];
-const PRICES = [[2000, 1800, 3600, 2200, 2400], [2600, 2400, 2900, 2600, 3200], [3000, 2800, 3800, 3300, 4000], [1200, 1000, 1400, 1500, 1700]];
+// 地圖大小：格數、版面、每區幾塊地、建議回合；四個角落永遠是 起點／檢調／機場／醫院（各在 0、N/4、N/2、3N/4）
+const SIZES = {
+  s: { name: '小地圖', n: 24, per: 4, rounds: 10, layout: ['start', 'p', 'p', 'item', 'p', 'p', 'jail', 'p', 'p', 'news', 'p', 'p',
+    'fly', 'p', 'p', 'fest', 'p', 'p', 'hosp', 'p', 'p', 'shop', 'p', 'p'] },
+  m: { name: '中地圖', n: 32, per: 5, rounds: 13, layout: ['start', 'p', 'p', 'item', 'p', 'live', 'p', 'p', 'jail', 'p', 'p', 'math', 'p', 'news', 'p', 'p',
+    'fly', 'p', 'p', 'fest', 'p', 'quiz', 'p', 'p', 'hosp', 'p', 'p', 'bribe', 'p', 'shop', 'p', 'p'] },
+  l: { name: '大地圖', n: 40, per: 6, rounds: 16, layout: ['start', 'p', 'p', 'item', 'p', 'live', 'p', 'p', 'math', 'p', 'jail', 'p', 'p', 'news', 'p', 'item', 'p', 'p', 'quiz', 'p',
+    'fly', 'p', 'p', 'fest', 'p', 'news', 'p', 'p', 'bribe', 'p', 'hosp', 'p', 'p', 'shop', 'p', 'item', 'p', 'p', 'live', 'p'] },
+};
+let BOARD_SIZE = 'm', LAYOUT = SIZES.m.layout;
+const PRICES = [[2000, 1800, 3600, 2200, 2400, 2800], [2600, 2400, 2900, 2600, 3200, 3400], [3000, 2800, 3800, 3300, 4000, 4400], [1200, 1000, 1400, 1500, 1700, 1900]];
 const ZONE_STYLE = [{ color: '#ff5d5d', tint: '#ffd9d3' }, { color: '#ff9f1c', tint: '#ffe8c2' }, { color: '#3d8bff', tint: '#d5e6ff' }, { color: '#4cb944', tint: '#dff3c8' }];
 const SPECIAL_NAMES = { start: '凍蒜廣場', item: '道具箱', live: '直播抖內', jail: '檢調・送綠島', math: '常識擂台', news: '新聞快報', fest: '造勢晚會', quiz: '質詢台', hosp: '凍蒜醫院', bribe: '疑似賄選', shop: '軍火夜市' };
+const EXTRA_PROPS = { tpe: ['世貿中心', '龍山寺', '行天宮', '關渡宮'], tyn: ['桃園展演中心', '中原夜市', '大溪木藝館', '新屋綠色走廊'], txg: ['新光三越', '台中車站', '望高寮', '清水休息站'],
+  khh: ['城市光廊', '三多商圈', '高雄港旅運中心', '佛光山'], tnn: ['觀夕平台', '延平郡王祠', '保安路', '台江國家公園'], hl: ['美崙山', '天祥', '池上大坡池', '知本溫泉'] };
 const hexagon = r => Array.from({ length: 6 }, (_, k) => { const a = (30 + 60 * k) * Math.PI / 180; return [r * Math.cos(a), r * Math.sin(a)]; });
 const MAPS = {
   tpe: {
@@ -980,6 +995,7 @@ const SPECIAL = {
   quiz: { icon: '🎤', bg: '#ffe066' }, fest: { icon: '🎉', bg: '#ffa8d2' }, math: { icon: '📚', bg: '#b9f2d0' },
 };
 // 依地圖產生 32 格的資料
+Object.entries(EXTRA_PROPS).forEach(([k, xs]) => { if (MAPS[k]) MAPS[k].props.forEach((z, i) => { if (z.length < 6) z.push(xs[i]); }); });
 function makeTiles(id) {
   const m = MAPS[id];
   ZKEYS = m.zones.map((n, k) => 'z' + k); ZONES = {};
@@ -987,13 +1003,17 @@ function makeTiles(id) {
   let pi = 0;
   TILES = LAYOUT.map(t => {
     if (t !== 'p') return { type: t, name: t === 'fly' ? m.fly : SPECIAL_NAMES[t] };
-    const z = Math.floor(pi / 5), k = pi % 5; pi++;
+    const per = SIZES[BOARD_SIZE].per, z = Math.floor(pi / per), k = pi % per; pi++;
     return { type: 'prop', name: m.props[z][k], zone: ZKEYS[z], price: PRICES[z][k] };
   });
 }
-const N = LAYOUT.length;
-
-const JAIL = 8, HOSP = 24;
+let N = LAYOUT.length, JAIL = N / 4, FLY = N / 2, HOSP = N * 3 / 4;
+function setBoardSize(k) {
+  BOARD_SIZE = SIZES[k] ? k : 'm'; LAYOUT = SIZES[BOARD_SIZE].layout;
+  N = LAYOUT.length; JAIL = N / 4; FLY = N / 2; HOSP = N * 3 / 4;
+  if (!G.players.length) G.tiles = blankTiles();   // 還沒開局：預覽用的空格子也要換成新格數
+}
+const boardScale = () => N / 32;   // 棋盤大小比例（中地圖＝1）
 const LEVEL_MULT = [1, 2, 4, 6, 9, 13];   // 過路費倍率（蓋越高差距越大）
 const LEVEL_NAME = ['空地', '平房', '透天厝', '公寓', '大樓', '摩天樓'];
 const KINDS = { hq: { name: '競選總部', mult: 5 }, stand: { name: '雞排攤', mult: 4 } };
@@ -1352,7 +1372,7 @@ function offsetPoly(shape, m, sgn) {
 const tilePos = i => BOARD.pos[i];
 const tileTheta = i => BOARD.th[i] || 0;
 const tileIn = i => BOARD.inw[i] || [0, -1];
-const isCorner = i => i % 8 === 0;
+const isCorner = i => i % (N / 4) === 0;
 const fwd = (a, b) => (b - a + N) % N;
 const near = (a, b) => Math.min(fwd(a, b), fwd(b, a));
 
@@ -1828,7 +1848,9 @@ function buildScenery(m) {
 let BOARD_SEED = 0, shoalTex = null, shoalMat = null, grassTex = null;
 function buildBoard(id, seed = 0) {
   MAP = MAPS[id] ? id : 'tpe'; BOARD_SEED = seed;
-  const m = MAPS[MAP];
+  const sc = boardScale(), m0 = MAPS[MAP];
+  // 形狀、中間的舞台和地標位置都依地圖大小等比例放大縮小（地標本身小地圖時縮一點）
+  const m = { ...m0, shape: m0.shape.map(([x, z]) => [x * sc, z * sc]), stage: [m0.stage[0] * sc, m0.stage[1] * sc, m0.stage[2] * Math.min(1, sc)], marks: m0.marks.map(([n, x, z, r]) => [n, x * sc, z * sc, r]) };
   makeTiles(MAP);
   const shp = curvy(m.shape, seed);   // 彎曲的路線（每局隨機）
   BOARD = buildPath(shp);
@@ -1893,7 +1915,7 @@ function buildBoard(id, seed = 0) {
   });
   // 中間的投票箱舞台與地標
   const st = new THREE.Group(); st.position.set(m.stage[0], 0, m.stage[1]); BG.add(st); buildStage(st, m.stage[2]);
-  m.marks.forEach(([name, x, z, ry]) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry || 0; BG.add(g); MARKS[name](g); g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  m.marks.forEach(([name, x, z, ry]) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry || 0; g.scale.setScalar(Math.min(1, .2 + sc * .8)); BG.add(g); MARKS[name](g); g.traverse(o => { if (o.isMesh) o.castShadow = true; });
     { const bb = new THREE.Box3().setFromObject(g), sz = Math.min(14, Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) * 1.25 + 1.5), a = aoBlob(sz, .4); a.position.set(x, -.1, z); BG.add(a); } });
   // 四個角落特殊格旁邊的造型（放在格子外側）
   const cornerProp = (i, build) => { const [x, z] = tilePos(i), [ix, iz] = tileIn(i); const g = new THREE.Group(); g.position.set(x - ix * 4.6, 0, z - iz * 4.6); g.rotation.y = tileTheta(i); BG.add(g); build(g); };
@@ -1932,7 +1954,7 @@ function buildBoard(id, seed = 0) {
     g.traverse(o => { if (o.isMesh && o !== beam) o.castShadow = true; });
     boardAnims.push(t => { beam.rotation.y = t * 1.4; });
   }
-  cornerProp(16, g => {
+  cornerProp(FLY, g => {
     // 機場：小航廈＋塔台，上空一架拖著競選布條的飛機一直繞圈
     const gl = nightMat(canvasTex(256, 64, (x, w, h) => { x.fillStyle = '#8fd0ef'; x.fillRect(0, 0, w, h); x.fillStyle = '#5a9cc4'; for (let c = 0; c < 16; c++) x.fillRect(c * 16, 0, 2, h); x.fillStyle = 'rgba(255,255,255,.4)'; x.fillRect(0, 6, w, 6); }), .6);
     const term = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 1.6), gl); term.position.set(-.2, .5, -.7); term.castShadow = true; g.add(term);
@@ -3091,7 +3113,7 @@ function updateCamera(dt, t) {
   let tgt = new THREE.Vector3(), az, h, d;
   if (cam.overview || !cam.follow) {
     if (cam.spin && !REDUCED) cam.userAz += dt * .05;
-    h = 46; d = 36;
+    h = 46 * boardScale(); d = 36 * boardScale();
     az = cam.follow ? tileTheta(cam.follow.pos) : 0;
   } else {
     tgt.copy(cam.look || cam.follow.mesh.position); tgt.y = 0;
@@ -3222,7 +3244,7 @@ const START_CASH = 50000, SALARY = 5000, POLL_VOTES = 100;
 function winRulesHtml() {
   return `<h2>🏆 怎麼贏？（${G.maxRounds} 回合）</h2>
     <div class="cardlist">
-      <div class="cardrow"><span class="ic">⚡</span><div><b>立即凍蒜①：壟斷一整區</b><small>同一區的 5 塊地全部拿下，當場獲勝。有人拿到 4 塊時全場會發警報，快去收購他的地！</small></div></div>
+      <div class="cardrow"><span class="ic">⚡</span><div><b>立即凍蒜①：壟斷一整區</b><small>同一區的 ${SIZES[BOARD_SIZE].per} 塊地全部拿下，當場獲勝。有人拿到 ${SIZES[BOARD_SIZE].per - 1} 塊時全場會發警報，快去收購他的地！</small></div></div>
       <div class="cardrow"><span class="ic">⚡</span><div><b>立即凍蒜②：聲量 100%</b><small>民調衝到 100% 會發全場警報，撐到自己下一回合開始還是 100% 就獲勝。其他人可以趁這一輪用網軍、爆料把他打下來！</small></div></div>
       <div class="cardrow"><span class="ic">⚡</span><div><b>立即凍蒜③：其他人全部破產</b><small>把所有對手逼到退選。</small></div></div>
       <div class="cardrow"><span class="ic">🦸</span><div><b>超能力：每 4 回合發動一次</b><small>開局每人隨機抽到一個超能力（飛彈部隊、政治獻金、乾坤大挪移…），出牌時按「⚡」發動，用完冷卻 4 回合。點左邊玩家卡可以看每個人的超能力、道具和地產。</small></div></div>
@@ -3552,12 +3574,19 @@ function renderSetup() {
   const rounds = client && NET.lobby ? NET.lobby.rounds : maxRounds;
   // 預估時間：4 人 25 回合約 30 分鐘，人越多越久
   $('#rounds').querySelectorAll('button').forEach(x => { x.setAttribute('aria-pressed', +x.dataset.r === rounds); x.disabled = client; const sm = x.querySelector('small'); if (sm) sm.textContent = `約 ${Math.max(10, Math.ceil(+x.dataset.r * Math.max(2, nSeats) * .35 / 5) * 5)} 分鐘`; });
+  const szk = client && NET.lobby && SIZES[NET.lobby.size] ? NET.lobby.size : BOARD_SIZE;
+  $('#sizes').querySelectorAll('[data-s]').forEach(x => { x.setAttribute('aria-pressed', x.dataset.s === szk); x.disabled = client; });
   const mp = client && NET.lobby && MAPS[NET.lobby.map] ? NET.lobby.map : MAP;
   $('#maps').innerHTML = MAP_KEYS.map(k => `<button data-map="${k}" aria-pressed="${k === mp}" ${client ? 'disabled' : ''}>${MAPS[k].name}<small>${MAPS[k].blurb}</small></button>`).join('');
   $('#maps').querySelectorAll('[data-map]').forEach(b => b.onclick = () => { if (b.dataset.map !== MAP) { buildBoard(b.dataset.map); beep(700, .04); } renderSetup(); sendLobby(); });
 }
 renderSetup();
 $('#rounds').querySelectorAll('button').forEach(b => b.onclick = () => { maxRounds = +b.dataset.r; renderSetup(); sendLobby(); });
+// 選地圖大小：重蓋棋盤預覽，回合數自動帶建議值（之後還能自己改）
+$('#sizes').querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
+  if (b.dataset.s === BOARD_SIZE) return;
+  setBoardSize(b.dataset.s); buildBoard(MAP); maxRounds = SIZES[BOARD_SIZE].rounds; beep(700, .04); renderSetup(); sendLobby();
+});
 
 // 同一格的站位：4 人以內站四個角，5～8 人排成 3×3 去掉中間
 const OFFS = [[-.8, -.8], [.8, -.8], [-.8, .8], [.8, .8]];
@@ -3591,12 +3620,14 @@ $('#btn-start').onclick = () => {
   beep(660, .05);
   // 順序隨機：抽籤決定誰先走（朋友拿到的是同一份順序）
   const sks = shuffle(Object.keys(SKILLS));   // 技能抽籤：每人一個，不重複
-  const cfg = { ver: GAME_VER, seed: 1 + rnd(2e9), env: rnd(4), wx: rnd(4), players: shuffle(roster).map((r, k) => ({ sk: sks[k % sks.length], ci: r.ci, id: CHARS[r.ci].id, ctl: r.mode === 'ai' ? 'ai' : r.mode === 'remote' ? 'r:' + r.cid : 'local', nick: r.nick || '' })), rounds: maxRounds, map: MAP, t0: Date.now() };
+  const cfg = { ver: GAME_VER, seed: 1 + rnd(2e9), env: rnd(4), wx: rnd(4), players: shuffle(roster).map((r, k) => ({ sk: sks[k % sks.length], ci: r.ci, id: CHARS[r.ci].id, ctl: r.mode === 'ai' ? 'ai' : r.mode === 'remote' ? 'r:' + r.cid : 'local', nick: r.nick || '' })), rounds: maxRounds, map: MAP, size: BOARD_SIZE, t0: Date.now() };
   if (NET.mode === 'host') { NET.cfg = cfg; NET.started = true; NET.named.emit('start', cfg).catch(() => { }); }
   startGame(cfg);
 };
 function startGame(cfg) {
-  if (cfg.map && MAPS[cfg.map] && (cfg.map !== MAP || (+cfg.seed || 0) !== BOARD_SEED)) buildBoard(cfg.map, +cfg.seed || 0);
+  const sz = SIZES[cfg.size] ? cfg.size : 'm';
+  if (sz !== BOARD_SIZE) { setBoardSize(sz); buildBoard(MAPS[cfg.map] ? cfg.map : MAP, +cfg.seed || 0); }
+  else if (cfg.map && MAPS[cfg.map] && (cfg.map !== MAP || (+cfg.seed || 0) !== BOARD_SEED)) buildBoard(cfg.map, +cfg.seed || 0);
   setEnv(+cfg.env || 0, +cfg.wx || 0);
   let h = 0;
   const players = cfg.players.map((x, seat) => ({
@@ -3623,12 +3654,13 @@ function startGame(cfg) {
     upgradeToken(p);
   });
   // 路人：檢調、樁腳伯；另外四位神明在地圖上散步，停在那格就附身
-  [[10, 1], [26, 2]].forEach(([pos, k]) => {
+  const at = f => { let i = Math.round(N * f) % N; if (isCorner(i)) i = (i + 1) % N; return i; };   // 依比例放，避開角落
+  [[at(10 / 32), 1], [at(26 / 32), 2]].forEach(([pos, k]) => {
     const def = NPCS[k], g = new THREE.Group(), pg = new THREE.Group(); pg.position.set(...def.model.at); g.add(pg); def.build(g, pg); g.traverse(o => { if (o.isMesh) o.castShadow = true; });
     const n = { def, pos, mesh: g, person: pg }; const [x, z] = npcSpot(pos); g.position.set(x, .2, z); g.rotation.y = tileTheta(pos); scene.add(g); G.npcs.push(n);
     upgradeNPC(n);
   });
-  [['cai', 5], ['land', 13], ['poor', 19], ['shuai', 29]].forEach(([k, pos]) => {
+  [['cai', at(5 / 32)], ['land', at(13 / 32)], ['poor', at(19 / 32)], ['shuai', at(29 / 32)]].forEach(([k, pos]) => {
     const g = makeGod(k), n = { def: { id: 'god', name: GODS[k].name }, god: k, host: -1, pos, mesh: g, person: g };
     const [x, z] = npcSpot(pos); g.position.set(x, .2, z); g.rotation.y = tileTheta(pos); scene.add(g); G.npcs.push(n);
   });
@@ -5158,11 +5190,11 @@ async function offerTakeover(p, i) {
   if (p.isAI) {
     const mine = TILES.filter((x, k) => x.zone === t.zone && G.tiles[k].owner === p.seat).length;
     const theirs = TILES.filter((x, k) => x.zone === t.zone && G.tiles[k].owner === o.seat).length;
-    yes = theirs >= 4 ? p.cash > cost : p.cash - cost > 2000 && (mine >= 2 || theirs >= 3 || Math.random() < .5);
+    yes = theirs >= SIZES[BOARD_SIZE].per - 1 ? p.cash > cost : p.cash - cost > 2000 && (mine >= 2 || theirs >= 3 || Math.random() < .5);
   } else {
     const theirs = TILES.filter((x, k) => x.zone === t.zone && G.tiles[k].owner === o.seat).length;
     yes = await ask(`<h2>🏴 強制收購 ${t.name}？</h2><p>要先跟地主 ${o.char.name} <b>比一場小遊戲</b>：贏了付 <b>${fmt(cost)}</b>（地價＋房子的 1.5 倍）把地連房子買下來；<b>輸了或平手要賠 ${fmt(Math.round(cost * .3 / 10) * 10)}</b>，地也買不到。</p>
-      ${theirs >= 4 ? `<p><b>⚠️ ${o.char.name} 在這區已經有 ${theirs} 塊地，快收購阻止他壟斷！</b></p>` : ''}<dl class="stat"><dt>你的現金</dt><dd>${fmt(p.cash)}</dd></dl>`,
+      ${theirs >= SIZES[BOARD_SIZE].per - 1 ? `<p><b>⚠️ ${o.char.name} 在這區已經有 ${theirs} 塊地，快收購阻止他壟斷！</b></p>` : ''}<dl class="stat"><dt>你的現金</dt><dd>${fmt(p.cash)}</dd></dl>`,
       [{ label: `🏴 挑戰收購！（贏了付 ${fmt(cost)}）`, value: true, cls: 'hot' }, { label: '算了', value: false }], p);
   }
   if (!yes) return;
@@ -7157,7 +7189,7 @@ function scheduleState() { if (stTimer) return; stTimer = setTimeout(() => { stT
 function sendState() { if (NET.mode === 'host' && NET.named && NET.started) NET.named.emit('state', encodeState()).catch(() => { }); }
 function sendLobby() {
   if (NET.mode !== 'host' || !NET.named || NET.started) return;
-  NET.named.emit('lobby', { ver: GAME_VER, slots: roster.map(r => ({ ci: r.ci, id: CHARS[r.ci].id, mode: r.mode, nick: r.nick || '', cid: r.cid || '' })), rounds: maxRounds, map: MAP, seats }).catch(() => { });
+  NET.named.emit('lobby', { ver: GAME_VER, slots: roster.map(r => ({ ci: r.ci, id: CHARS[r.ci].id, mode: r.mode, nick: r.nick || '', cid: r.cid || '' })), rounds: maxRounds, map: MAP, size: BOARD_SIZE, seats }).catch(() => { });
 }
 
 // ---- 房主：請某位連線玩家做決定 ----
@@ -7804,7 +7836,7 @@ async function joinRoom() {
   try { sessionStorage.setItem('ds-room', code); localStorage.setItem('ds-nick', NET.nick); localStorage.setItem('ds-room2', code + '|' + Date.now()); } catch (e) { }
   try { history.replaceState(null, '', location.pathname + '?room=' + code + (roomApi.isRelay && roomApi.broker ? '&b=' + roomApi.broker : '')); } catch (e) { }
   NET.named.presence({ cid: NET.cid, nick: NET.nick, role: 'guest', pick: -1 }).catch(() => { });
-  NET.named.on('lobby', m => { if (fromHost(m) && m.data && Array.isArray(m.data.slots)) { verCheck(m.data.ver); NET.lobby = { slots: m.data.slots.slice(0, MAX_SEATS).map(fixCi).filter(x => CHARS[x.ci]), seats: clamp(+m.data.seats || 4, 2, MAX_SEATS), rounds: +m.data.rounds || 13, map: MAPS[m.data.map] ? m.data.map : 'tpe' }; if (NET.lobby.map !== MAP) buildBoard(NET.lobby.map); renderSetup(); } });
+  NET.named.on('lobby', m => { if (fromHost(m) && m.data && Array.isArray(m.data.slots)) { verCheck(m.data.ver); NET.lobby = { slots: m.data.slots.slice(0, MAX_SEATS).map(fixCi).filter(x => CHARS[x.ci]), seats: clamp(+m.data.seats || 4, 2, MAX_SEATS), rounds: +m.data.rounds || 13, map: MAPS[m.data.map] ? m.data.map : 'tpe', size: SIZES[m.data.size] ? m.data.size : 'm' }; if (NET.lobby.size !== BOARD_SIZE) { setBoardSize(NET.lobby.size); buildBoard(NET.lobby.map); } else if (NET.lobby.map !== MAP) buildBoard(NET.lobby.map); renderSetup(); } });
   NET.named.on('start', m => { if (!fromHost(m) || NET.started || !m.data || !Array.isArray(m.data.players)) return; verCheck(m.data.ver); const cfg = { ...m.data, players: m.data.players.map(fixCi).filter(x => CHARS[x.ci]).slice(0, MAX_SEATS) }; startGame(cfg); renderOnline(); setTimeout(refreshClaim, 1500); });
   setInterval(refreshClaim, 3000);
   NET.named.on('state', m => { if (fromHost(m)) applyState(m.data); });
