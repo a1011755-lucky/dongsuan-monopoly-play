@@ -994,9 +994,9 @@ function makeTiles(id) {
 const N = LAYOUT.length;
 
 const JAIL = 8, HOSP = 24;
-const LEVEL_MULT = [1, 2, 3.5, 5.5, 8, 12];
+const LEVEL_MULT = [1, 2, 4, 6, 9, 13];   // 過路費倍率（蓋越高差距越大）
 const LEVEL_NAME = ['空地', '平房', '透天厝', '公寓', '大樓', '摩天樓'];
-const KINDS = { hq: { name: '競選總部', mult: 4.5 }, stand: { name: '雞排攤', mult: 3.5 } };
+const KINDS = { hq: { name: '競選總部', mult: 5 }, stand: { name: '雞排攤', mult: 4 } };
 
 const ITEMS = {
   mine: { name: '地雷', icon: '💥', price: 1600, aim: 'tile', desc: '埋在你前後 8 格內，剛好停在那格的人炸進醫院 2 回合（經過不會爆）。' },
@@ -3201,7 +3201,7 @@ function modMult(zone) { return G.mods.reduce((m, md) => (md.until >= G.round &&
 function rentOf(i) {
   const t = TILES[i], s = G.tiles[i]; if (s.owner < 0) return 0;
   const o = G.players[s.owner];
-  let r = t.price * .1 * (s.kind ? KINDS[s.kind].mult : LEVEL_MULT[s.level]);
+  let r = t.price * .18 * (s.kind ? KINDS[s.kind].mult : LEVEL_MULT[s.level]);   // 基本過路費＝地價 18%（原本 10%）
   if (zoneOwned(t.zone, s.owner)) r *= 2;
   r *= .6 + o.poll / 100 * .8;
   r *= modMult(t.zone);
