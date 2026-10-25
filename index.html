@@ -288,6 +288,24 @@ button{touch-action:manipulation}
 .pk-o span.ok{background:#b9f6ca}.pk-o span.bad{background:#ffcdd2;text-decoration:line-through}.pk-o span.pick{background:var(--sun)}
 .pk-r{font-size:12px;font-weight:900;margin-top:4px;color:var(--ink)}
 @keyframes pkin{from{transform:translateY(-8px);opacity:0}to{transform:none;opacity:1}}
+/* 🚨 警車燈：畫面四邊紅藍交替閃 3 秒 */
+#siren{position:absolute;inset:0;pointer-events:none;z-index:61;opacity:0;transition:opacity .4s}
+#siren.on{opacity:1;animation:sirenEdge .5s steps(1) infinite}
+@keyframes sirenEdge{0%{box-shadow:inset 0 0 70px 26px rgba(255,23,68,.85),inset 0 0 0 6px rgba(255,23,68,.9)}50%{box-shadow:inset 0 0 70px 26px rgba(41,121,255,.85),inset 0 0 0 6px rgba(41,121,255,.9)}}
+#siren span{position:absolute;top:max(10px,env(safe-area-inset-top,0px));font-size:40px;line-height:1;opacity:0}
+#siren span:first-child{left:max(14px,env(safe-area-inset-left,0px))}#siren span:last-child{right:max(14px,env(safe-area-inset-right,0px))}
+#siren.on span{opacity:1;animation:sirenBob .5s ease-in-out infinite alternate}
+@keyframes sirenBob{to{transform:translateY(6px) scale(1.15)}}
+@media (prefers-reduced-motion:reduce){#siren.on{animation:none;box-shadow:inset 0 0 60px 20px rgba(255,23,68,.7)}#siren.on span{animation:none}}
+/* 搜索票 */
+.warrant{position:relative;background:#fffdf3 repeating-linear-gradient(0deg,transparent 0 27px,rgba(29,22,51,.07) 27px 28px);border:4px double #1d1633;border-radius:6px;padding:16px 16px 14px;margin:6px 0 12px;animation:warrantIn .45s cubic-bezier(.2,1.4,.4,1)}
+@keyframes warrantIn{from{transform:rotate(-6deg) scale(.7);opacity:0}}
+.warrant h3{margin:2px 0 10px;text-align:center;font-family:var(--display);font-size:28px;letter-spacing:.5em;padding-left:.5em;color:#b71c1c}
+.warrant .wno{position:absolute;top:6px;left:10px;font-size:11px;color:#6b6380}
+.warrant dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0;font-size:15px;padding-right:80px}
+.warrant dt{font-weight:900;color:#6b6380}.warrant dd{margin:0;font-weight:900}
+.warrant .wstamp{position:absolute;right:12px;bottom:12px;width:70px;height:70px;border:4px solid #d32f2f;border-radius:50%;color:#d32f2f;display:grid;place-items:center;text-align:center;font-family:var(--display);font-weight:900;font-size:14px;line-height:1.2;transform:rotate(-14deg);opacity:.88;animation:stampIn .5s .25s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes stampIn{from{transform:rotate(-14deg) scale(2.6);opacity:0}}
 #godfx{position:absolute;inset:0;pointer-events:none;z-index:9;opacity:0;overflow:hidden}
 #godfx.good{background:radial-gradient(circle at 50% 40%,rgba(255,232,130,.8),rgba(255,190,40,.28) 38%,rgba(255,190,40,0) 70%)}
 #godfx.bad{background:radial-gradient(circle at 50% 40%,rgba(70,80,110,.55),rgba(25,28,45,.5) 55%,rgba(10,12,22,.65))}
@@ -657,7 +675,7 @@ body.practicing #modal{z-index:40}
             <li>小遊戲格：📱直播抖內（狂點按讚）、🎤質詢台（國學／政治／地理／數學 3 題）、📚常識擂台（常識、國學、急轉彎 5 題）、🏁剛好停在凍蒜廣場（拜票握手）。<b>每 3 回合全民搶答</b>，所有人一起答。</li>
             <li>踩到別人的地，除了嗆聲和拔河，還能發動<b>🎤 質詢對決</b>：兩人答同一題，答對的贏。</li>
             <li><b>🎒 道具更多</b>：開局 3 個，每經過起點再送 1 個。新道具：🌀颱風、🧲吸金、🔄換位、👻隱身、🚑保釋、🎆飛彈雨、🏗️免費加蓋、📈民調灌水。</li>
-            <li>地圖上會亂跑的路人：樁腳伯（停在他那格，4 種好康挑一個）。</li>
+            <li>地圖上會亂跑的路人：樁腳伯（停在他那格，4 種好康挑一個）、🕵️ 檢調（停在他那格會被突擊搜索：查扣武器，或繳總資產 1 成的交保金／原地停一回合）。</li>
             <li><b>🙏 神明附身</b>：大財神、土地公是好神，大窮神、大衰神是衰神。<b>停在</b>神明那格就會被附身 5 回合，新的神會把舊的趕走；大財神附身時，窮神、衰神近不了身。</li>
             <li>踩到「疑似賄選」要選：交保、乖乖去約談，或甩鍋給對手。</li>
             <li><b>🎯 祕密任務</b>：每人開局拿到一個別人看不到的任務（例如讓對手破產、背刺盟友兩次、打出 3 連擊）。完成就 +25,000 票，但任務會公開，大家會一起圍剿你；被📰爆料卡提早揭穿，獎勵減半。</li>
@@ -811,7 +829,7 @@ function speak(ch, line, prio = 1, vid = '') {
 }
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
-const GAME_VER = '20261025h';   // 改角色名單、連線格式時要改這個
+const GAME_VER = '20261025i';   // 改角色名單、連線格式時要改這個
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -2233,6 +2251,51 @@ function qPerson(o) {
 function qWalk(q, t, sp = 9) { const a = Math.sin(t * sp) * .55; q.legL.rotation.x = a; q.legR.rotation.x = -a; q.armL.rotation.x = -a * .8; q.armR.rotation.x = a * .8; q.g.position.y = Math.abs(Math.sin(t * sp)) * .06; }
 function qIdle(q, t) { q.armR.rotation.z = 2.4 + Math.sin(t * 6) * .35; q.head.rotation.z = Math.sin(t * 1.5) * .08; q.g.position.y = Math.abs(Math.sin(t * 2)) * .04; }
 /* ---------- NPC ---------- */
+// Q 版檢調（頭身比約 1:2.5）：卡其色風衣、紳士帽、墨鏡、一手大放大鏡、一手舉「搜索」公文，帽頂紅藍警示燈
+function buildInvestigator(g, pg) {
+  const skin = '#ffd9b5', coat = '#c8a46a', coatD = '#a8844c';
+  [-.16, .16].forEach(x => { cyl(.09, .1, .38, '#37474f', x, .19, 0, pg, 10); const sh = box(.2, .1, .3, '#1d1633', x, .05, .05, pg); });
+  cyl(.34, .6, 1.05, coat, 0, .9, 0, pg, 18);   // 風衣
+  cyl(.61, .61, .1, coatD, 0, .42, 0, pg, 18);   // 下擺
+  box(.66, .1, .62, '#6d4c41', 0, .98, 0, pg);   // 腰帶
+  box(.12, .1, .05, '#ffca28', 0, .98, .32, pg);
+  [-1, 1].forEach(sd => { const c = box(.3, .42, .06, coatD, sd * .16, 1.3, .28, pg); c.rotation.set(-.25, 0, sd * .5); });   // 翻領
+  [1.15, .78].forEach(y => box(.07, .07, .04, '#5d4037', .09, y, .45, pg));
+  const head = new THREE.Group(); head.position.set(0, 1.92, 0); pg.add(head);
+  ball(.56, skin, 0, 0, 0, head);
+  const glass = new THREE.MeshStandardMaterial({ color: '#111111', roughness: .15, metalness: .4 });
+  [-.2, .2].forEach(x => { const l = box(.3, .17, .06, glass, x, .04, .52, head); l.rotation.y = x * .6; });
+  box(.14, .04, .04, '#111111', 0, .08, .55, head);
+  [-1, 1].forEach(sd => { const b = box(.22, .06, .05, '#3e2723', sd * .2, .2, .52, head); b.rotation.z = sd * -.3; });   // 皺眉
+  box(.2, .045, .04, '#8d4f3a', 0, -.24, .52, head);   // 嚴肅的嘴
+  ball(.06, '#ff9b8a', 0, -.08, .56, head);
+  cyl(.78, .78, .06, '#6d4c41', 0, .36, 0, head, 24);   // 帽沿
+  cyl(.42, .48, .42, '#6d4c41', 0, .58, 0, head, 20); cyl(.49, .49, .09, '#3e2723', 0, .43, 0, head, 20);
+  const lr = ball(.09, glow('#ff1744', 1.4), -.1, .86, 0, head), lb = ball(.09, glow('#2979ff', 1.4), .1, .86, 0, head);
+  // 右手：大放大鏡
+  const armR = new THREE.Group(); armR.position.set(.42, 1.32, .05); pg.add(armR);
+  const ar = cyl(.11, .13, .55, coat, 0, -.2, .12, armR, 10); ar.rotation.x = -.9; ball(.12, skin, 0, -.32, .4, armR);
+  const mag = new THREE.Group(); mag.position.set(.05, -.05, .5); armR.add(mag);
+  cyl(.04, .05, .5, '#3e2723', 0, -.25, 0, mag, 8);
+  const rim = mesh(new THREE.TorusGeometry(.3, .05, 10, 28), M('#ffca28'), 0, .22, 0, mag); rim.rotation.y = Math.PI / 2;
+  const lens = new THREE.Mesh(new THREE.CircleGeometry(.29, 24), new THREE.MeshStandardMaterial({ color: '#b3e5fc', transparent: true, opacity: .55, roughness: .05, side: THREE.DoubleSide })); lens.position.y = .22; lens.rotation.y = Math.PI / 2; mag.add(lens);
+  // 左手：舉搜索票
+  const armL = new THREE.Group(); armL.position.set(-.42, 1.32, .05); pg.add(armL);
+  const al = cyl(.11, .13, .6, coat, -.1, .22, .05, armL, 10); al.rotation.z = .55; ball(.12, skin, -.25, .48, .1, armL);
+  const paper = new THREE.Group(); paper.position.set(-.42, .78, .22); paper.rotation.y = .25; armL.add(paper);
+  box(.5, .66, .02, '#fffdf3', 0, 0, 0, paper);
+  const pt = textPlane('搜索', .42, .2, '#c62828', null, 150); pt.position.set(0, .14, .02); paper.add(pt);
+  const pt2 = textPlane('票', .2, .16, '#1d1633', null, 130); pt2.position.set(0, -.06, .02); paper.add(pt2);
+  const stamp = mesh(new THREE.TorusGeometry(.08, .015, 6, 18), M('#d32f2f'), .13, -.2, .02, paper);
+  const lb2 = godLabel('🕵️ 檢調', '#37474f'); lb2.position.y = 3.25; g.add(lb2);
+  g.traverse(o => { if (o.isMesh && !o.material.transparent) o.castShadow = true; });
+  const off = Math.random() * 5;
+  anim.push(t => {
+    const on = (t * 2.5) % 1 < .5; lr.material.emissiveIntensity = on ? 1.6 : .15; lb.material.emissiveIntensity = on ? .15 : 1.6;
+    armR.rotation.y = Math.sin(t * 1.4 + off) * .5; mag.rotation.z = Math.sin(t * 2 + off) * .15;   // 拿放大鏡到處照
+    paper.rotation.z = Math.sin(t * 3 + off) * .08; head.rotation.y = Math.sin(t * .9 + off) * .35;
+  });
+}
 // 路上的人：先用方塊人佔位（person 群組），之後換成 Kenney 3D 人物模型（model：哪個模型、衣服顏色、戴什麼）
 const NPCS = [
   { id: 'chicken', name: '軍火販子', q: { shirt: '#5b6b2f', pants: '#3e2723', hair: '#3e2723', cap: '#33691e', shades: true, grin: true }, model: { name: 'male-c', shirt: '#8d6e63', hat: 'straw', at: [0, 0, -.6] }, build(g, pg) {
@@ -2244,11 +2307,7 @@ const NPCS = [
     const sign = textPlane('軍火攤', .8, .3, '#ffffff', '#c62828', 120); sign.position.set(0, .5, .44); g.add(sign);
     cyl(.3, .4, .9, '#4e342e', 0, 1.3, 0, pg); ball(.25, '#ffd9b5', 0, 1.95, 0, pg); cone(.45, .3, '#d7ccc8', 0, 2.2, 0, pg, 12);
   } },
-  { id: 'cops', name: '檢調', model: { name: 'male-b', shirt: '#263238', glasses: 'sunglasses', at: [0, 0, 0] }, build(g, pg) {
-    box(.5, .5, .1, '#eceff1', .5, .85, .35, g); const s = textPlane('搜索', .5, .2, '#c62828', '#ffffff', 140); s.position.set(.5, .9, .41); g.add(s);
-    box(.5, .35, .15, '#212121', -.5, .55, .1, g);   // 公事包
-    cyl(.38, .5, 1.1, '#263238', 0, .7, 0, pg); ball(.4, '#ffd9b5', 0, 1.55, 0, pg); box(.6, .1, .05, '#111111', 0, 1.6, .38, pg);
-  } },
+  { id: 'cops', name: '檢調', model: { at: [0, 0, 0] }, build: buildInvestigator },
   { id: 'boss', name: '樁腳伯', q: { shirt: '#c62828', pants: '#37474f', hair: '#bdbdbd', glasses: true, straw: true }, model: { name: 'male-f', shirt: '#c62828', hat: 'straw', at: [0, 0, 0] }, build(g, pg) {
     const m = cyl(.08, .2, .45, '#ffd23f', .5, 1.2, .3, g, 10); m.rotation.z = -1.2;
     cyl(.03, .03, 1.6, '#8d6e63', -.55, .8, .2, g, 6); const fl = box(.6, .4, .03, '#ff4f79', -.25, 1.4, .2, g);
@@ -3305,11 +3364,11 @@ function logLocal(html) {
   while (l.children.length > 9) l.lastChild.remove();
 }
 let capTimer = null, capChain = Promise.resolve(), capSkip = null;
-// 大字幕：排隊一個一個出，每個停 1.5 秒換下一個（後面沒有字幕就多留一下）；點畫面可以馬上跳過
+// 大字幕：排隊一個一個出，每個停 2.5 秒換下一個（後面沒有字幕就多留一下）；點畫面可以馬上跳過
 function caption(big, sub = '', ms = 1600) {
   hostFx('cap', [big, sub, ms]);
   const len = String(big + sub).replace(/<[^>]*>/g, '').length;
-  const show = Math.max(ms, 1200 + len * 100) * (G && G.fast ? .6 : 1), gap = 1500 * (G && G.fast ? .6 : 1);
+  const show = Math.max(ms, 1200 + len * 100) * (G && G.fast ? .6 : 1), gap = 2500 * (G && G.fast ? .6 : 1);
   const p = capChain.then(() => {
     const c = $('#caption');
     c.innerHTML = `<span class="big">${big}</span>${sub ? `<span class="sub">${sub}</span>` : ''}`;
@@ -3552,8 +3611,8 @@ function startGame(cfg) {
     if (NET.mode !== 'client') [pick(['bomb', 'mine', 'bomb', 'mine', 'rocket']), ...shuffle(ATTACK_KEYS.filter(k => !['expose', 'rocket', 'missiles'].includes(k))).slice(0, 2)].forEach(id => p.items.push(id));
     upgradeToken(p);
   });
-  // 路人只放樁腳伯；另外四位神明在地圖上散步，經過就附身
-  [[26, 2]].forEach(([pos, k]) => {
+  // 路人：檢調、樁腳伯；另外四位神明在地圖上散步，停在那格就附身
+  [[10, 1], [26, 2]].forEach(([pos, k]) => {
     const def = NPCS[k], g = new THREE.Group(), pg = new THREE.Group(); pg.position.set(...def.model.at); g.add(pg); def.build(g, pg); g.traverse(o => { if (o.isMesh) o.castShadow = true; });
     const n = { def, pos, mesh: g, person: pg }; const [x, z] = npcSpot(pos); g.position.set(x, .2, z); g.rotation.y = tileTheta(pos); scene.add(g); G.npcs.push(n);
     upgradeNPC(n);
@@ -4340,7 +4399,7 @@ function diceForecast(p, n) {
   const tr = G.traps[i];
   if (tr && (tr.k !== 'mine' || tr.o === p.seat)) bits.push(tr.k === 'mine' ? '💥你埋的地雷' : '🚧路障');
   const gn = G.npcs.find(m => m.pos === i);
-  if (gn) bits.push(gn.god ? `${GODS[gn.god].icon}${GODS[gn.god].name}` : '🧓樁腳伯');
+  if (gn) bits.push(gn.god ? `${GODS[gn.god].icon}${GODS[gn.god].name}` : gn.def.id === 'cops' ? '🕵️檢調' : '🧓樁腳伯');
   if (G.coins && G.coins[i] > 0) bits.push(`🪙${fmt(G.coins[i])}`);
   const others0 = G.players.filter(q => q !== p && !q.out && q.pos === i);
   if (others0.length) bits.push('👥' + others0.map(q => q.char.name).join('、'));
@@ -4896,6 +4955,48 @@ async function passStart(p) {
   caption('經過凍蒜廣場', `${p.char.name} 領政治獻金 ${fmt(pay)}＋🎁 一個神秘道具${p.sk === 'han' ? '，民調 +8' : ''}`, 1000);
 }
 
+// 🚨 警車燈：畫面邊緣紅藍交替閃
+function sirenFx() {
+  let el = $('#siren'); if (!el) { el = document.createElement('div'); el.id = 'siren'; el.innerHTML = '<span>🚨</span><span>🚨</span>'; $('#app').appendChild(el); }
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  for (let k = 0; k < 6; k++) beep(k % 2 ? 660 : 880, .22, 'sawtooth', .03, k * .24);
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 3200);
+}
+const SEIZABLE = ['mine', 'bomb', 'rocket', 'missiles', 'block', 'report', 'troll', 'turtle', 'demolish', 'grab', 'typhoon', 'magnet', 'swap', 'expose'];
+// 搜索票彈窗內容
+const warrantHtml = (p, reason, result) => `<div class="warrant"><span class="wno">（${new Date().getFullYear() - 1911}）凍蒜搜字第 ${100 + rnd(900)} 號</span><h3>搜索票</h3>
+  <dl><dt>受搜索人</dt><dd>${esc(p.char.name)}</dd><dt>案由</dt><dd>${reason}</dd><dt>執行結果</dt><dd>${result}</dd></dl><span class="wstamp">檢調<br>專用</span></div>`;
+// 停在檢調那格：一半機率查扣武器（1～2 個），一半機率疑似賄選約談（交保金＝總資產 1 成，或原地停一回合）
+async function triggerInvestigatorEvent(p) {
+  hostFx('siren'); sirenFx(); SFX.bad(); cam.shake = .4;
+  say(p, 'jail', pick(['我是清白的！', '這一定是政治追殺！', '我要找律師！']));
+  log(`🕵️ 檢調突擊搜索 <b>${p.char.name}</b>`);
+  const weapons = p.items.filter(k => SEIZABLE.includes(k));
+  if (weapons.length && Math.random() < .5) {
+    const n = Math.min(weapons.length, 1 + rnd(2)), took = [];
+    for (let k = 0; k < n; k++) { const c = pick(p.items.filter(x => SEIZABLE.includes(x))); takeItem(p, c); took.push(c); }
+    updateHUD();
+    const what = p.isAI ? `${took.length} 個武器` : took.map(c => `${ITEMS[c].icon}${ITEMS[c].name}`).join('、');
+    log(`🕵️ 檢調查扣 <b>${p.char.name}</b> ${took.length} 個武器`);
+    if (p.isAI) await caption('🕵️ 查扣違禁品！', `檢調從 ${p.char.name} 身上搜出 ${took.length} 個武器，當場沒收`, 1800);
+    else await ask(`<h2>🚨 突擊搜索！</h2>${warrantHtml(p, '持有違禁武器', `查扣 ${what}`)}`, [{ label: '😭 配合調查', cls: 'primary' }], p);
+    return;
+  }
+  const assets = p.cash + G.tiles.reduce((s0, st, i) => s0 + (st.owner === p.seat ? tileValue(i) : 0), 0);
+  const bail = Math.max(500, Math.round(assets * .1 / 10) * 10);
+  let pay;
+  if (p.isAI) { pay = p.cash - bail > 5000; await caption('🕵️ 疑似賄選約談！', `${p.char.name} ${pay ? `繳交保金 ${fmt(bail)}` : '選擇原地停一回合配合調查'}`, 1800); }
+  else pay = await ask(`<h2>🚨 疑似賄選約談！</h2>${warrantHtml(p, '疑似賄選', `交保金 ${fmt(bail)}（總資產 ${fmt(assets)} 的 1 成）`)}<p style="font-size:13px">繳交保金就能繼續選；不繳就原地停一回合配合調查。</p>`,
+    [{ label: `💸 繳交保金 ${fmt(bail)}`, value: true, cls: 'hot', disabled: p.cash < bail }, { label: '🪑 停一回合配合調查', value: false }], p);
+  if (pay && p.cash >= bail) {
+    await charge(p, bail, null); toPot(bail); SFX.coin();
+    log(`💸 <b>${p.char.name}</b> 繳交保金 ${fmt(bail)}`);
+  } else {
+    p.skip = Math.max(p.skip, 1); updateHUD();
+    log(`🪑 <b>${p.char.name}</b> 被檢調留下來，停一回合`);
+    if (!p.isAI) await caption('🪑 配合調查', `${p.char.name} 下回合原地停一回合`, 1300);
+  }
+}
 async function meetNPC(p, n) {
   const id = n.def.id;
   if (id === 'chicken' && Math.random() < .65) {
@@ -4916,13 +5017,7 @@ async function meetNPC(p, n) {
     else say(p, 'lose', '下次再說…');
     relocateNPC(n); updateHUD(); return false;
   }
-  if (id === 'cops') {
-    SFX.bad();
-    const lost = p.items.length ? p.items.splice(rnd(p.items.length), 1)[0] : null;
-    say(p, 'jail');
-    await info(p, '🕵️ 撞見檢調！', `「依法搜索！」${lost ? `${ITEMS[lost].icon} ${ITEMS[lost].name}被沒收，` : '身上什麼都沒搜到，'}原地停下配合調查。`);
-    relocateNPC(n); updateHUD(); return true;
-  }
+  if (id === 'cops') { await triggerInvestigatorEvent(p); relocateNPC(n); updateHUD(); return false; }
   // 樁腳伯：辦造勢、發紅包、送道具、灌水民調，4 選 1
   const opts = [
     { v: 'rally', ic: '🎉', name: '辦造勢', desc: '民調 +8，每個對手民調 -2' },
@@ -7233,6 +7328,7 @@ function playFx(m) {
       case 'wheel': if (d && Array.isArray(d.s)) { const w = wheelData(d); if (!(wheelState && wheelState.id === w.id && wheelState.inter)) wheelOpen(w, false); } break;
       case 'emoAt': if (Array.isArray(d)) emoAtLocal(+d[0], [...String(d[1] || '')].slice(0, 2).join('')); break;
       case 'godfx': if (GODS[d]) godFx(d); break;
+      case 'siren': sirenFx(); break;
       case 'lcap': if (Array.isArray(d)) localCaption(esc(String(d[0] || '')), esc(String(d[1] || '')), 500); break;
       case 'dest': if (Array.isArray(d)) showDest(d.slice(0, 2).filter(x => Array.isArray(x) && TILES[+x[0]]).map(x => [+x[0], String(x[1] || '').slice(0, 30)])); break;
       case 'pk': if (d && typeof d === 'object') pkApply({ t: String(d.t || ''), title: String(d.title || ''), L: +d.L, R: +d.R, s: String(d.s || ''), w: String(d.w || ''), a: String(d.a || '').slice(0, 30), b: String(d.b || '').slice(0, 30), sc: String(d.sc || '').slice(0, 20), pg: +d.pg }); break;
