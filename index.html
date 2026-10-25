@@ -688,7 +688,7 @@ body.practicing #modal{z-index:40}
             <li>踩到「疑似賄選」要選：交保、乖乖去約談，或甩鍋給對手。</li>
             <li><b>🎯 祕密任務</b>：每人開局拿到一個別人看不到的任務（例如讓對手破產、背刺盟友兩次、打出 3 連擊）。完成就 +25,000 票，但任務會公開，大家會一起圍剿你；被📰爆料卡提早揭穿，獎勵減半。</li>
             <li><b>🤝 結盟與 🔪 背刺</b>：可以找人結盟，彼此免過路費；隨時能背刺盟友，直接搶走他 25% 現金。被背刺的人會記仇，下次打你第一下就算連擊。</li>
-            <li><b>💥 連擊</b>：每回合最多出 3 個道具。同一回合打同一個人第 2 下多偷 500 元，第 3 下直接搶走他 10% 現金。</li>
+            <li><b>💥 連擊</b>：每回合最多出 1 個道具（超能力另外算）。同一回合打同一個人第 2 下多偷 500 元，第 3 下直接搶走他 10% 現金。</li>
             <li><b>👀 暗雷</b>：地雷只有埋的人看得到，踩到才知道是誰埋的。停在別人旁邊可以偷道具或把他推回 3 格。🪞照妖鏡會把攻擊彈回去。</li>
             <li><b>🌙 選前之夜</b>：最後 3 回合過路費 1.5 倍、軍火夜市半價。</li>
             <li>回合用完時，現金＋地產＋民調×100＋任務獎勵＋每擊倒一人 5,000 票，最高的人當選。</li>
@@ -837,7 +837,7 @@ function speak(ch, line, prio = 1, vid = '') {
 }
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
-const GAME_VER = '20261025i';   // 改角色名單、連線格式時要改這個
+const GAME_VER = '20261026a';   // 改角色名單、連線格式時要改這個
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -1029,10 +1029,13 @@ const ITEMS = {
   fakepoll: { name: '民調灌水', icon: '📈', price: 900, desc: '民調 +15；但有三成機率被抓包，反而 -10。' },
 };
 const ITEM_KEYS = Object.keys(ITEMS);
+// 攻擊型道具（武器）和經營型道具：開局、經過起點、樁腳伯、全民小遊戲只送經營型的，武器要去道具箱抽或夜市買
+const WEAPON_KEYS = ['rocket', 'missiles', 'bomb', 'mine', 'report', 'troll', 'turtle', 'demolish', 'typhoon', 'magnet', 'swap', 'grab', 'expose', 'block'];
+const MILD_ITEMS = () => ITEM_KEYS.filter(k => !WEAPON_KEYS.includes(k) && k !== 'equal');
 const ATTACK_KEYS = ['mine', 'bomb', 'rocket', 'block', 'report', 'troll', 'turtle', 'demolish', 'dice', 'mirror', 'net', 'vest', 'goat', 'expose', 'typhoon', 'magnet', 'swap', 'ghost', 'missiles', 'build'];
 // 會直接打到某位玩家、可以疊連擊的道具
 const HIT_ITEMS = ['bomb', 'report', 'troll', 'turtle', 'expose', 'magnet', 'swap'];
-// 超能力：開局每人隨機抽一個，每 2 回合可以發動一次（有 item 的就是「免費用一次那個道具」）
+// 超能力：開局每人隨機抽一個，每 4 回合可以發動一次（有 item 的就是「免費用一次那個道具」）
 const POWERS = {
   rocket: { name: '飛彈部隊', icon: '🚀', item: 'rocket', desc: '免費發射一枚火箭：炸掉一格的房子，站在那格和隔壁的人一起送醫院。' },
   report: { name: '檢調關說', icon: '📝', item: 'report', desc: '指定一位對手，請他去檢調約談所喝咖啡 1 回合。' },
@@ -1044,7 +1047,7 @@ const POWERS = {
   donate: { name: '政治獻金', icon: '💰', desc: '每位對手各「樂捐」500 給你。' },
   viral: { name: '網紅加持', icon: '📢', desc: '民調 +10，再拿 1,000 元業配費。' },
 };
-const powerReady = p => !!(p && POWERS[p.power] && !p.out && G.round - (p.powerAt ?? -9) >= 2);
+const powerReady = p => !!(p && POWERS[p.power] && !p.out && G.round - (p.powerAt ?? -9) >= 4);
 // 這台裝置上「我」是誰（看道具、任務、喊話用）
 function viewer() {
   if (NET.mode === 'client') return myPlayer() || null;
@@ -1075,7 +1078,7 @@ function openSheet(p, focus) {
   const ally = p.ally >= 0 ? G.players[p.ally] : null, foe = p.revenge >= 0 ? G.players[p.revenge] : null;
   const mission = canSeeMission(p) && MISSIONS[mKey] ? missionHtml(p, mKey) : p.mPublic && MISSIONS[p.mission] ? missionHtml(p, p.mission) : '<p class="mut">（祕密，看不到）</p>';
   $('#sheet-body').innerHTML = `<div class="sh-head" style="--c:${p.char.color}">${avatar(p.char)}<div><b>${p.char.name}</b><small>${esc(label(p))}・${p.out ? '退選' : fmt(p.cash)}・民調 ${Math.round(p.poll)}%</small></div></div>
-    ${P ? `<h4 id="sh-power">⚡ 超能力</h4><div class="cardrow"><span class="ic">${P.icon}</span><div><b>${P.name}${powerReady(p) ? '<em class="okc">可以發動</em>' : `<em>第 ${p.powerAt + 2} 回合可用</em>`}</b><small>${P.desc}</small></div></div>` : ''}
+    ${P ? `<h4 id="sh-power">⚡ 超能力</h4><div class="cardrow"><span class="ic">${P.icon}</span><div><b>${P.name}${powerReady(p) ? '<em class="okc">可以發動</em>' : `<em>第 ${p.powerAt + 4} 回合可用</em>`}</b><small>${P.desc}</small></div></div>` : ''}
     <h4>⭐ 技能（開局抽到的）</h4><p>${SKILLS[p.sk] || '—'}</p>
     <h4 id="sh-mission">🎯 祕密任務</h4>${mission}
     <h4 id="sh-items">🎒 道具${canSeeMission(p) ? `（${p.items.length}）` : ''}</h4>${!canSeeMission(p) ? '<p class="mut">（祕密，看不到他有幾個、有什麼）</p>' : kinds.length ? `<div class="cardlist">${kinds.map(c => `<div class="cardrow"><span class="ic">${ico(c)}</span><div><b>${ITEMS[c].name} ×${p.items.filter(x => x === c).length}${ITEMS[c].passive ? '<em>被動</em>' : ''}</b><small>${ITEMS[c].desc}</small></div></div>`).join('')}</div>` : '<p class="mut">沒有道具</p>'}
@@ -1105,7 +1108,7 @@ const MISSIONS = {
   lord: { name: '大地主', desc: '同時擁有 5 塊地', prog: p => [G.tiles.filter(s => s.owner === p.seat).length, 5] },
   bomber: { name: '爆破專家', desc: '把對手送進醫院、約談所 3 次', prog: p => [p.stats.sends, 3] },
   rich: { name: '黑金帝國', desc: '手上現金達到 70,000', prog: p => [p.cash, 70000] },
-  combo: { name: '連段大師', desc: '同一回合連續打同一個人 2 下（連擊），做到 2 次', prog: p => [p.stats.combo2 || 0, 2] },
+  landlord: { name: '包租公', desc: '同時擁有 3 棟公寓以上的房子', prog: p => [G.tiles.filter(s => s.owner === p.seat && s.level >= 3).length, 3] },
   quizking: { name: '名嘴之路', desc: '質詢搶答、常識擂台累積答對 8 題', prog: p => [p.stats.quiz || 0, 8] },
   traveler: { name: '台灣走透透', desc: '經過起點 3 次', prog: p => [p.stats.laps || 0, 3] },
   builder: { name: '工程包商', desc: '累積蓋房子 6 層（買地時順便蓋也算）', prog: p => [p.stats.built || 0, 6] },
@@ -3222,7 +3225,7 @@ function winRulesHtml() {
       <div class="cardrow"><span class="ic">⚡</span><div><b>立即凍蒜①：壟斷一整區</b><small>同一區的 5 塊地全部拿下，當場獲勝。有人拿到 4 塊時全場會發警報，快去收購他的地！</small></div></div>
       <div class="cardrow"><span class="ic">⚡</span><div><b>立即凍蒜②：聲量 100%</b><small>民調衝到 100% 會發全場警報，撐到自己下一回合開始還是 100% 就獲勝。其他人可以趁這一輪用網軍、爆料把他打下來！</small></div></div>
       <div class="cardrow"><span class="ic">⚡</span><div><b>立即凍蒜③：其他人全部破產</b><small>把所有對手逼到退選。</small></div></div>
-      <div class="cardrow"><span class="ic">🦸</span><div><b>超能力：每 2 回合發動一次</b><small>開局每人隨機抽到一個超能力（飛彈部隊、政治獻金、乾坤大挪移…），出牌時按「⚡」發動，用完冷卻 2 回合。點左邊玩家卡可以看每個人的超能力、道具和地產。</small></div></div>
+      <div class="cardrow"><span class="ic">🦸</span><div><b>超能力：每 4 回合發動一次</b><small>開局每人隨機抽到一個超能力（飛彈部隊、政治獻金、乾坤大挪移…），出牌時按「⚡」發動，用完冷卻 4 回合。點左邊玩家卡可以看每個人的超能力、道具和地產。</small></div></div>
       <div class="cardrow"><span class="ic">🗳️</span><div><b>時間到：得票最高的人當選</b><small>得票 = 現金 + 地產價值 + 民調 × ${POLL_VOTES} + 祕密任務 + 每擊倒一人 5,000。</small></div></div>
     </div>
     <p style="font-size:13px;margin-top:10px">💡 買地當下就能一次蓋到公寓；踩到別人的地，付完過路費可以<b>挑戰收購</b>（先跟地主比小遊戲，贏了才能花 1.5 倍價錢買）（摩天樓是地標，收不走）；擲出<b>對子再擲一次</b>。</p>`;
@@ -3615,8 +3618,8 @@ function startGame(cfg) {
     p.bubble = document.createElement('div'); p.bubble.className = 'bubble'; p.bubble.style.setProperty('--bc', p.char.color); $('#bubbles').append(p.bubble);
     p.tag = document.createElement('div'); p.tag.className = 'ntag'; p.tag.style.setProperty('--c', p.char.color);
     p.tag.textContent = p.char.name + (p.nick ? '・' + p.nick : ''); $('#bubbles').append(p.tag);
-    // 開局 3 個道具：保證有一個火箭／炸彈／地雷，另外兩個隨機（爆料卡不放開局）
-    if (NET.mode !== 'client') [pick(['bomb', 'mine', 'bomb', 'mine', 'rocket']), ...shuffle(ATTACK_KEYS.filter(k => !['expose', 'rocket', 'missiles'].includes(k))).slice(0, 2)].forEach(id => p.items.push(id));
+    // 開局道具
+    if (NET.mode !== 'client') p.items.push(pick(MILD_ITEMS()));   // 開局 1 個經營型道具（不送武器）
     upgradeToken(p);
   });
   // 路人：檢調、樁腳伯；另外四位神明在地圖上散步，停在那格就附身
@@ -3928,7 +3931,7 @@ function refreshSide(w) {
   const pw = $('#btn-power'), P = me && POWERS[me.power];
   pw.hidden = !P; if (!P) return;
   const ready = powerReady(me), pre = w && w.kind === 'pre' && !w.busy && (w.opts ? !!w.opts.power : ready);
-  pw.textContent = ready ? `⚡ ${P.name}` : `⚡ 第 ${me.powerAt + 2} 回合可用`;
+  pw.textContent = ready ? `⚡ ${P.name}` : `⚡ 第 ${me.powerAt + 4} 回合可用`;
   pw.classList.toggle('ready', !!pre);
 }
 function refreshActions() {
@@ -3955,7 +3958,7 @@ function refreshActions() {
   if (NET.mode === 'client' && !w) return;
   setHint(!w ? '' : w.kind === 'stop' ? '擲出對子！再點一次骰子' : `輪到 ${p.char.name}（${label(p)}）：先出道具、結盟，或直接點骰子擲`);
 }
-const MAX_ITEMS = 3;
+const MAX_ITEMS = 1;
 // 出牌階段：出現骰子選單，點 1～3 顆骰子（或按「擲骰子」）就擲、出發（一鍵）
 function humanPreRoll(p) {
   if (viaNet(p)) return remotePreRoll(p);
@@ -3966,8 +3969,8 @@ function humanPreRoll(p) {
 const TUT = [
   { sel: '#players', text: '👈 這裡是所有參選人：現金、民調、道具。卡片上「🎲 輪到他」就是現在輪到誰。<b>點卡片</b>可以看他的道具、超能力和地產。' },
   { sel: '#gauge', text: '🎲 輪到你時會出現骰子。<b>點 1、2 或 3 顆骰子</b>就直接擲：骰越多走越快，1 顆最好控制。10 秒沒動作會自動擲。' },
-  { sel: '#btn-items', text: '🎒 道具：飛彈、地雷、檢舉卡、搶地卡……擲骰前可以先出，一回合最多 3 個。' },
-  { sel: '#btn-power', text: '⚡ 超能力：每個人開局抽一個，每 2 回合可以發動一次。' },
+  { sel: '#btn-items', text: '🎒 道具：飛彈、地雷、檢舉卡、搶地卡……擲骰前可以先出，一回合最多 1 個。' },
+  { sel: '#btn-power', text: '⚡ 超能力：每個人開局抽一個，每 4 回合可以發動一次。' },
   { sel: '#btn-ally', text: '🤝 結盟：盟友彼此免過路費。但……盟友隨時可以背刺你！' },
   { sel: '#btn-chat', text: '💬 喊話：用角色的招牌台詞嗆對手，還能丟番茄、雞蛋給正在玩的人。', online: true },
   { sel: '#btn-rules', text: '🏆 怎麼贏：壟斷一整區、聲量衝到 100%，或回合結束時得票最高。忘記了就按這裡看。' },
@@ -4161,7 +4164,7 @@ async function itemFlow(p, used = 0) {
     const usable = [...new Set(p.items)].filter(c => !ITEMS[c].passive);
     if (!usable.length) return {};
     const btns = usable.map(c => ({ label: `${ITEMS[c].icon} ${ITEMS[c].name}`, value: c, card: { ic: ico(c), name: `${ITEMS[c].name} ×${p.items.filter(x => x === c).length}`, desc: ITEMS[c].desc } }));
-    const id = await ask(`<h2>出哪個道具？（這回合第 ${used + 1} / ${MAX_ITEMS} 個）</h2><p style="font-size:13px">👆 <b>直接點卡片</b>就能使用。同一回合連續打同一個人會「連擊」：第 2 下多偷 500 元，第 3 下搶走他 10% 現金！</p>`, [...btns, { label: '✖ 先不用', value: null }], p);
+    const id = await ask(`<h2>出哪個道具？（這回合第 ${used + 1} / ${MAX_ITEMS} 個）</h2><p style="font-size:13px">👆 <b>直接點卡片</b>就能使用。道具一回合只能出 1 個，想清楚再用！</p>`, [...btns, { label: '✖ 先不用', value: null }], p);
     if (!id) return {};
     const arg = await chooseTarget(p, id);
     if (arg === null) continue;   // 取消：回到道具清單重選
@@ -4778,8 +4781,8 @@ async function sendTo0(p, corner, turns, where) {
 /* ---------- 電腦 ---------- */
 async function aiPreRoll(p) {
   if (p.sk === 'chiang' && !p.skillUsed && G.round >= 3 && Math.random() < .35) await wanAnDrill(p);
-  // 超能力冷卻好了：一半機率發動
-  if (powerReady(p) && Math.random() < .5) {
+  // 超能力冷卻好了：三成機率發動
+  if (powerReady(p) && Math.random() < .3) {
     const t = aiPowerArg(p);
     if (t !== null && t !== undefined) { const r = await powerFlow(p, t); if (r && r.forced) return r.forced; if (p.skip || p.out) return null; }
   }
@@ -4798,12 +4801,11 @@ async function aiPreRoll(p) {
       else { say(q, 'lose', '我才不要跟你同一國！'); await caption('結盟被拒絕', `${q.char.name} 不買帳`, 1100); }
     }
   }
-  // 一回合最多出 2 個道具，盡量打同一個人湊連擊
-  for (let k = 0; k < 2; k++) {
+  // 一回合最多出 1 個道具，而且不是每回合都出手（大富翁主要是買地、收租）
+  if (Math.random() < .4) {
     const choice = aiPickItem(p); if (!choice) return null;
     const f = await useItem(p, choice[0], choice[1]);
     if (f) return f;
-    if (p.skip || p.out) return null;
   }
   return null;
 }
@@ -4959,8 +4961,8 @@ async function passStart(p) {
   if (p.sk === 'han') addPoll(p, 8);
   p.cash += pay; SFX.coin(); say(p, 'start');
   const lastPlace = [...alive()].sort((a, b) => score(a) - score(b))[0] === p;
-  const gift = lastPlace || Math.random() < .35 ? pick(['bomb', 'mine', 'rocket']) : pick(ITEM_KEYS.filter(k => !['rocket', 'missiles'].includes(k))); giveItem(p, gift); updateHUD();   // 三成五送武器，火箭不要太多
-  caption('經過凍蒜廣場', `${p.char.name} 領政治獻金 ${fmt(pay)}＋🎁 一個神秘道具${p.sk === 'han' ? '，民調 +8' : ''}`, 1000);
+  const gift = lastPlace || Math.random() < .3; if (gift) giveItem(p, pick(MILD_ITEMS())); updateHUD();   // 三成機率（最後一名一定）送一個經營型道具
+  caption('經過凍蒜廣場', `${p.char.name} 領政治獻金 ${fmt(pay)}${gift ? '＋🎁 一個神秘道具' : ''}${p.sk === 'han' ? '，民調 +8' : ''}`, 1000);
 }
 
 // 🚨 警車燈：畫面邊緣紅藍交替閃
@@ -5030,7 +5032,7 @@ async function meetNPC(p, n) {
   const opts = [
     { v: 'rally', ic: '🎉', name: '辦造勢', desc: '民調 +8，每個對手民調 -2' },
     { v: 'red', ic: '🧧', name: '發紅包', desc: '現金 +2,000' },
-    { v: 'gift', ic: '🎁', name: '送道具', desc: '一個武器＋一個隨機道具' },
+    { v: 'gift', ic: '🎁', name: '送道具', desc: '兩個好用的道具（加蓋、遙控骰子、免死金牌…）' },
     { v: 'poll', ic: '📈', name: '灌水民調', desc: '民調 +12' },
   ];
   say(p, 'earn', '阿伯好！');
@@ -5038,7 +5040,7 @@ async function meetNPC(p, n) {
   const o = opts.find(x => x.v === c) || opts[1];
   if (o.v === 'rally') { addPoll(p, 8); others(p).forEach(q => addPoll(q, -2)); }
   else if (o.v === 'red') p.cash += 2000;
-  else if (o.v === 'gift') { giveItem(p, pick(['bomb', 'mine', 'rocket'])); giveItem(p, pick(ITEM_KEYS.filter(k => !['rocket', 'missiles'].includes(k)))); }
+  else if (o.v === 'gift') { giveItem(p, pick(MILD_ITEMS())); giveItem(p, pick(MILD_ITEMS())); }
   else addPoll(p, 12);
   SFX.coin(); say(p, 'earn', '多謝阿伯！');
   log(`🧓 樁腳伯幫 <b>${p.char.name}</b> ${o.ic}${o.name}`);
@@ -5061,7 +5063,7 @@ async function resolveTile(p) {
       else await payRent(p, i);
       break;
     case 'item': {
-      const r = Math.random(), id = r < .06 ? 'rocket' : r < .18 ? 'bomb' : r < .38 ? 'mine' : r < .41 ? 'missiles' : pick(ITEM_KEYS.filter(k => !['rocket', 'missiles'].includes(k))); const ok = giveItem(p, id); SFX.fan(); say(p, 'item');
+      const r = Math.random(), id = r < .03 ? 'rocket' : r < .09 ? 'bomb' : r < .17 ? 'mine' : r < .35 ? pick(WEAPON_KEYS.filter(k => !['rocket', 'missiles', 'bomb', 'mine'].includes(k))) : pick(MILD_ITEMS()); const ok = giveItem(p, id); SFX.fan(); say(p, 'item');
       await info(p, ok ? (p.isAI ? '🎁 抽到一個神秘道具' : `抽到 ${ITEMS[id].icon} ${ITEMS[id].name}`) : '道具滿了', ok ? (p.isAI ? `${p.char.name} 偷偷收起來了` : ITEMS[id].desc) : '換成 500 元。');
       break;
     }
@@ -5763,7 +5765,7 @@ async function allGame() {
   modal.hidden = true;
   const rank = [...ps].sort((a, b) => meta.better(res.get(a), res.get(b)) ? -1 : meta.better(res.get(b), res.get(a)) ? 1 : 0);
   const best = rank[0], worst = rank.length >= 3 ? rank[rank.length - 1] : null;
-  const prize = pick(['bomb', 'mine', 'rocket']); best.cash += 3000; addPoll(best, 5); giveItem(best, prize); say(best, 'win', '第一名就是我！');
+  const prize = pick(MILD_ITEMS()); best.cash += 3000; addPoll(best, 5); giveItem(best, prize); say(best, 'win', '第一名就是我！');
   rank.slice(1, worst ? -1 : undefined).forEach(p => { p.cash += 300; });
   updateHUD();
   log(`${meta.name}：${rank.map(p => `${p.char.name} ${meta.fmt(res.get(p))}`).join('、')}`);
