@@ -233,6 +233,14 @@ button{touch-action:manipulation}
 .pc.tgt::after{content:'🎯 點我';position:absolute;right:8px;top:50%;transform:translateY(-50%);font-family:var(--display);font-weight:900;font-size:12px;background:#ff3b5c;color:#fff;border-radius:999px;padding:2px 8px;border:2px solid var(--ink)}
 @keyframes tgt{to{transform:translateX(8px)}}
 /* 開票前衝票小遊戲 */
+.vc-prog{text-align:center;font-weight:900;color:var(--muted);font-size:14px;margin:4px 0}
+.vc-stage{min-height:118px;display:grid;place-items:center;margin:4px 0 8px}
+.vc-card{display:inline-flex;flex-direction:column;align-items:center;gap:2px;padding:10px 22px;border:3px solid var(--ink);border-radius:16px;background:#fff;font-size:48px;line-height:1.1;box-shadow:0 4px 0 var(--ink);animation:vcpop .25s cubic-bezier(.2,1.6,.4,1)}
+.vc-card small{font-family:var(--display);font-weight:900;font-size:14px}
+.vc-card.me{background:#e8f5e9;border-color:#2e7d32;box-shadow:0 4px 0 #2e7d32}
+.vc-card.bad{background:#ffebee}
+.vc-card.ask{background:#fff8e1}
+@keyframes vcpop{from{transform:scale(.4) rotate(-8deg);opacity:0}}
 .mg-street{position:relative;height:220px;border:3px solid var(--ink);border-radius:14px;background:linear-gradient(#e8f5e9,#fffde7);overflow:hidden;margin-bottom:8px}
 .mg-street .mg-voter{position:absolute;font-size:32px;padding:4px 7px;border-radius:50%;line-height:1;min-width:0}
 #mgv{position:fixed;left:12px;bottom:130px;z-index:65;display:flex;flex-direction:column;gap:6px;pointer-events:none;width:min(300px,calc(100vw - 24px))}
@@ -6039,33 +6047,48 @@ const voteStop = mgWrap('vstop', '🎯 開票精準停', p => new Promise(res =>
   addEventListener('keydown', key); $('#mgbtn').onpointerdown = press;
   mgTimer(20000, finish);
 }), 0, 300, v => `${v} 分`);
-// 4. 唱票快手：票一張張閃過，記住 ⭕ 有幾張，5 題
+// 4. 唱票快手：開票員一張一張唱票（每張中間空一下），數「你的票 ⭕」有幾張；4 題、一題比一題快，答完馬上公布答案
 const voteCount = mgWrap('vcount', '🧮 唱票快手', p => new Promise(res => {
-  const body = gameBox(p, '🧮 唱票快手', '選票會一張張閃過，記住<b>你的票 ⭕</b> 有幾張！5 題，答對越多越好。');
-  body.innerHTML = `<div class="mg-word" id="mgword" style="font-size:48px;min-height:64px">🗳️</div><div class="btns" id="mgopts"></div><p class="mg-note" id="mgnote">第 1 / 5 題</p>`;
+  const body = gameBox(p, '🧮 唱票快手', '開票員一張一張唱票，數數看<b>你的票 ⭕</b> 有幾張！4 題，一題比一題快。');
+  body.innerHTML = `<p class="vc-prog" id="mgnote">第 1 / 4 題</p><div class="vc-stage" id="mgword"></div><div class="btns" id="mgopts"></div>`;
   let q = 0, sc = 0, done = false;
-  const finish = () => { if (done) return; done = true; setTimeout(() => { modal.hidden = true; res(sc); }, 600); };
+  const stage = () => $('#mgword');
+  const finish = () => { if (done) return; done = true; setTimeout(() => { modal.hidden = true; res(sc); }, 700); };
   const next = () => {
-    if (done) return; if (q >= 5) return finish();
-    q++; $('#mgnote').textContent = `第 ${q} / 5 題`; $('#mgopts').innerHTML = '';
-    const n = 3 + rnd(5), total = n + 4 + rnd(4), other = pick(['❌', '🔺', '⬛']);
-    const arr = shuffle([...Array(n).fill('⭕'), ...Array(total - n).fill(other)]); let k = 0;
+    if (done) return; if (q >= 4) return finish();
+    q++; $('#mgopts').innerHTML = '';
+    const total = [5, 6, 6, 7][q - 1], n = 2 + rnd(Math.min(3, total - 3)), other = pick(['❌', '🔺', '🟦']);
+    const arr = shuffle([...Array(n).fill(1), ...Array(total - n).fill(0)]);
+    const showMs = [700, 620, 540, 480][q - 1];
+    let k = 0;
     const show = () => {
-      if (done) return; const w = $('#mgword'); if (!w) return;
+      if (done || !stage()) return;
       if (k >= arr.length) {
-        w.textContent = '⭕ 有幾張？';
-        const opts = shuffle([...new Set([n, n + 1, n - 1, n + 2])].filter(x => x > 0)).slice(0, 4);
-        $('#mgopts').innerHTML = opts.map(x => `<button data-v="${x}">${x} 張</button>`).join('');
-        $('#mgopts').querySelectorAll('button').forEach(b => b.onclick = () => { if (done) return; if (+b.dataset.v === n) { sc++; $('#mgs').textContent = sc; SFX.coin(); } else SFX.bad(); next(); });
+        $('#mgnote').textContent = `第 ${q} / 4 題：你的 ⭕ 有幾張？`;
+        stage().innerHTML = '<div class="vc-card ask">🤔<small>有幾張？</small></div>';
+        const opts = [...new Set([n - 1, n, n + 1, n + 2])].filter(x => x > 0).slice(0, 3);
+        $('#mgopts').innerHTML = shuffle(opts).map(x => `<button class="primary" data-v="${x}">${x} 張</button>`).join('');
+        $('#mgopts').querySelectorAll('button').forEach(btn => btn.onclick = () => {
+          if (done || !$('#mgopts').children.length) return;
+          const ok = +btn.dataset.v === n; $('#mgopts').innerHTML = '';
+          if (ok) { sc++; $('#mgs').textContent = sc; SFX.coin(); } else SFX.bad();
+          stage().innerHTML = `<div class="vc-card ${ok ? 'me' : 'bad'}">${ok ? '✅' : '❌'}<small>${ok ? '答對了！' : '差一點！'}就是 ${n} 張 ⭕</small></div>`;
+          setTimeout(next, 1100);
+        });
         return;
       }
-      w.textContent = arr[k++]; setTimeout(show, Math.max(200, 360 - q * 30));
+      const mine = arr[k++] === 1;
+      $('#mgnote').textContent = `第 ${q} / 4 題・唱到第 ${k} / ${total} 張`;
+      stage().innerHTML = `<div class="vc-card ${mine ? 'me' : ''}">${mine ? '⭕' : other}<small>${mine ? '你的票！' : '別人的票'}</small></div>`;
+      beep(mine ? 880 : 330, .08, mine ? 'triangle' : 'square', .03);
+      setTimeout(() => { if (!done && stage()) stage().innerHTML = ''; setTimeout(show, 160); }, showMs);   // 每張中間空一下，連續兩張一樣的也數得出來
     };
-    show();
+    $('#mgnote').textContent = `第 ${q} / 4 題：準備唱票…`; stage().innerHTML = '<div class="vc-card ask">📢<small>開始唱票！</small></div>';
+    setTimeout(show, 900);
   };
   next();
-  mgTimer(45000, finish);
-}), 0, 5, v => `答對 ${v} 題`);
+  mgTimer(60000, finish);
+}), 0, 4, v => `答對 ${v} 題`);
 // 5. 搶頭香：廟門一開就按，3 次，越快越高分（太早按 0 分）
 const voteRush = mgWrap('vrush', '🔔 搶頭香', p => new Promise(res => {
   const body = gameBox(p, '🔔 搶頭香', '廟門打開（🔔 開！）的瞬間按！3 次，越快分數越高；太早按算 0 分。');
@@ -6093,7 +6116,7 @@ const RUSH = {
   vtap: { name: '🗳️ 狂蓋選票', intro: '6 秒狂點蓋章，票數最多的贏', play: voteTap, ai: () => 26 + rnd(20), fmt: v => `${v} 票` },
   vchase: { name: '📣 掃街拜票', intro: '8 秒內點最多選民，點到反對者扣分', play: voteChase, ai: () => 6 + rnd(9), fmt: v => `${v} 票` },
   vstop: { name: '🎯 開票精準停', intro: '得票率跳到 50.1% 時按停，3 次越準越高分', play: voteStop, ai: () => 120 + rnd(150), fmt: v => `${v} 分` },
-  vcount: { name: '🧮 唱票快手', intro: '記住閃過的 ⭕ 有幾張，5 題答對最多的贏', play: voteCount, ai: () => 2 + rnd(4), fmt: v => `答對 ${v} 題` },
+  vcount: { name: '🧮 唱票快手', intro: '一張張唱票，數你的 ⭕ 有幾張，4 題答對最多的贏', play: voteCount, ai: () => 1 + rnd(4), fmt: v => `答對 ${v} 題` },
   vrush: { name: '🔔 搶頭香', intro: '廟門一開就搶，3 次反應最快的贏', play: voteRush, ai: () => 1100 + rnd(900), fmt: v => `${v} 分` },
 };
 const RUSH_BONUS = [12000, 6000, 3000];
