@@ -29,26 +29,34 @@ body{background:var(--sky);color:var(--ink);font-family:var(--body);-webkit-tap-
 #app{position:fixed;inset:0}
 #c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
 #c.aim{cursor:crosshair}
-button{font-family:var(--display);font-weight:900;color:var(--ink);background:var(--paper);border:3px solid var(--ink);border-radius:12px;box-shadow:3px 3px 0 var(--ink);padding:8px 14px;font-size:15px;cursor:pointer;transition:transform .08s,box-shadow .08s}
-button:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
-button:active:not(:disabled){transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+/* 立體糖果按鈕：上亮下暗的漸層、上緣白色反光、底下一條「厚度」；按下去整顆往下沉、厚度被壓扁 */
+button{--lip:var(--ink);font-family:var(--display);font-weight:900;color:var(--ink);background:linear-gradient(180deg,#ffffff 0%,#fff6e0 55%,#ffe9c2 100%);border:2.5px solid var(--ink);border-radius:14px;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.95),inset 0 -3px 0 rgba(29,22,51,.10),0 4px 0 var(--lip),0 8px 14px -4px rgba(29,22,51,.35);
+  padding:8px 14px;font-size:15px;cursor:pointer;transform:translateY(0);transition:transform .1s cubic-bezier(.3,.7,.4,1.5),box-shadow .1s,filter .15s}
+button:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.04);box-shadow:inset 0 2px 0 rgba(255,255,255,.95),inset 0 -3px 0 rgba(29,22,51,.10),0 6px 0 var(--lip),0 12px 18px -4px rgba(29,22,51,.35)}
+button:active:not(:disabled){transform:translateY(4px);transition-duration:.04s;box-shadow:inset 0 2px 4px rgba(29,22,51,.18),inset 0 -1px 0 rgba(255,255,255,.4),0 0 0 var(--lip),0 2px 4px -2px rgba(29,22,51,.3)}
 button:disabled{opacity:.45;cursor:not-allowed}
-button:focus-visible{outline:3px solid var(--hot);outline-offset:2px}
-button.primary{background:var(--sun)}
-button.hot{background:var(--hot);color:#fff}
-.panel{background:var(--paper);border:3px solid var(--ink);border-radius:16px;box-shadow:5px 5px 0 var(--ink)}
+button:focus-visible{outline:3px solid var(--hot);outline-offset:3px}
+button.primary{background:linear-gradient(180deg,#fff4a8 0%,#ffd84a 50%,#ffbf1f 100%)}
+button.hot{background:linear-gradient(180deg,#ff9cb4 0%,#ff5f84 50%,#f2365f 100%);color:#fff;text-shadow:0 1px 0 rgba(120,0,40,.45)}
+/* 毛玻璃面板：半透明奶油色＋背景模糊、上緣反光、柔和的多層陰影，外框保留墨線 */
+.panel{background:linear-gradient(160deg,rgba(255,252,244,.86),rgba(255,247,230,.72));-webkit-backdrop-filter:blur(14px) saturate(1.5);backdrop-filter:blur(14px) saturate(1.5);
+  border:2.5px solid var(--ink);border-radius:20px;box-shadow:inset 0 1.5px 0 rgba(255,255,255,.9),0 4px 0 rgba(29,22,51,.9),0 14px 30px -8px rgba(29,22,51,.35)}
+/* 手機：不做背景模糊（比較省電），改成不透明一點 */
+.lite .panel{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(160deg,#fffcf4,#fff5e2)}
 
 #hud-top{position:absolute;top:max(12px,env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:flex;gap:8px;align-items:center;z-index:5}
-#hud-top .chip{font-family:var(--display);font-weight:900;font-size:15px;padding:6px 12px;background:var(--paper);border:3px solid var(--ink);border-radius:999px;box-shadow:3px 3px 0 var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
-#hud-top .chip.round{background:var(--sun)}
+#hud-top .chip{font-family:var(--display);font-weight:900;font-size:15px;padding:6px 12px;background:rgba(255,252,244,.85);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:2.5px solid var(--ink);border-radius:999px;box-shadow:inset 0 1.5px 0 rgba(255,255,255,.9),0 3px 0 var(--ink),0 8px 14px -6px rgba(29,22,51,.35);white-space:nowrap;font-variant-numeric:tabular-nums}
+#hud-top .chip.round{background:linear-gradient(180deg,#fff4a8,#ffd84a 50%,#ffbf1f)}
 #hud-top button{padding:5px 12px;font-size:13px;border-radius:999px;white-space:nowrap}
 @media (max-width:520px){#hud-top{gap:4px}#hud-top .chip{padding:3px 7px;font-size:12px}#hud-top button{padding:3px 8px;font-size:12px}}
 #mods{position:absolute;top:calc(max(12px,env(safe-area-inset-top,0px)) + 46px);left:50%;transform:translateX(-50%);display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:min(560px,92vw);pointer-events:none;z-index:5}
 #mods span{font-size:12px;font-weight:700;background:var(--hot);color:#fff;border:2px solid var(--ink);border-radius:999px;padding:2px 10px}
 #players{position:absolute;top:max(12px,env(safe-area-inset-top,0px));left:max(12px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:8px;width:240px;z-index:5}
-.pc{position:relative;display:flex;gap:10px;align-items:center;padding:8px 10px;background:var(--paper);border:3px solid var(--ink);border-radius:14px;box-shadow:3px 3px 0 var(--ink);transition:transform .2s}
-.pc.active{transform:translateX(6px);box-shadow:5px 5px 0 var(--c),0 0 0 4px var(--sun);background:#fff;animation:pcpulse 1.2s ease-in-out infinite}
-@keyframes pcpulse{50%{box-shadow:5px 5px 0 var(--c),0 0 0 7px var(--sun)}}
+.pc{position:relative;display:flex;gap:10px;align-items:center;padding:8px 10px;background:linear-gradient(160deg,rgba(255,252,244,.84),rgba(255,247,230,.68));-webkit-backdrop-filter:blur(12px) saturate(1.5);backdrop-filter:blur(12px) saturate(1.5);border:2.5px solid var(--ink);border-radius:18px;box-shadow:inset 0 1.5px 0 rgba(255,255,255,.9),0 3px 0 rgba(29,22,51,.9),0 10px 20px -8px rgba(29,22,51,.35);transition:transform .25s cubic-bezier(.3,.7,.4,1.4)}
+.lite .pc{-webkit-backdrop-filter:none;backdrop-filter:none;background:#fffaf0}
+.pc.active{transform:translateX(6px) scale(1.02);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.9),0 3px 0 var(--c),0 0 0 4px var(--sun),0 12px 24px -6px rgba(29,22,51,.4);background:rgba(255,255,255,.92);animation:pcpulse 1.2s ease-in-out infinite}
+@keyframes pcpulse{50%{box-shadow:inset 0 1.5px 0 rgba(255,255,255,.9),0 3px 0 var(--c),0 0 0 7px var(--sun),0 12px 24px -6px rgba(29,22,51,.4)}}
 .pc .turnb{position:absolute;left:-6px;top:-10px;z-index:1;padding:1px 7px;border:2px solid var(--ink);border-radius:999px;background:var(--sun);font-family:var(--display);font-weight:900;font-size:11px;box-shadow:2px 2px 0 var(--ink)}
 .pc .meb{display:inline-block;margin-left:4px;padding:0 6px;border-radius:999px;background:var(--hot);color:#fff;font-size:10px;font-weight:900;vertical-align:2px}
 .pc.out{opacity:.4;filter:grayscale(1)}
@@ -252,7 +260,8 @@ button{touch-action:manipulation}
 .bubble.on{opacity:1}
 .bubble b{display:block;font-size:11px;color:var(--bc);letter-spacing:.06em}
 
-#modal{position:absolute;inset:0;display:grid;place-items:center;background:rgba(29,22,51,.35);z-index:20;padding:16px}
+#modal{position:absolute;inset:0;display:grid;place-items:center;background:rgba(29,22,51,.28);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);z-index:20;padding:16px}
+.lite #modal{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(29,22,51,.35)}
 #modal .box{width:min(460px,100%);max-height:calc(100% - 20px);overflow:auto;padding:20px 22px;animation:pop .3s cubic-bezier(.2,1.5,.4,1)}
 #modal h2{margin:0 0 6px;font-family:var(--display);font-weight:900;font-size:24px;text-wrap:balance}
 #modal .who{display:inline-block;font-family:var(--display);font-weight:900;font-size:12px;letter-spacing:.06em;color:#fff;background:var(--c,var(--ink));padding:2px 10px;border-radius:999px;margin-bottom:8px}
@@ -1128,11 +1137,13 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color('#8fd8ff');
 scene.fog = new THREE.Fog('#8fd8ff', 70, 140);
 const camera = new THREE.PerspectiveCamera(45, 1, .1, 400);
+// 柔和全局光：天空色從上照、地面反射的暖綠從下照；主光（太陽）負責陰影，背面再補一盞冷色補光，暗面不會死黑
 const hemi = new THREE.HemisphereLight('#ffffff', '#7fa86a', .75); scene.add(hemi);
+const fill = new THREE.DirectionalLight('#cfe3ff', .28); fill.position.set(-20, 18, -16); scene.add(fill);
 const sun = new THREE.DirectionalLight('#fff4dd', .85);
 sun.position.set(18, 40, 22); sun.castShadow = true;
 sun.shadow.mapSize.set(LITE ? 1024 : 2048, LITE ? 1024 : 2048);
-sun.shadow.bias = -.0008; sun.shadow.normalBias = .02;   // 減少陰影閃爍（手機的精度比較低）
+sun.shadow.bias = -.0008; sun.shadow.normalBias = .02; sun.shadow.radius = LITE ? 2 : 4;   // 減少陰影閃爍（手機的精度比較低）
 Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 100 });
 scene.add(sun);
 const skyMat = new THREE.ShaderMaterial({
@@ -1150,7 +1161,7 @@ const nightMat = (map, k = .7) => { const m = new THREE.MeshStandardMaterial({ m
 const FM = c => matCache['f' + c] || (matCache['f' + c] = new THREE.MeshStandardMaterial({ color: c, roughness: .9, flatShading: true }));
 
 const matCache = {};
-const M = c => matCache[c] || (matCache[c] = new THREE.MeshStandardMaterial({ color: c, roughness: .75 }));
+const M = c => matCache[c] || (matCache[c] = new THREE.MeshStandardMaterial({ color: c, roughness: .88, metalness: 0 }));
 // 拆掉的模型要把顯示卡記憶體還回去（共用的材質留著）
 function disposeTree(o) {
   const keep = new Set(Object.values(matCache));
@@ -1168,6 +1179,12 @@ const box = (w, h, d, c, x, y, z, p) => mesh(new THREE.BoxGeometry(w, h, d), c, 
 const cyl = (rt, rb, h, c, x, y, z, p, seg = 14) => mesh(new THREE.CylinderGeometry(rt, rb, h, seg), c, x, y, z, p);
 const ball = (r, c, x, y, z, p) => mesh(new THREE.SphereGeometry(r, 16, 12), c, x, y, z, p);
 const cone = (r, h, c, x, y, z, p, seg = 4) => mesh(new THREE.ConeGeometry(r, h, seg), c, x, y, z, p);
+let aoTex = null; const playerAO = [];
+function aoBlob(size, k = .5) {
+  if (!aoTex) aoTex = canvasTex(128, 128, (x, w, h) => { const g = x.createRadialGradient(64, 64, 6, 64, 64, 64); g.addColorStop(0, 'rgba(30,24,50,1)'); g.addColorStop(.45, 'rgba(30,24,50,.55)'); g.addColorStop(1, 'rgba(30,24,50,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h); });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: aoTex, transparent: true, opacity: k, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+  m.rotation.x = -Math.PI / 2; m.renderOrder = 1; return m;
+}
 function canvasTex(w, h, draw) {
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
   draw(cv.getContext('2d'), w, h);
@@ -1776,7 +1793,8 @@ function buildBoard(id, seed = 0) {
   });
   // 中間的投票箱舞台與地標
   const st = new THREE.Group(); st.position.set(m.stage[0], 0, m.stage[1]); BG.add(st); buildStage(st, m.stage[2]);
-  m.marks.forEach(([name, x, z, ry]) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry || 0; BG.add(g); MARKS[name](g); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); });
+  m.marks.forEach(([name, x, z, ry]) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry || 0; BG.add(g); MARKS[name](g); g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    { const bb = new THREE.Box3().setFromObject(g), sz = Math.min(14, Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) * 1.25 + 1.5), a = aoBlob(sz, .4); a.position.set(x, -.1, z); BG.add(a); } });
   // 四個角落特殊格旁邊的造型（放在格子外側）
   const cornerProp = (i, build) => { const [x, z] = tilePos(i), [ix, iz] = tileIn(i); const g = new THREE.Group(); g.position.set(x - ix * 4.6, 0, z - iz * 4.6); g.rotation.y = tileTheta(i); BG.add(g); build(g); };
   cornerProp(0, g => { cyl(.3, .3, 3.6, '#ff4f79', -1.6, 1.8, 0, g); cyl(.3, .3, 3.6, '#ff4f79', 1.6, 1.8, 0, g); box(4.2, .7, .5, '#ffd23f', 0, 3.6, 0, g); });
@@ -2490,6 +2508,7 @@ function rebuild(i, pop = true) {
   const [x, z] = tilePos(i), [ix, iz] = tileIn(i);
   const g = new THREE.Group(); g.position.set(x + ix * 3.1, 0, z + iz * 3.1); g.rotation.y = tileTheta(i); scene.add(g); buildingGroups[i] = g;
   const c = G.players[st.owner].char.color;
+  { const a = aoBlob(4.4, .45); a.position.set(.2, .015, 0); g.add(a); }
   // 陣營色底座：一眼看出是誰的地
   cyl(1.55, 1.62, .1, c, .2, .05, 0, g, 28); cyl(1.32, 1.32, .02, '#ffffff', .2, .11, 0, g, 28).material = M('#fffaf0');
   cyl(.05, .05, 1.6, '#ffffff', -1.4, .8, 0, g, 6);
@@ -2835,7 +2854,14 @@ function frame(now) {
   for (const i in trapMeshes) trapMeshes[i].visible = trapVisible(G.traps[i]);
   if (G.bomb) { const h = G.players[G.bomb.holder]; bombObj.visible = !!h.mesh && !h.out; if (h.mesh) { bombObj.position.copy(h.mesh.position); bombObj.position.y += 3; } }
   G.npcs && G.npcs.forEach(n => { if (n.mixer) n.mixer.update(dt); });
+  playerAO.forEach(b => { b.visible = false; });
   G.players.forEach((p, pi) => {
+    if (p.mesh) {
+      if (!p.aoB) { p.aoB = aoBlob(2.2, .5); scene.add(p.aoB); playerAO.push(p.aoB); }
+      const h = Math.max(0, p.mesh.position.y), k = 1 / (1 + h * .35);
+      p.aoB.visible = !p.out && p.mesh.visible !== false; p.aoB.position.set(p.mesh.position.x, .23, p.mesh.position.z);
+      p.aoB.scale.setScalar(k * (p.baseS || 1)); p.aoB.material.opacity = .5 * k;
+    }
     if (p.mixer) {
       p.mixer.update(dt);
       if (p.faceHolder) {
@@ -6912,7 +6938,7 @@ $('#phrases').onclick = e => {
 };
 $('#btn-chat').onclick = () => { if ($('#phrases').hidden) buildPhrases(); $('#phrases').hidden = !$('#phrases').hidden; $('#chatbar').classList.toggle('open', !$('#phrases').hidden); };
 // 手機、平板：次要按鈕收進「⋯ 更多」，喊話、表情、說話收成一顆
-function setCompact() { document.body.classList.toggle('compact', LITE || innerWidth < 900); }
+function setCompact() { document.body.classList.toggle('compact', LITE || innerWidth < 900); document.body.classList.toggle('lite', LITE); }
 setCompact(); addEventListener('resize', setCompact);
 $('#btn-more').onclick = () => { const on = $('#actions').classList.toggle('more'); $('#btn-more').textContent = on ? '✕ 收起' : '⋯ 更多'; };
 // 按住說話：錄一段（最多 8 秒）透過轉發伺服器傳給大家
