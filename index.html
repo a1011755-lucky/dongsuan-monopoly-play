@@ -208,6 +208,13 @@ button{touch-action:manipulation}
 #rcol #log{position:static;width:auto}
 #godpanel{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 #godpanel h3{margin:0;font-family:var(--display);font-size:13px;letter-spacing:.08em;color:var(--muted)}
+#godpanel .gp-head{display:flex;align-items:center;gap:6px;width:100%;padding:4px 8px;font-size:13px;letter-spacing:.04em;border-radius:12px;background:transparent;box-shadow:none;border:0;color:var(--muted)}
+#godpanel .gp-head:hover{transform:none;filter:none;box-shadow:none}
+#godpanel .gp-head .gp-ic{font-size:16px;letter-spacing:0}
+#godpanel .gp-head .gp-tg{margin-left:auto;font-size:12px;color:var(--ink);background:#fff3c4;border:2px solid var(--ink);border-radius:999px;padding:1px 8px}
+#godpanel.shut{padding:4px 6px;align-self:flex-end;width:auto}
+#godpanel.shut .gp-head{padding:3px 6px;white-space:nowrap}
+#godpanel.shut .gp-head .gp-tg{margin-left:4px}
 .gd{--gb:#fff6d6;--gc:#f5b400;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:center;padding:8px;border-radius:14px;border:2px solid var(--ink);background:var(--gb)}
 .gd.bad{--gb:#e6e9f2;--gc:#5c6b8a}
 .gd .gi{grid-row:span 2;font-size:26px;line-height:1;width:44px;height:44px;display:grid;place-items:center;border-radius:50%;background:#fff;border:2px solid var(--ink)}
@@ -218,7 +225,8 @@ button{touch-action:manipulation}
 .gd .left i.on{background:var(--gc)}
 .gd .left em{font-style:normal;font-size:11.5px;font-weight:900;margin-left:4px}
 .gd ul{grid-column:1/-1;margin:2px 0 0;padding-left:18px;font-size:12px;line-height:1.5}
-@media (max-width:700px){#rcol{top:46%;width:200px}.gd ul{font-size:11px;padding-left:14px}}
+@media (max-width:700px){#rcol{top:46%;width:200px;align-items:flex-end}.gd ul{font-size:11px;padding-left:14px}
+  #rcol.gopen{top:22%;z-index:12;width:min(260px,calc(100vw - 24px))}#rcol.gopen #godpanel{max-height:60vh;overflow:auto;box-shadow:0 4px 0 rgba(29,22,51,.9),0 18px 40px -6px rgba(29,22,51,.55)}}
 /* 遙控骰子：每顆按鈕寫走到哪、那格是誰的 */
 #modal .btns button.rd{flex:1 1 calc(33.3% - 8px);min-width:130px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:7px 10px;border-left-width:8px}
 #modal .btns button.rd b{font-size:12px;color:var(--muted)}
@@ -2415,15 +2423,23 @@ const GOD_LINES = {
   shuai: ['🚫 道具全部用不出來', '🎡 命運一定抽到最慘的', '💥 別人的地雷會把你吸過去'],
 };
 // 右側神明面板：誰被附身、還剩幾回合、效果是什麼
+// 可以收合：手機、平板預設收起來（只剩一顆小按鈕），點一下展開、再點一下收起
+let godOpen = null;
 function renderGods() {
   const el = $('#godpanel'); if (!el) return;
   const ps = (G.players || []).filter(p => p.god && GODS[p.god] && !p.out);
-  el.hidden = !ps.length; if (!ps.length) { el.innerHTML = ''; return; }
-  el.innerHTML = '<h3>🙏 神明附身</h3>' + ps.map(p => {
+  el.hidden = !ps.length; if (!ps.length) { el.innerHTML = ''; const rc0 = $('#rcol'); if (rc0) rc0.classList.remove('gopen'); return; }
+  if (godOpen === null) godOpen = !(LITE || innerWidth < 900);
+  el.classList.toggle('shut', !godOpen); const rc = $('#rcol'); if (rc) rc.classList.toggle('gopen', godOpen);
+  const head = godOpen ? `<button type="button" class="gp-head" aria-expanded="true">🙏 神明附身 <span class="gp-ic">${ps.map(p => GODS[p.god].icon).join('')}</span><span class="gp-tg">收起 ▲</span></button>`
+    : `<button type="button" class="gp-head" aria-expanded="false" aria-label="查看神明附身">🙏<span class="gp-ic">${ps.map(p => GODS[p.god].icon).join('')}</span><span class="gp-tg">▼</span></button>`;
+  if (!godOpen) { el.innerHTML = head; return; }
+  el.innerHTML = head + ps.map(p => {
     const D = GODS[p.god];
     return `<div class="gd ${D.good ? 'good' : 'bad'}"><span class="gi">${D.icon}</span><b>${D.name}<small>附身 ${esc(p.char.name)}</small></b><span class="left">${Array.from({ length: GOD_TURNS }, (_, k) => `<i class="${k < p.godLeft ? 'on' : ''}"></i>`).join('')}<em>剩 ${p.godLeft} 回合</em></span><ul>${GOD_LINES[p.god].map(l => `<li>${l}</li>`).join('')}</ul></div>`;
   }).join('');
 }
+document.addEventListener('click', e => { if (e.target.closest('#godpanel .gp-head')) { godOpen = !godOpen; renderGods(); } });
 function godFaceTex(happy, skin) {
   return canvasTex(256, 192, (x, w, h) => {
     x.lineCap = 'round'; x.lineJoin = 'round';
