@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261026b';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261026-2146';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261026-2153';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -1944,11 +1944,14 @@ function buildBoard(id, seed = 0) {
   });
   // 中間的投票箱舞台與地標
   const st = new THREE.Group(); st.position.set(m.stage[0], 0, m.stage[1]); BG.add(st); buildStage(st, m.stage[2]);
-  m.marks.forEach(([name, x, z, ry]) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry || 0; g.scale.setScalar(Math.min(1, .2 + sc * .8)); BG.add(g); MARKS[name](g); g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  BOARD.artProps = [];
+  const markArt = { wheel: ['bld_wheel', 7.5], gate: ['bld_arch', 5.5] };
+  m.marks.forEach(([name, x, z, ry]) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry || 0; g.scale.setScalar(Math.min(1, .2 + sc * .8)); BG.add(g); MARKS[name](g);
+    if (markArt[name]) BOARD.artProps.push([g, ...markArt[name], 0, 0]); g.traverse(o => { if (o.isMesh) o.castShadow = true; });
     { const bb = new THREE.Box3().setFromObject(g), sz = Math.min(14, Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) * 1.25 + 1.5), a = aoBlob(sz, .4); a.position.set(x, -.1, z); BG.add(a); } });
   // 四個角落特殊格旁邊的造型（放在格子外側）
   const cornerProp = (i, build) => { const [x, z] = tilePos(i), [ix, iz] = tileIn(i); const g = new THREE.Group(); g.position.set(x - ix * 4.6, 0, z - iz * 4.6); g.rotation.y = tileTheta(i); BG.add(g); build(g); };
-  cornerProp(0, g => { cyl(.3, .3, 3.6, '#ff4f79', -1.6, 1.8, 0, g); cyl(.3, .3, 3.6, '#ff4f79', 1.6, 1.8, 0, g); box(4.2, .7, .5, '#ffd23f', 0, 3.6, 0, g); });
+  cornerProp(0, g => { cyl(.3, .3, 3.6, '#ff4f79', -1.6, 1.8, 0, g); cyl(.3, .3, 3.6, '#ff4f79', 1.6, 1.8, 0, g); box(4.2, .7, .5, '#ffd23f', 0, 3.6, 0, g); BOARD.artProps.push([g, 'bld_go', 4.6, 0, .3]); });
   cornerProp(JAIL, g => {
     // 檢調大樓：灰藍石造、門口兩根柱子、屋頂紅藍警示燈，旁邊碼頭停一艘「往綠島」的船
     box(3.2, 2.2, 2.2, '#5c6b80', 0, 1.1, 0, g); box(3.5, .25, 2.5, '#3e4a5c', 0, 2.3, 0, g);
@@ -1957,7 +1960,8 @@ function buildBoard(id, seed = 0) {
     for (let k = 0; k < 3; k++) { box(.55, .55, .05, '#9fc3e6', -1 + k, 1.3, 1.11, g); [-.15, 0, .15].forEach(d => box(.04, .55, .06, '#2b313b', -1 + k + d, 1.3, 1.13, g)); }
     const s = textPlane('檢調', 1.6, .5, '#ffffff', '#1d1633', 120); s.position.set(0, 2.3, 1.27); g.add(s);
     const red = ball(.2, glow('#ff1744', 1), -.5, 2.6, 0, g), blue = ball(.2, glow('#2979ff', 1), .5, 2.6, 0, g);
-    const boat = new THREE.Group(); boat.position.set(2.6, 0, .4); g.add(boat);
+    const boat = new THREE.Group(); boat.position.set(2.6, 0, .4); boat.userData.keep = true; g.add(boat);
+    BOARD.artProps.push([g, 'bld_police', 5.2, -.3, .3]);
     box(1.6, .35, .7, '#eceff1', 0, .1, 0, boat); box(.6, .4, .5, '#1565c0', -.2, .45, 0, boat);
     const bs = textPlane('往綠島 →', 1.3, .35, '#ffffff', '#2e7d32', 110); bs.position.set(0, 1, 0); boat.add(bs);
     boardAnims.push(t => { const on = Math.sin(t * 8) > 0; red.material.emissiveIntensity = on ? 1.4 : .1; blue.material.emissiveIntensity = on ? .1 : 1.4; boat.position.y = Math.sin(t * 2) * .08; boat.rotation.z = Math.sin(t * 1.6) * .05; });
@@ -2288,6 +2292,7 @@ const ART = {
   god_cai: { file: 'god_cai.jpg' }, god_land: { file: 'god_land.jpg' }, god_poor: { file: 'god_poor.jpg' }, god_shuai: { file: 'god_shuai.jpg' },
   // 建築（保留模型底座）
   bld_hosp: { file: 'bld_hosp.jpg' }, bld_town: { file: 'bld_town.jpg' }, bld_tower: { file: 'bld_tower.jpg' },
+  bld_go: { file: 'bld_go.jpg' }, bld_police: { file: 'bld_police.jpg' }, bld_wheel: { file: 'bld_wheel.jpg', holes: .0006 }, bld_arch: { file: 'bld_arch.jpg', holes: .002 },
 };
 // 角色的其他狀態圖（之後有圖時加在這裡，例如 han: { walk: { file: 'han_walk.png' }, stunned: {...}, happy: {...} }）；沒有的狀態就用原本那張
 const ART_STATES = {};
@@ -2357,6 +2362,16 @@ function cutout(img, opt = {}) {
       const lum = (R + Gg + B) / 3, bl = (rowBg[Y * 3] + rowBg[Y * 3 + 1] + rowBg[Y * 3 + 2]) / 3;
       if (mx - mn < 14 && lum < bl + 6 && lum > bl - 75) bg[i] = 1;
     }
+    // holes：沒碰到圖片邊緣、但被圍起來的大片背景色（拱門中間、摩天輪的空隙）也挖掉；小塊的（白花、白字）不動
+    if (opt.holes) {
+      const hl = new Uint8Array(n), hq = new Int32Array(n), cand = i => !bg[i] && !hl[i] && far(i) < 24 * 24 && Math.max(px[i * 4], px[i * 4 + 1], px[i * 4 + 2]) - Math.min(px[i * 4], px[i * 4 + 1], px[i * 4 + 2]) < 16;
+      for (let s0 = 0; s0 < n; s0++) {
+        if (!cand(s0)) continue;
+        let a = 0, b = 0; hl[s0] = 1; hq[b++] = s0;
+        while (a < b) { const i = hq[a++], X = i % W; for (const j of [X > 0 ? i - 1 : -1, X < W - 1 ? i + 1 : -1, i - W, i + W]) if (j >= 0 && j < n && cand(j)) { hl[j] = 1; hq[b++] = j; } }
+        if (b > n * opt.holes) for (let k = 0; k < b; k++) bg[hq[k]] = 1;
+      }
+    }
   }
   // 只留最大的一塊前景
   const lab = new Int32Array(n).fill(-1), q2 = new Int32Array(n); let best = -1, bestN = 0, id = 0;
@@ -2407,7 +2422,15 @@ function buildingArt(g, level) {
   const b = BLD_ART[level], a = b && artReady[b[0]]; if (!a) return false;
   const sp = artSprite(a, b[1]); sp.position.set(.3, .05, 0); g.add(sp); return true;
 }
+function swapProps() {
+  (BOARD.artProps || []).forEach(([g, key, h, x, z]) => {
+    const a = artReady[key]; if (!a || g.userData.art) return;
+    g.children.forEach(c => { if (!c.userData.keep) c.visible = false; });
+    const sp = artSprite(a, h); sp.position.set(x, .05, z); g.add(sp); g.userData.art = true;
+  });
+}
 function swapHospital() {
+  swapProps();
   const g = BOARD.hospG, a = artReady.bld_hosp; if (!g || !a || g.userData.art) return;
   g.children.forEach(c => { c.visible = false; });
   const sp = artSprite(a, 5); sp.position.set(0, .05, .3); g.add(sp); g.userData.art = true;
@@ -6864,9 +6887,9 @@ async function practice() {
 }
 $('#btn-practice').onclick = () => practice();
 // 建築圖先載好：載好後醫院馬上換圖，已經蓋好的透天厝、摩天樓也換
-['bld_hosp', 'bld_town', 'bld_tower'].forEach(k => loadArt(k).then(a => {
+['bld_hosp', 'bld_town', 'bld_tower', 'bld_go', 'bld_police', 'bld_wheel', 'bld_arch'].forEach(k => loadArt(k).then(a => {
   if (!a) return; artReady[k] = a;
-  if (k === 'bld_hosp') swapHospital();
+  if (k === 'bld_hosp' || k.startsWith('bld_') && !/town|tower/.test(k)) swapHospital();
   else if (G && G.tiles) G.tiles.forEach((st, i) => { if (st.owner >= 0 && !st.kind && ((k === 'bld_town' && st.level === 2) || (k === 'bld_tower' && st.level === 5))) rebuild(i, false); });
 }));
 
