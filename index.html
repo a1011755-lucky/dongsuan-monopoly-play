@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261026b';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261026-2109';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261026-2120';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -2264,7 +2264,95 @@ function toyMat(src) {
   if (src.map) m.map.encoding = THREE.sRGBEncoding;
   return m;
 }
+/* ---------- 🖼️ 公仔看板：AI 畫的盲盒公仔圖直接放進棋盤 ---------- */
+// 放法：把圖存成 art/<角色 id>.png（或 .jpg），例如 art/han.jpg＝韓國瑜。背景用單色（白、灰都可以），遊戲會自動去背；
+// 圖上旁邊的名字貼紙等「沒有連著人」的東西會自動拿掉，只留最大的那一塊（人物本身）
+const artCache = {};
+function loadArt(id) {
+  if (artCache[id] !== undefined) return artCache[id];
+  const tryOne = ext => new Promise(ok => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = `art/${id}.${ext}`; });
+  return artCache[id] = (async () => { const im = (await tryOne('png')) || (await tryOne('jpg')); if (!im) return null; try { return cutout(im); } catch (e) { return null; } })();
+}
+// 去背：從四邊往內「淹水」，跟背景色很接近、而且跟隔壁很像的都算背景；再只保留最大的一塊前景，最後裁成剛好包住人物
+function cutout(img) {
+  const H = Math.min(720, img.naturalHeight), sc = H / img.naturalHeight, W = Math.max(1, Math.round(img.naturalWidth * sc));
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const x = cv.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0, W, H);
+  const d = x.getImageData(0, 0, W, H), px = d.data, n = W * H, bg = new Uint8Array(n);
+  const corners = [0, W - 1, (H - 1) * W, n - 1];
+  if (Math.max(...corners.map(i => px[i * 4 + 3])) < 20) {
+    for (let i = 0; i < n; i++) if (px[i * 4 + 3] < 40) bg[i] = 1;   // 已經是去背 PNG
+  } else {
+    // 每一列的背景色：取那一列最左、最右各 6 格的平均（攝影棚背景通常上下有漸層）
+    const rowBg = new Float32Array(H * 3);
+    for (let Y = 0; Y < H; Y++) {
+      let r = 0, g = 0, b = 0, c = 0;
+      for (let k = 0; k < 6; k++) for (const X of [k, W - 1 - k]) { const i = (Y * W + X) * 4; r += px[i]; g += px[i + 1]; b += px[i + 2]; c++; }
+      rowBg[Y * 3] = r / c; rowBg[Y * 3 + 1] = g / c; rowBg[Y * 3 + 2] = b / c;
+    }
+    const far = i => { const Y = (i / W) | 0, dr = px[i * 4] - rowBg[Y * 3], dg = px[i * 4 + 1] - rowBg[Y * 3 + 1], db = px[i * 4 + 2] - rowBg[Y * 3 + 2]; return dr * dr + dg * dg + db * db; };
+    const near2 = (i, j) => { const dr = px[i * 4] - px[j * 4], dg = px[i * 4 + 1] - px[j * 4 + 1], db = px[i * 4 + 2] - px[j * 4 + 2]; return dr * dr + dg * dg + db * db; };
+    const T = 30 * 30, S = 14 * 14, q = new Int32Array(n); let h = 0, t = 0;
+    const seed = i => { if (!bg[i] && far(i) < T) { bg[i] = 1; q[t++] = i; } };
+    for (let X = 0; X < W; X++) { seed(X); seed((H - 1) * W + X); }
+    for (let Y = 0; Y < H; Y++) { seed(Y * W); seed(Y * W + W - 1); }
+    while (h < t) {
+      const i = q[h++], X = i % W;
+      for (const j of [X > 0 ? i - 1 : -1, X < W - 1 ? i + 1 : -1, i - W, i + W]) {
+        if (j < 0 || j >= n || bg[j]) continue;
+        if (far(j) < T && near2(i, j) < S) { bg[j] = 1; q[t++] = j; }
+      }
+    }
+    // 地上的影子：圖片下方 25% 裡，灰灰的（不太有顏色）、比背景暗一些的也算背景
+    for (let Y = Math.floor(H * .75); Y < H; Y++) for (let X = 0; X < W; X++) {
+      const i = Y * W + X; if (bg[i]) continue;
+      const R = px[i * 4], Gg = px[i * 4 + 1], B = px[i * 4 + 2], mx = Math.max(R, Gg, B), mn = Math.min(R, Gg, B);
+      const lum = (R + Gg + B) / 3, bl = (rowBg[Y * 3] + rowBg[Y * 3 + 1] + rowBg[Y * 3 + 2]) / 3;
+      if (mx - mn < 14 && lum < bl + 6 && lum > bl - 75) bg[i] = 1;
+    }
+  }
+  // 只留最大的一塊前景
+  const lab = new Int32Array(n).fill(-1), q2 = new Int32Array(n); let best = -1, bestN = 0, id = 0;
+  for (let s0 = 0; s0 < n; s0++) {
+    if (bg[s0] || lab[s0] >= 0) continue;
+    let h = 0, t = 0, cnt = 0; lab[s0] = id; q2[t++] = s0;
+    while (h < t) { const i = q2[h++], X = i % W; cnt++; for (const j of [X > 0 ? i - 1 : -1, X < W - 1 ? i + 1 : -1, i - W, i + W]) if (j >= 0 && j < n && !bg[j] && lab[j] < 0) { lab[j] = id; q2[t++] = j; } }
+    if (cnt > bestN) { bestN = cnt; best = id; } id++;
+  }
+  let x0 = W, y0 = H, x1 = 0, y1 = 0;
+  for (let i = 0; i < n; i++) {
+    if (lab[i] !== best) { px[i * 4 + 3] = 0; continue; }
+    const X = i % W, Y = (i / W) | 0; if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y;
+    // 邊緣柔化：貼著背景的那一圈半透明，看起來不會鋸齒
+    if ((X > 0 && lab[i - 1] !== best) || (X < W - 1 && lab[i + 1] !== best) || lab[i - W] !== best || lab[i + W] !== best) px[i * 4 + 3] = 150;
+  }
+  if (best < 0 || bestN < n * .02) return null;
+  x.putImageData(d, 0, 0);
+  const out = document.createElement('canvas'); out.width = x1 - x0 + 5; out.height = y1 - y0 + 3;
+  out.getContext('2d').drawImage(cv, x0 - 2, y0 - 2, out.width, out.height, 0, 0, out.width, out.height);
+  return out;
+}
+const ART_H = 3.4;   // 看板公仔的身高（跟 3D 模型差不多）
+function applyArt(p, art) {
+  const tex = new THREE.CanvasTexture(art); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, alphaTest: .35, depthWrite: true }));
+  const w = ART_H * art.width / art.height;
+  sp.center.set(.5, 0); sp.scale.set(w, ART_H, 1); sp.position.y = .12; sp.userData.noHit = true;
+  // 原本的方塊人藏起來，只留底座（換成角色色）和肩膀上的配件
+  p.mesh.children.forEach((c, k) => { if (k === 0) c.material = M(p.char.color); else if (!c.userData.keep) c.visible = false; });
+  p.mesh.add(sp); p.model = sp; p.sprite = sp;
+  // 待機時輕輕呼吸（上下伸縮一點點）
+  const ph = p.seat * 1.3;
+  anim.push(t => { if (p.out || !p.sprite) return; const k = 1 + Math.sin(t * 2.4 + ph) * .018; sp.scale.set(w / Math.sqrt(k), ART_H * k, 1); });
+  // 點選範圍：看板的寬度、高度
+  if (p.hit) { p.mesh.remove(p.hit); p.hit.geometry.dispose(); }
+  const hit = new THREE.Mesh(new THREE.CylinderGeometry(Math.max(.5, w * .32), Math.max(.5, w * .32), ART_H, 12), CharacterManager.hitMat);
+  hit.position.y = ART_H / 2; hit.visible = false; hit.userData.noHit = true; hit.userData.player = p.seat; p.mesh.add(hit); p.hit = hit;
+}
 async function upgradeToken(p) {
+  if (!p.mesh || p.model) return;
+  const art = await loadArt(p.char.id);
+  if (art && p.mesh && !p.model) { applyArt(p, art); return; }
   if (!gltf || p.model || !p.mesh) return;
   const [name, acc] = MODEL[p.char.id] || ['male-a', []];
   let g;
