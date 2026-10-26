@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261026b';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261027-0148';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261027-0158';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -1350,6 +1350,8 @@ function textPlane(text, w, h, color = '#1d1633', bg = null, px = 64) {
 // 全場只有這一片海（水紋貼圖在 buildScenery 加上去）。不要再疊第二片同高度的海，會互搶畫面一直閃
 const sea = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: '#3aa3dc', roughness: .4, metalness: .05 }));
 sea.rotation.x = -Math.PI / 2; sea.position.y = -1.3; sea.receiveShadow = false; scene.add(sea);
+// 各種地面的表面高度（世界座標）：格子頂面、內圈草地、外圈陸地、海面
+const GROUND = { tile: .2, grass: -.13, land: -.15, sea: -1.3 };
 
 /* ---------- 棋盤路線：沿著地圖形狀每 4 單位放一格 ---------- */
 let BOARD = { pos: [], th: [], inw: [] };
@@ -1873,7 +1875,7 @@ function buildScenery(m) {
 }
 
 /* ---------- 建立整個棋盤（開場和換地圖時呼叫） ---------- */
-let BOARD_SEED = 0, shoalTex = null, shoalMat = null, grassTex = null;
+let BOARD_SEED = 0, shoalTex = null, shoalMat = null, grassTex = null, boardNoise = null, woodTex = null;
 function buildBoard(id, seed = 0) {
   MAP = MAPS[id] ? id : 'tpe'; BOARD_SEED = seed;
   const sc = boardScale(), m0 = MAPS[MAP];
@@ -1913,9 +1915,47 @@ function buildBoard(id, seed = 0) {
   const inner = new THREE.Mesh(new THREE.ShapeGeometry(toShape(offsetPoly(shp, -2.3, BOARD.sgn))), new THREE.MeshStandardMaterial({ color: m.ground, map: grassTex, roughness: .95 }));
   inner.rotation.x = -Math.PI / 2; inner.position.y = -.13; inner.receiveShadow = true; BG.add(inner);
   buildScenery(m);
+  {
+    const xs = shp.map(p => p[0]), zs = shp.map(p => p[1]), cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2;
+    const R = Math.max(...shp.map(([x, z]) => Math.hypot(x - cx, z - cz))) + 30;
+    sea.geometry.dispose(); sea.geometry = new THREE.CircleGeometry(R, 96); sea.position.set(cx, GROUND.sea, cz);
+    if (sea.material.map) sea.material.map.repeat.set(R / 10, R / 10);
+    if (!woodTex) {
+      woodTex = canvasTex(512, 512, (x, w, h) => {
+        x.fillStyle = '#b9824f'; x.fillRect(0, 0, w, h);
+        for (let k = 0; k < 70; k++) {   // 木紋：一條條微微起伏的深淺線
+          const y0 = Math.random() * h, a = 2 + Math.random() * 6, f = .004 + Math.random() * .01, ph = Math.random() * 7;
+          x.strokeStyle = Math.random() < .6 ? `rgba(110,64,30,${.12 + Math.random() * .2})` : `rgba(232,186,130,${.1 + Math.random() * .18})`; x.lineWidth = 1 + Math.random() * 3;
+          x.beginPath(); for (let X = 0; X <= w; X += 8) { const Y = y0 + Math.sin(X * f + ph) * a; X ? x.lineTo(X, Y) : x.moveTo(X, Y); } x.stroke();
+        }
+        for (let k = 0; k < 3; k++) { const ex = Math.random() * w, ey = Math.random() * h; for (let r = 4; r < 26; r += 4) { x.strokeStyle = 'rgba(100,56,24,.25)'; x.beginPath(); x.ellipse(ex, ey, r * 2.4, r * .7, 0, 0, 7); x.stroke(); } }   // 木節
+      });
+      woodTex.wrapS = woodTex.wrapT = THREE.RepeatWrapping;
+    }
+    const tw = woodTex.clone(); tw.needsUpdate = true; tw.repeat.set(14, 14);
+    const table = new THREE.Mesh(new THREE.CircleGeometry(320, 64), new THREE.MeshStandardMaterial({ map: tw, color: '#d9a777', roughness: .7, metalness: 0 }));
+    table.rotation.x = -Math.PI / 2; table.position.set(cx, GROUND.sea - 3.2, cz); BG.add(table);
+    const rw = woodTex.clone(); rw.needsUpdate = true; rw.repeat.set(24, 1);
+    const rimMat = new THREE.MeshStandardMaterial({ map: rw, color: '#a86b3c', roughness: .65, metalness: 0, side: THREE.DoubleSide });
+    const wall = new THREE.Mesh(new THREE.CylinderGeometry(R + 1, R + 1.3, 3.25, 128, 1, true), rimMat); wall.position.set(cx, GROUND.sea - 1.55, cz); wall.castShadow = false; BG.add(wall);
+    const lip = new THREE.Mesh(new THREE.RingGeometry(R - .05, R + 1, 128), rimMat); lip.rotation.x = -Math.PI / 2; lip.position.set(cx, GROUND.sea + .1, cz); BG.add(lip);
+    const inWall = new THREE.Mesh(new THREE.CylinderGeometry(R, R, .5, 128, 1, true), rimMat); inWall.position.set(cx, GROUND.sea - .15, cz); BG.add(inWall);
+  }
   // 格子：圓角方塊擠出成 0.3 厚、上下各 0.05 倒角的板塊（總高 0.4，頂面在 0.2）
+  // 相鄰格子中心的平均距離 → 板塊邊長＝格距 − 0.02（最大 3.98）
+  let gap = 0; for (let k = 0; k < N; k++) { const a = tilePos(k), b = tilePos((k + 1) % N); gap += Math.hypot(a[0] - b[0], a[1] - b[1]); }
+  const tileSize = Math.max(3.6, Math.min(3.98, gap / N - .02));
+  if (!boardNoise) {
+    boardNoise = canvasTex(256, 256, (x, w, h) => {
+      x.fillStyle = '#f4f1ea'; x.fillRect(0, 0, w, h);
+      for (let k = 0; k < 2600; k++) { const v = 200 + Math.random() * 55 | 0; x.fillStyle = `rgba(${v},${v - 6},${v - 14},.5)`; x.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 1 + Math.random() * 2); }
+      x.strokeStyle = 'rgba(150,135,110,.18)'; x.lineWidth = 1;
+      for (let k = 0; k < 140; k++) { const a = Math.random() * w, b = Math.random() * h, l = 4 + Math.random() * 10, t = Math.random() * 7; x.beginPath(); x.moveTo(a, b); x.lineTo(a + Math.cos(t) * l, b + Math.sin(t) * l); x.stroke(); }
+    });
+    boardNoise.wrapS = boardNoise.wrapT = THREE.RepeatWrapping; boardNoise.repeat.set(.3, .3);
+  }
   const tileGeo = (() => {
-    const s0 = 1.84, r = .22, sh = new THREE.Shape();
+    const s0 = tileSize / 2 - .05, r = .22, sh = new THREE.Shape();
     sh.moveTo(-s0 + r, -s0); sh.lineTo(s0 - r, -s0); sh.quadraticCurveTo(s0, -s0, s0, -s0 + r); sh.lineTo(s0, s0 - r); sh.quadraticCurveTo(s0, s0, s0 - r, s0);
     sh.lineTo(-s0 + r, s0); sh.quadraticCurveTo(-s0, s0, -s0, s0 - r); sh.lineTo(-s0, -s0 + r); sh.quadraticCurveTo(-s0, -s0, -s0 + r, -s0);
     const g = new THREE.ExtrudeGeometry(sh, { depth: .3, bevelEnabled: true, bevelThickness: .05, bevelSize: .05, bevelSegments: 2, curveSegments: 4 });
@@ -1925,12 +1965,12 @@ function buildBoard(id, seed = 0) {
     const [x, z] = tilePos(i), th = tileTheta(i);
     const lift = (i % 2) * .03;
     const col = t.type === 'prop' ? ZONES[t.zone].tint : (TILE_CAT[t.type] || TILE_CAT.event).base;
-    const b = new THREE.Mesh(tileGeo, tileMats[col] || (tileMats[col] = new THREE.MeshStandardMaterial({ color: col, roughness: .8, metalness: 0 })));
+    const b = new THREE.Mesh(tileGeo, tileMats[col] || (tileMats[col] = new THREE.MeshStandardMaterial({ color: col, map: boardNoise, bumpMap: boardNoise, bumpScale: .025, roughness: .9, metalness: 0 })));
     b.position.set(x, lift, z); b.rotation.y = th; b.castShadow = b.receiveShadow = true; BG.add(b); b.userData.tile = i; tileMeshes.push(b);
     const curb = box(3.98, .3, 3.98, '#2a2540', x, lift - .12, z, BG); curb.rotation.y = th; curb.castShadow = false; curb.receiveShadow = true;   // 板塊底下的深色底盤：板塊之間露出一條接縫
     const cv = document.createElement('canvas'); cv.width = cv.height = 256; tileCanvases.push(cv);
     const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 8; tileTex.push(tex);
-    const label = new THREE.Mesh(new THREE.PlaneGeometry(3.7, 3.7), new THREE.MeshStandardMaterial({ map: tex, roughness: .8 }));
+    const ls = Math.min(3.7, tileSize - .14), label = new THREE.Mesh(new THREE.PlaneGeometry(ls, ls), new THREE.MeshStandardMaterial({ map: tex, bumpMap: boardNoise, bumpScale: .012, roughness: .9 }));
     label.rotation.order = 'YXZ'; label.rotation.set(-Math.PI / 2, th, 0);
     label.position.set(x, .205 + lift, z); label.receiveShadow = true; label.userData.tile = i; BG.add(label); tileMeshes.push(label);
     const hi = new THREE.Mesh(new THREE.BoxGeometry(3.9, .5, 3.9), hiMat); hi.position.set(x, .3, z); hi.rotation.y = th; hi.visible = false; hi.userData.tile = i; BG.add(hi); hiMeshes.push(hi);
@@ -1956,11 +1996,11 @@ function buildBoard(id, seed = 0) {
   BOARD.artProps = [];
   const markArt = { wheel: ['bld_wheel', 7.5], gate: ['bld_arch', 5.5], t101: ['bld_101', 10] };
   m.marks.forEach(([name, x, z, ry]) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry || 0; g.scale.setScalar(Math.min(1, .2 + sc * .8)); BG.add(g); MARKS[name](g);
-    if (markArt[name]) BOARD.artProps.push([g, ...markArt[name], 0, 0]); g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    if (markArt[name]) BOARD.artProps.push([g, ...markArt[name], 0, 0, GROUND.grass]); g.traverse(o => { if (o.isMesh) o.castShadow = true; });
     { const bb = new THREE.Box3().setFromObject(g), sz = Math.min(14, Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) * 1.25 + 1.5), a = aoBlob(sz, .4); a.position.set(x, -.1, z); BG.add(a); } });
   // 四個角落特殊格旁邊的造型（放在格子外側）
   const cornerProp = (i, build) => { const [x, z] = tilePos(i), [ix, iz] = tileIn(i); const g = new THREE.Group(); g.position.set(x - ix * 4.6, 0, z - iz * 4.6); g.rotation.y = tileTheta(i); BG.add(g); build(g); };
-  cornerProp(0, g => { cyl(.3, .3, 3.6, '#ff4f79', -1.6, 1.8, 0, g); cyl(.3, .3, 3.6, '#ff4f79', 1.6, 1.8, 0, g); box(4.2, .7, .5, '#ffd23f', 0, 3.6, 0, g); BOARD.artProps.push([g, 'bld_go', 4.6, 0, .3]); });
+  cornerProp(0, g => { cyl(.3, .3, 3.6, '#ff4f79', -1.6, 1.8, 0, g); cyl(.3, .3, 3.6, '#ff4f79', 1.6, 1.8, 0, g); box(4.2, .7, .5, '#ffd23f', 0, 3.6, 0, g); BOARD.artProps.push([g, 'bld_go', 4.6, 0, .3, GROUND.land]); });
   cornerProp(JAIL, g => {
     // 檢調大樓：灰藍石造、門口兩根柱子、屋頂紅藍警示燈，旁邊碼頭停一艘「往綠島」的船
     box(3.2, 2.2, 2.2, '#5c6b80', 0, 1.1, 0, g); box(3.5, .25, 2.5, '#3e4a5c', 0, 2.3, 0, g);
@@ -1970,7 +2010,7 @@ function buildBoard(id, seed = 0) {
     const s = textPlane('檢調', 1.6, .5, '#ffffff', '#1d1633', 120); s.position.set(0, 2.3, 1.27); g.add(s);
     const red = ball(.2, glow('#ff1744', 1), -.5, 2.6, 0, g), blue = ball(.2, glow('#2979ff', 1), .5, 2.6, 0, g);
     const boat = new THREE.Group(); boat.position.set(2.6, 0, .4); boat.userData.keep = true; g.add(boat);
-    BOARD.artProps.push([g, 'bld_police', 5.2, -.3, .3]);
+    BOARD.artProps.push([g, 'bld_police', 5.2, -.3, .3, GROUND.land]);
     box(1.6, .35, .7, '#eceff1', 0, .1, 0, boat); box(.6, .4, .5, '#1565c0', -.2, .45, 0, boat);
     const bs = textPlane('往綠島 →', 1.3, .35, '#ffffff', '#2e7d32', 110); bs.position.set(0, 1, 0); boat.add(bs);
     boardAnims.push(t => { const on = Math.sin(t * 8) > 0; red.material.emissiveIntensity = on ? 1.4 : .1; blue.material.emissiveIntensity = on ? .1 : 1.4; boat.position.y = Math.sin(t * 2) * .08; boat.rotation.z = Math.sin(t * 1.6) * .05; });
@@ -1985,7 +2025,7 @@ function buildBoard(id, seed = 0) {
     const wp = new THREE.Vector3();
     BG.traverse(o => { if (o.isMesh && o.geometry && (o.geometry.type === 'ConeGeometry' || o.userData.mtn)) { o.getWorldPosition(wp); if (Math.hypot(wp.x - cx, wp.z - cz) < 8) o.visible = false; } });
     const g = new THREE.Group(); g.position.set(cx, 0, cz); BG.add(g);
-    BOARD.artProps.push([g, 'bld_island', 9, 0, 0, -1.25, 0]);
+    BOARD.artProps.push([g, 'bld_island', 9, 0, 0, GROUND.sea, 0]);
     cyl(4.6, 5.3, 1.4, '#ecdcae', 0, -.9, 0, g, 28); cyl(3.9, 4.3, .5, '#66bb6a', 0, -.25, 0, g, 24);
     for (let k = 0; k < 4; k++) cyl(.42 - k * .04, .46 - k * .04, .7, k % 2 ? '#e53935' : '#ffffff', -2.4, .35 + k * .7, -1.3, g, 14);
     cyl(.36, .36, .45, glow('#ffe082', 1.2), -2.4, 3.05, -1.3, g, 12); cone(.45, .5, '#37474f', -2.4, 3.5, -1.3, g, 12);
@@ -2005,8 +2045,8 @@ function buildBoard(id, seed = 0) {
     TILES.forEach((t, i) => {
       if (i % 3 !== 1 || corners.some(c => Math.min((i - c + N) % N, (c - i + N) % N) < 2)) return;
       const [x, z] = tilePos(i), [ix, iz] = tileIn(i), [key, h] = decos[k++ % decos.length];
-      const g = new THREE.Group(); g.position.set(x - ix * 2.75 + iz * 1.2, -.15, z - iz * 2.75 - ix * 1.2); BG.add(g);
-      BOARD.artProps.push([g, key, h, 0, 0, 0, .35]);
+      const g = new THREE.Group(); g.position.set(x - ix * 2.75 + iz * 1.2, 0, z - iz * 2.75 - ix * 1.2); BG.add(g);
+      BOARD.artProps.push([g, key, h, 0, 0, GROUND.land, .35]);
     });
   }
   cornerProp(FLY, g => {
@@ -2448,30 +2488,31 @@ function npcArt(n) {
     const h = n.god ? 3.2 : 3.4, sp = artSprite(art, h);
     n.mesh.children.forEach(c => { if (c.userData.label) c.position.y = h + .35; else c.visible = false; });
     n.mesh.add(sp); n.sprite = sp;
-    const sh = aoBlob(Math.max(1.6, h * art.width / art.height * .8), .5); sh.position.y = .03; n.mesh.add(sh);   // 腳下的圓形影子
+    sp.position.y = 0; const sh = aoBlob(Math.max(1.6, h * art.width / art.height * .8), .5); sh.position.y = .01; n.mesh.add(sh);   // 腳下的圓形影子
   });
 }
 // 建築：透天厝（2 層）、摩天樓（5 層）有圖就用圖；醫院角落也換成醫院模型圖
 const BLD_ART = { 2: ['bld_town', 4.4], 5: ['bld_tower', 9] };
 function buildingArt(g, level) {
   const b = BLD_ART[level], a = b && artReady[b[0]]; if (!a) return false;
-  const sp = artSprite(a, b[1]); sp.position.set(.3, .05, 0); g.add(sp);
-  const sh = aoBlob(b[1] * a.width / a.height * .95, .45); sh.position.set(.3, .07, 0); g.add(sh); return true;
+  const y = GROUND.grass - g.position.y, sp = artSprite(a, b[1]); sp.position.set(.3, y, 0); g.add(sp);
+  const sh = aoBlob(b[1] * a.width / a.height * .95, .45); sh.position.set(.3, y + .01, 0); g.add(sh); return true;
 }
 function swapProps() {
-  (BOARD.artProps || []).forEach(([g, key, h, x, z, y = .05, shadow = .45]) => {
+  (BOARD.artProps || []).forEach(([g, key, h, x, z, groundY = GROUND.land, shadow = .45]) => {
     const a = artReady[key]; if (!a || g.userData.art) return;
     g.children.forEach(c => { if (!c.userData.keep) c.visible = false; });
+    const y = (groundY - g.position.y) / (g.scale.y || 1);   // 底邊剛好落在地面上
     const sp = artSprite(a, h); sp.position.set(x, y, z); g.add(sp); g.userData.art = true;
-    if (shadow) { const sh = aoBlob(h * a.width / a.height * .95, shadow); sh.position.set(x, y + .02, z); g.add(sh); }
+    if (shadow) { const sh = aoBlob(h * a.width / a.height * .95, shadow); sh.position.set(x, y + .01, z); g.add(sh); }
   });
 }
 function swapHospital() {
   swapProps();
   const g = BOARD.hospG, a = artReady.bld_hosp; if (!g || !a || g.userData.art) return;
   g.children.forEach(c => { c.visible = false; });
-  const sp = artSprite(a, 5); sp.position.set(0, .05, .3); g.add(sp); g.userData.art = true;
-  const sh = aoBlob(5 * a.width / a.height * .95, .45); sh.position.set(0, .07, .3); g.add(sh);
+  const y = GROUND.land - g.position.y, sp = artSprite(a, 5); sp.position.set(0, y, .3); g.add(sp); g.userData.art = true;
+  const sh = aoBlob(5 * a.width / a.height * .95, .45); sh.position.set(0, y + .01, .3); g.add(sh);
 }
 /* ---------- 多狀態換圖：idle 待機、walk 走路、stunned 倒地、shocked 驚恐、happy 慶祝 ---------- */
 // 每個角色的狀態圖只載一次、存成貼圖；切換時只換 SpriteMaterial.map（不新建材質），寬度依那張圖的比例調整
@@ -2496,11 +2537,12 @@ function applyArt(p, art) {
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, alphaTest: .35, depthWrite: true }));
   const w = ART_H * art.width / art.height;
   p.artW = w; p.artTex = { idle: { tex, aspect: art.width / art.height } }; loadStates(p);
-  sp.center.set(.5, 0); sp.scale.set(w, ART_H, 1); sp.position.y = .12; sp.userData.noHit = true;
+  const PED = .14;   // 底座厚度：底座放在格子頂面上，公仔站在底座頂面上
+  sp.center.set(.5, 0); sp.scale.set(w, ART_H, 1); sp.position.y = GROUND.tile + PED; sp.userData.noHit = true;
   // 原本的方塊人藏起來，只留底座（換成角色色）和肩膀上的配件
-  p.mesh.children.forEach((c, k) => { if (k === 0) c.material = M(p.char.color); else if (!c.userData.keep) c.visible = false; });
+  p.mesh.children.forEach((c, k) => { if (k === 0) { c.material = M(p.char.color); c.position.y = GROUND.tile + PED / 2; } else if (!c.userData.keep) c.visible = false; });
   p.mesh.add(sp); p.model = sp; p.sprite = sp;
-  if (!p.blob) { p.blob = aoBlob(Math.max(1.4, w * .75), .4); p.blob.position.y = .02; p.mesh.add(p.blob); }
+  if (!p.blob) { p.blob = aoBlob(Math.max(1.4, w * .75), .4); p.blob.position.y = GROUND.tile + .01; p.mesh.add(p.blob); }
   // 待機時輕輕呼吸（上下伸縮一點點）
   const ph = p.seat * 1.3;
   p.sqX = p.sqY = 1;
@@ -2508,7 +2550,7 @@ function applyArt(p, art) {
   // 點選範圍：看板的寬度、高度
   if (p.hit) { p.mesh.remove(p.hit); p.hit.geometry.dispose(); }
   const hit = new THREE.Mesh(new THREE.CylinderGeometry(Math.max(.5, w * .32), Math.max(.5, w * .32), ART_H, 12), CharacterManager.hitMat);
-  hit.position.y = ART_H / 2; hit.visible = false; hit.userData.noHit = true; hit.userData.player = p.seat; p.mesh.add(hit); p.hit = hit;
+  hit.position.y = GROUND.tile + PED + ART_H / 2; hit.visible = false; hit.userData.noHit = true; hit.userData.player = p.seat; p.mesh.add(hit); p.hit = hit;
 }
 // 看板公仔的果凍回彈：落地瞬間壓扁、橫向變寬，再彈回原狀（不用等它做完）
 function spriteSquash(p, amt = .12, ms = 180) {
