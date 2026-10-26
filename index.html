@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261026b';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261027-0749';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261027-0756';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -2488,6 +2488,23 @@ function artSprite(art, h) {
   sp.center.set(.5, 0); sp.scale.set(h * art.width / art.height, h, 1); sp.userData.noHit = true; sp.userData.art = true;
   return sp;
 }
+// 固定立牌：PlaneGeometry 原點移到圖片底邊，所以 position.y 就是底邊的高度；不會跟著鏡頭轉
+// 正面朝群組的 +Z（鏡頭停在這一格時看過來的方向）；背面再貼一張朝 -Z 的，從後面看字也不會左右顛倒
+const LEAN = .25;   // 立牌往後仰的角度（弧度，0＝完全直立）。越大正面越不扁，但從背面看越扁
+function createStaticBuilding(texture, width, height, customYOffset = 0) {
+  const geometry = new THREE.PlaneGeometry(width, height);
+  geometry.translate(0, height / 2, 0);   // 原點＝圖片最下緣
+  const material = new THREE.MeshStandardMaterial({ map: texture, transparent: true, side: THREE.FrontSide, alphaTest: .5,
+    roughness: .85, metalness: 0, emissive: '#ffffff', emissiveMap: texture, emissiveIntensity: .45 });   // 自發一點光：直立的牌子在頂光下才不會太暗
+  const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: texture, alphaTest: .5 });   // 影子照圖片的形狀，不是一整塊方形
+  const group = new THREE.Group(); group.position.y = customYOffset; group.rotation.x = -LEAN;   // 以底邊為軸往後仰，底邊還是貼地
+  [0, Math.PI].forEach(ry => {
+    const m = new THREE.Mesh(geometry, material); m.rotation.y = ry; m.castShadow = true; m.customDepthMaterial = depth;
+    m.userData.noHit = true; group.add(m);
+  });
+  group.userData.art = true; group.userData.noHit = true;
+  return group;
+}
 // 把看板圖立在地面上：底邊對齊 groundY（世界座標），再往下沉 yOffset（世界座標，負的＝往下）
 // yOffset 沒填就自動算：沉到底座最寬那一列的 SINK 倍；ART 裡寫 yOffset: -0.8 就用你填的數字
 const SINK = .55;
@@ -2498,8 +2515,8 @@ function artYOffset(key, art, h) {
 function placeArt(g, key, h, x, z, groundY, shadow = .45) {
   const a = artReady[key]; if (!a) return null;
   const sy = g.getWorldScale(new THREE.Vector3()).y || 1, wy = g.getWorldPosition(new THREE.Vector3()).y;   // 不管外層群組怎麼縮放、擺多高都算得對
-  const sp = artSprite(a, h); g.add(sp);
-  sp.position.set(x, (groundY + artYOffset(key, a, h * sy) - wy) / sy, z);   // 絕對高度：地面 + 下壓量，換算回群組裡的座標
+  const sp = createStaticBuilding(artTex(a), h * a.width / a.height, h); g.add(sp);
+  sp.position.set(x, (groundY + artYOffset(key, a, h * sy) - wy) / sy, z);   // 絕對高度：地面＋下壓量，換算回群組裡的座標
   if (shadow) { const sh = aoBlob(h * a.width / a.height * .95, shadow); sh.position.set(x, (groundY + .01 - wy) / sy, z); g.add(sh); }
   return sp;
 }
