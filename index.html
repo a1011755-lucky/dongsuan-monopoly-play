@@ -623,6 +623,7 @@ body.practicing #modal{z-index:40}
     <button id="btn-fast" class="opt" title="加快動畫速度">快轉</button>
     <button id="btn-sound" class="opt" title="音效開關">音效 開</button>
     <button id="btn-bgm" class="opt" title="背景音樂開關">音樂 開</button>
+    <button id="btn-hq" class="opt" title="環境光遮蔽：物件交接處的柔和陰影，比較吃效能">高畫質 關</button>
     <button id="btn-voice" class="opt" title="角色台詞語音開關">語音 開</button>
     <button id="btn-vtest" class="opt" title="試聽每位候選人的配音">🎙️ 試聽</button>
     <button id="btn-more" title="更多按鈕">⋯ 更多</button>
@@ -870,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261026b';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261026-2056';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261026-2109';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -1294,9 +1295,9 @@ sun.shadow.bias = -.0008; sun.shadow.normalBias = .02; sun.shadow.radius = LITE 
 Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 100 });
 scene.add(sun);
 const skyMat = new THREE.ShaderMaterial({
-  uniforms: { top: { value: new THREE.Color('#3d9cf0') }, bot: { value: new THREE.Color('#c4ecff') } },
+  uniforms: { top: { value: new THREE.Color('#3d9cf0') }, bot: { value: new THREE.Color('#c4ecff') }, lin: { value: 0 } },
   vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
-  fragmentShader: 'uniform vec3 top; uniform vec3 bot; varying vec3 vW; void main(){ float h = normalize(vW - cameraPosition).y; gl_FragColor = vec4(mix(bot, top, smoothstep(-0.02, 0.6, h)), 1.0); }',
+  fragmentShader: 'uniform vec3 top; uniform vec3 bot; uniform float lin; varying vec3 vW; void main(){ float h = normalize(vW - cameraPosition).y; vec3 c = mix(bot, top, smoothstep(-0.02, 0.6, h)); if (lin > 0.5) c = pow(c, vec3(2.2)); gl_FragColor = vec4(c, 1.0); }',
   side: THREE.BackSide, depthWrite: false,
 });
 const sky = new THREE.Mesh(new THREE.SphereGeometry(300, 24, 12), skyMat); sky.renderOrder = -1; sky.frustumCulled = false; scene.add(sky);
@@ -1876,6 +1877,7 @@ let BOARD_SEED = 0, shoalTex = null, shoalMat = null, grassTex = null;
 function buildBoard(id, seed = 0) {
   MAP = MAPS[id] ? id : 'tpe'; BOARD_SEED = seed;
   const sc = boardScale(), m0 = MAPS[MAP];
+  Object.assign(sun.shadow.camera, { left: -30 * sc, right: 30 * sc, top: 30 * sc, bottom: -30 * sc }); sun.shadow.camera.updateProjectionMatrix();
   // 形狀、中間的舞台和地標位置都依地圖大小等比例放大縮小（地標本身小地圖時縮一點）
   const m = { ...m0, shape: m0.shape.map(([x, z]) => [x * sc, z * sc]), stage: [m0.stage[0] * sc, m0.stage[1] * sc, m0.stage[2] * Math.min(1, sc)], marks: m0.marks.map(([n, x, z, r]) => [n, x * sc, z * sc, r]) };
   makeTiles(MAP);
@@ -2010,6 +2012,13 @@ function buildBoard(id, seed = 0) {
 }
 
 anim.push(() => sky.position.copy(camera.position));
+const rim = new THREE.PointLight('#ffe7c2', .7, 46, 1.6); scene.add(rim);
+const rimDir = new THREE.Vector3();
+anim.push(() => {
+  if (typeof cam === 'undefined') return;
+  rimDir.copy(cam.target).sub(camera.position).setY(0); if (rimDir.lengthSq() < .01) rimDir.set(0, 0, -1);
+  rimDir.normalize(); rim.position.copy(cam.target).addScaledVector(rimDir, 9).setY(7);
+});
 // 雲（不跟地圖走）
 const cloudMat = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#ffffff', emissiveIntensity: .18, roughness: 1, flatShading: true });
 for (let k = 0; k < (LITE ? 6 : 10); k++) {
@@ -2198,8 +2207,8 @@ async function bobbleHead(id) {
     const hairTex = new THREE.CanvasTexture(hcv); hairTex.encoding = THREE.sRGBEncoding;
     face3DCache[id] = {
       front, back: new THREE.SphereGeometry(1, 40, 28, Math.PI, Math.PI), outline: new THREE.SphereGeometry(1, 32, 20),
-      faceMat: new THREE.MeshStandardMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: .3, roughness: .55, metalness: 0 }),
-      hairMat: new THREE.MeshStandardMaterial({ map: hairTex, roughness: .4, metalness: .05 }),
+      faceMat: new THREE.MeshPhysicalMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: .28, roughness: .62, metalness: 0, clearcoat: .35, clearcoatRoughness: .45 }),
+      hairMat: new THREE.MeshPhysicalMaterial({ map: hairTex, roughness: .5, metalness: 0, clearcoat: .5, clearcoatRoughness: .35 }),
       lineMat: new THREE.MeshBasicMaterial({ color: '#1d1633', side: THREE.BackSide }),
     };
   }
@@ -2249,6 +2258,12 @@ const CharacterManager = {
     return h ? G.players[h.object.userData.player] || null : null;
   },
 };
+// 公仔材質：保留原本顏色和貼圖，改成消光軟膠（粗糙度高）＋一層很薄的亮漆
+function toyMat(src) {
+  const m = new THREE.MeshPhysicalMaterial({ color: src.color, map: src.map || null, roughness: .72, metalness: 0, clearcoat: .22, clearcoatRoughness: .6, skinning: !!src.skinning });
+  if (src.map) m.map.encoding = THREE.sRGBEncoding;
+  return m;
+}
 async function upgradeToken(p) {
   if (!gltf || p.model || !p.mesh) return;
   const [name, acc] = MODEL[p.char.id] || ['male-a', []];
@@ -2260,6 +2275,7 @@ async function upgradeToken(p) {
   CharacterManager.fit(m);   // 統一身高、腳貼地（壯的人只會變寬，不會變高）
   const shirt = new THREE.Color('#ffffff').lerp(new THREE.Color(p.char.color), .45);
   m.traverse(o => { if (o.isMesh) { o.castShadow = true; if (o.name === 'body-mesh') { o.material = o.material.clone(); o.material.color = shirt; } } });
+  m.traverse(o => { if (o.isMesh && o.material && o.material.isMeshStandardMaterial && !o.material.isMeshPhysicalMaterial) o.material = toyMat(o.material); });
   const head = m.getObjectByName('head');
   // 有 Q 版大頭照的角色：把模型原本的頭換成大頭貼（永遠面向鏡頭，跟著頭的骨架一起動）
   const face = head ? await bobbleHead(p.char.id) : null;
@@ -3210,7 +3226,53 @@ function updateCamera(dt, t) {
 function lookAtTile(i) { hostFx('look', i); const [x, z] = tilePos(i); cam.look = new THREE.Vector3(x, 0, z); cam.lookTile = i; }
 function lookBack() { hostFx('unlook'); cam.look = null; cam.lookTile = null; }
 
-function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); if (FX.composer) FX.size(); }
+// 高畫質：物件交接處（頭和身體、腳和地板、房子和地面）自動加上柔和暗部。需要額外下載 three.js 後處理模組，載不到就照舊
+const FX = {
+  composer: null, on: false, want: false, loading: null, frames: 0, t0: 0,
+  base: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/',
+  files: ['shaders/CopyShader.js', 'shaders/SSAOShader.js', 'shaders/GammaCorrectionShader.js', 'math/SimplexNoise.js', 'postprocessing/EffectComposer.js', 'postprocessing/ShaderPass.js', 'postprocessing/SSAOPass.js'],
+  load() {
+    if (this.loading) return this.loading;
+    const one = f => new Promise((ok, bad) => { const sc = document.createElement('script'); sc.src = this.base + f; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc); });
+    this.loading = this.files.reduce((p, f) => p.then(() => one(f)), Promise.resolve());
+    return this.loading;
+  },
+  size() {
+    const pr = Math.min(renderer.getPixelRatio(), 1.5), w = innerWidth, h = innerHeight;
+    this.composer.setPixelRatio(pr); this.composer.setSize(w, h); this.ssao.setSize(w * pr, h * pr);
+  },
+  async enable(v) {
+    this.want = v; try { localStorage.setItem('ds-hq', v ? '1' : '0'); } catch (e) { }
+    hqLabel();
+    if (!v) { this.on = false; skyMat.uniforms.lin.value = 0; return; }
+    try {
+      await this.load();
+      if (!this.composer) {
+        const c = new THREE.EffectComposer(renderer), ss = new THREE.SSAOPass(scene, camera, innerWidth, innerHeight);
+        ss.kernelRadius = 3.2; ss.minDistance = .0008; ss.maxDistance = .06;
+        c.addPass(ss); c.addPass(new THREE.ShaderPass(THREE.GammaCorrectionShader));
+        this.composer = c; this.ssao = ss; this.size();
+      }
+      if (!this.want) return;
+      this.on = true; skyMat.uniforms.lin.value = 1; this.frames = 0; this.t0 = performance.now() + 4000;   // 4 秒後才開始量，避開剛載入時的卡頓
+    } catch (e) { this.on = false; this.want = false; skyMat.uniforms.lin.value = 0; hqLabel(); }
+  },
+  render() {
+    if (!this.on) { renderer.render(scene, camera); return; }
+    this.composer.render();
+    // 開啟後連續 3 秒平均不到 30 fps：自動關掉，不讓遊戲變卡（分頁在背景、畫面停住時重新計時）
+    const now = performance.now();
+    if (this.t0) {
+      if (now < this.t0) { }
+      else if (document.hidden || now - (this.last || now) > 250) { this.t0 = now; this.frames = 0; }
+      else { this.frames++; const el = now - this.t0; if (el > 3000) { if (this.frames / el * 1000 < 30) { this.enable(false); localCaption('🎨 畫質自動調低', '這台裝置跑高畫質有點吃力，已經幫你關掉', 1600); } this.t0 = 0; } }
+    }
+    this.last = now;
+  },
+};
+function hqLabel() { const b = document.getElementById('btn-hq'); if (b) b.textContent = FX.want ? '高畫質 開' : '高畫質 關'; }
+{ let pref = null; try { pref = localStorage.getItem('ds-hq'); } catch (e) { } FX.enable(pref === null ? !LITE : pref === '1'); }
 addEventListener('resize', resize); resize();
 
 let last = performance.now();
@@ -3267,7 +3329,7 @@ function frame(now) {
   });
   if (spinning) dice.forEach((d, j) => { d.rotation.x += dt * (9 + j); d.rotation.y += dt * 7; });
   updateCamera(dt, t);
-  renderer.render(scene, camera);
+  FX.render();
   const tp = G.players[G.turn];
   turnArrow.visible = !!(tp && tp.mesh && !tp.out && G.players.length && !G.over);
   if (turnArrow.visible) { turnArrow.position.set(tp.mesh.position.x, tp.mesh.position.y + 5.2 + Math.sin(t * 5) * .35, tp.mesh.position.z); turnArrow.rotation.y = t * 2; turnArrow.children[0].material.color.set(tp.char.color); }
@@ -3761,6 +3823,7 @@ $('#btn-view').onclick = () => { cam.overview = !cam.overview; $('#btn-view').te
 $('#btn-fast').onclick = () => { G.fast = !G.fast; $('#btn-fast').textContent = G.fast ? '快轉 開' : '快轉'; };
 $('#btn-bgm').textContent = BGM.on ? '音樂 開' : '音樂 關';
 $('#btn-bgm').onclick = () => { BGM.on = !BGM.on; try { localStorage.setItem('ds-bgm', BGM.on ? '1' : '0'); } catch (e) { } $('#btn-bgm').textContent = BGM.on ? '音樂 開' : '音樂 關'; bgmStart(); };
+$('#btn-hq').onclick = () => { FX.enable(!FX.want); }; hqLabel();
 $('#btn-sound').onclick = () => { muted = !muted; $('#btn-sound').textContent = muted ? '音效 關' : '音效 開'; };
 $('#btn-vtest').onclick = () => { try { window.open('voices/test.html', '_blank'); } catch (e) { } };
 $('#btn-voice').onclick = () => { voiceOn = !voiceOn; $('#btn-voice').textContent = voiceOn ? '語音 開' : '語音 關'; if (!voiceOn) try { speechSynthesis.cancel(); if (vAudio) vAudio.pause(); } catch (e) { } };
