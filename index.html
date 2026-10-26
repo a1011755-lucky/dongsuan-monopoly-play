@@ -2192,6 +2192,44 @@ async function bobbleHead(id) {
 }
 // 頭像 HTML：有大頭照就用照片，沒有就用字
 const avatar = c => faceURL[c.id] ? `<div class="av face" style="background-image:url(${faceURL[c.id]})">${c.glyph}</div>` : `<div class="av">${c.glyph}</div>`;
+/* ---------- 🧍 角色管理：身形各異的公仔統一處理 ---------- */
+const CharacterManager = {
+  stdH: 0,   // 標準身高：第一個載入的模型決定，之後每個模型都縮放成一樣高（胖瘦比例保留）
+  hitMat: new THREE.MeshBasicMaterial({ color: '#ff3b5c', wireframe: true }),
+  // 量模型的包圍盒 → 等比例縮放到標準身高 → 往上／往下移，讓腳底剛好貼在 y = 0
+  fit(obj, targetH) {
+    obj.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(obj), h = b.max.y - b.min.y;
+    if (!(h > 0)) return obj;
+    const want = targetH || this.stdH || (this.stdH = h);
+    obj.scale.multiplyScalar(want / h);
+    obj.updateMatrixWorld(true);
+    const b2 = new THREE.Box3().setFromObject(obj);
+    obj.position.y -= b2.min.y;
+    return obj;
+  },
+  // 依角色實際寬、深、高產生一個看不見的圓柱當點選範圍（胖的粗、瘦的細）
+  hitbox(p) {
+    if (!p || !p.mesh) return;
+    if (p.hit) { p.mesh.remove(p.hit); p.hit.geometry.dispose(); p.hit = null; }
+    p.mesh.updateMatrixWorld(true);
+    const b = new THREE.Box3();
+    p.mesh.traverse(o => { if (o.isMesh && o.visible && o.geometry && !o.userData.noHit) b.expandByObject(o); });
+    if (b.isEmpty()) return;
+    const sc = p.mesh.scale.x || 1, w = b.max.x - b.min.x, d = b.max.z - b.min.z, h = b.max.y - b.min.y;
+    const r = Math.max(.45, Math.max(w, d) / 2 * 1.1) / sc, hh = h / sc;
+    const hit = new THREE.Mesh(new THREE.CylinderGeometry(r, r, hh, 14), this.hitMat);
+    hit.position.y = ((b.min.y + b.max.y) / 2 - p.mesh.position.y) / sc;
+    hit.visible = false; hit.userData.noHit = true; hit.userData.player = p.seat;
+    p.mesh.add(hit); p.hit = hit;
+  },
+  // 點畫面：先比對每個人的圓柱，點不到再退回逐一比對模型
+  pick(ray) {
+    const hs = G.players.filter(p => p.hit && p.mesh && !p.out).map(p => p.hit);
+    const h = ray.intersectObjects(hs, false)[0];
+    return h ? G.players[h.object.userData.player] || null : null;
+  },
+};
 async function upgradeToken(p) {
   if (!gltf || p.model || !p.mesh) return;
   const [name, acc] = MODEL[p.char.id] || ['male-a', []];
@@ -2200,6 +2238,7 @@ async function upgradeToken(p) {
   if (!p.mesh || p.model || p.out) return;
   const m = g.scene, S = 3.2;
   m.scale.set(S * (acc.includes('muscle') ? 1.25 : 1), S, S * (acc.includes('muscle') ? 1.15 : 1));
+  CharacterManager.fit(m);   // 統一身高、腳貼地（壯的人只會變寬，不會變高）
   const shirt = new THREE.Color('#ffffff').lerp(new THREE.Color(p.char.color), .45);
   m.traverse(o => { if (o.isMesh) { o.castShadow = true; if (o.name === 'body-mesh') { o.material = o.material.clone(); o.material.color = shirt; } } });
   const head = m.getObjectByName('head');
@@ -2226,6 +2265,7 @@ async function upgradeToken(p) {
     else c.visible = false;
   });
   p.mesh.add(m); p.model = m;
+  CharacterManager.hitbox(p);
   p.mixer = new THREE.AnimationMixer(m); p.clips = {};
   g.animations.forEach(a => { p.clips[a.name] = a; });
   p.cur = null; p.oneShot = 0; play(p, 'idle');
@@ -3043,6 +3083,7 @@ function playerAt(e) {
   const r = canvas.getBoundingClientRect();
   mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   ray.setFromCamera(mouse, camera);
+  const byBox = CharacterManager.pick(ray); if (byBox) return byBox;
   const ms = G.players.filter(p => p.mesh && !p.out).map(p => p.mesh);
   const hit = ray.intersectObjects(ms, true)[0]; if (!hit) return null;
   return G.players.find(p => { for (let o = hit.object; o; o = o.parent) if (o === p.mesh) return true; return false; }) || null;
@@ -3661,6 +3702,7 @@ function startGame(cfg) {
   players.forEach(p => {
     p.mesh = makeToken(p.char); scene.add(p.mesh);
     if (players.length > 4) p.mesh.scale.setScalar(.8);   // 人多時棋子小一點，才站得下
+    CharacterManager.hitbox(p);
     const [x, z] = spot(p, 0); p.mesh.position.set(x, 0, z);
     p.bubble = document.createElement('div'); p.bubble.className = 'bubble'; p.bubble.style.setProperty('--bc', p.char.color); $('#bubbles').append(p.bubble);
     p.tag = document.createElement('div'); p.tag.className = 'ntag'; p.tag.style.setProperty('--c', p.char.color);
