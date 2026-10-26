@@ -760,9 +760,11 @@ const viaNet = p => NET.mode === 'host' && isRemote(p);
 const myPlayer = () => G.players.find(p => p.ctl === 'r:' + NET.cid);
 // 版本號＋自動檢查新版：瀏覽器有時會拿舊的網頁（GitHub Pages 允許快取 10 分鐘），偵測到網站上有新版就跳出「更新」按鈕
 function checkUpdate() {
-  if (BUILD_ID === 'dev' || !/github.io$/.test(location.hostname)) return;
+  if (BUILD_ID === 'dev' || !location.hostname.endsWith('github.io')) return;
   fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(t => {
-    const m = /BUILD_ID = '(d{8}-d{4})'/.exec(t || '');   // 只認「日期-時間」格式，才不會比對到這行自己 if (!m || m[1] === BUILD_ID || document.getElementById('upd')) return;
+    // 只認「8 位數日期-4 位數時間」格式，才不會比對到這一行自己
+    const m = /BUILD_ID = '([0-9]{8}-[0-9]{4})'/.exec(t || '');
+    if (!m || m[1] === BUILD_ID || document.getElementById('upd')) return;
     const el = document.createElement('div'); el.id = 'upd';
     el.innerHTML = `🆕 有新版本了！<button class="primary" type="button">立即更新</button><button type="button" aria-label="稍後再說">✕</button>`;
     el.querySelector('.primary').onclick = () => { location.replace(location.pathname + '?v=' + encodeURIComponent(m[1]) + location.hash); };
@@ -868,7 +870,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261026b';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261026-2054';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261026-2056';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
