@@ -762,7 +762,7 @@ const myPlayer = () => G.players.find(p => p.ctl === 'r:' + NET.cid);
 function checkUpdate() {
   if (BUILD_ID === 'dev' || !/github.io$/.test(location.hostname)) return;
   fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(t => {
-    const m = /const BUILD_ID = '([^']+)'/.exec(t || ''); if (!m || m[1] === BUILD_ID || document.getElementById('upd')) return;
+    const m = /BUILD_ID = '(d{8}-d{4})'/.exec(t || '');   // 只認「日期-時間」格式，才不會比對到這行自己 if (!m || m[1] === BUILD_ID || document.getElementById('upd')) return;
     const el = document.createElement('div'); el.id = 'upd';
     el.innerHTML = `🆕 有新版本了！<button class="primary" type="button">立即更新</button><button type="button" aria-label="稍後再說">✕</button>`;
     el.querySelector('.primary').onclick = () => { location.replace(location.pathname + '?v=' + encodeURIComponent(m[1]) + location.hash); };
