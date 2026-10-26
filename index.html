@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261026b';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261027-0158';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261027-0749';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -2352,7 +2352,7 @@ const ART = {
   // 路人、神明
   cops: { file: 'cops.jpg', cut: .862 },
   god_cai: { file: 'god_cai.jpg' }, god_land: { file: 'god_land.jpg' }, god_poor: { file: 'god_poor.jpg' }, god_shuai: { file: 'god_shuai.jpg' },
-  // 建築（保留模型底座）
+  // 建築（保留模型底座）。每張圖可加 yOffset（世界座標，負的往下沉），例如 bld_town: { file: 'bld_town.jpg', yOffset: -0.8 }；不寫就自動算
   bld_hosp: { file: 'bld_hosp.jpg' }, bld_town: { file: 'bld_town.jpg' }, bld_tower: { file: 'bld_tower.jpg' },
   bld_go: { file: 'bld_go.jpg' }, bld_police: { file: 'bld_police.jpg' }, bld_wheel: { file: 'bld_wheel.jpg', holes: .0006 }, bld_arch: { file: 'bld_arch.jpg', holes: .002 },
   bld_101: { file: 'bld_101.webp' }, bld_island: { file: 'bld_island.webp' },
@@ -2466,6 +2466,14 @@ function cutout(img, opt = {}) {
   x.putImageData(d, 0, 0);
   const out = document.createElement('canvas'); out.width = x1 - x0 + 5; out.height = y1 - y0 + 3;
   out.getContext('2d').drawImage(cv, x0 - 2, y0 - 2, out.width, out.height, 0, 0, out.width, out.height);
+  // foot：圖片下方 40% 裡，底座最左角、最右角各自離底邊多高，取平均（占圖高的比例）。斜俯視的模型圖，真正踩地的位置在這附近
+  let L = W, R = -1, yL = y1, yR = y1;
+  for (let Y = y1; Y >= y1 - (y1 - y0) * .4; Y--) {
+    let a = -1, b = -1; for (let X = x0; X <= x1; X++) if (lab[Y * W + X] === best) { if (a < 0) a = X; b = X; }
+    if (a < 0) continue;
+    if (a < L - 1) { L = a; yL = Y; } if (b > R + 1) { R = b; yR = Y; }
+  }
+  out.foot = (y1 - (yL + yR) / 2) / out.height;
   return out;
 }
 const ART_H = 3.4;   // 看板公仔的身高（跟 3D 模型差不多）
@@ -2478,6 +2486,21 @@ function artTex(art) {
 function artSprite(art, h) {
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: artTex(art), transparent: true, alphaTest: .35, depthWrite: true }));
   sp.center.set(.5, 0); sp.scale.set(h * art.width / art.height, h, 1); sp.userData.noHit = true; sp.userData.art = true;
+  return sp;
+}
+// 把看板圖立在地面上：底邊對齊 groundY（世界座標），再往下沉 yOffset（世界座標，負的＝往下）
+// yOffset 沒填就自動算：沉到底座最寬那一列的 SINK 倍；ART 裡寫 yOffset: -0.8 就用你填的數字
+const SINK = .55;
+function artYOffset(key, art, h) {
+  const o = ART[key] && ART[key].yOffset;
+  return typeof o === 'number' ? o : -(art.foot || 0) * h * SINK;
+}
+function placeArt(g, key, h, x, z, groundY, shadow = .45) {
+  const a = artReady[key]; if (!a) return null;
+  const sy = g.getWorldScale(new THREE.Vector3()).y || 1, wy = g.getWorldPosition(new THREE.Vector3()).y;   // 不管外層群組怎麼縮放、擺多高都算得對
+  const sp = artSprite(a, h); g.add(sp);
+  sp.position.set(x, (groundY + artYOffset(key, a, h * sy) - wy) / sy, z);   // 絕對高度：地面 + 下壓量，換算回群組裡的座標
+  if (shadow) { const sh = aoBlob(h * a.width / a.height * .95, shadow); sh.position.set(x, (groundY + .01 - wy) / sy, z); g.add(sh); }
   return sp;
 }
 // 路人（檢調）、神明：有圖就把 3D 造型藏起來換成看板，名牌移到頭上
@@ -2495,24 +2518,22 @@ function npcArt(n) {
 const BLD_ART = { 2: ['bld_town', 4.4], 5: ['bld_tower', 9] };
 function buildingArt(g, level) {
   const b = BLD_ART[level], a = b && artReady[b[0]]; if (!a) return false;
-  const y = GROUND.grass - g.position.y, sp = artSprite(a, b[1]); sp.position.set(.3, y, 0); g.add(sp);
-  const sh = aoBlob(b[1] * a.width / a.height * .95, .45); sh.position.set(.3, y + .01, 0); g.add(sh); return true;
+  // 底座變成貼在地上的陣營色圓圈：不擋住建築圖（只有地面會遮住沉下去的那一截）
+  g.children.forEach(c => { if (c.userData.pedTop) c.visible = false; if (c.userData.ped) { c.material = c.material.clone(); c.material.depthWrite = false; } });
+  placeArt(g, b[0], b[1], .3, 0, GROUND.grass); return true;
 }
 function swapProps() {
   (BOARD.artProps || []).forEach(([g, key, h, x, z, groundY = GROUND.land, shadow = .45]) => {
     const a = artReady[key]; if (!a || g.userData.art) return;
     g.children.forEach(c => { if (!c.userData.keep) c.visible = false; });
-    const y = (groundY - g.position.y) / (g.scale.y || 1);   // 底邊剛好落在地面上
-    const sp = artSprite(a, h); sp.position.set(x, y, z); g.add(sp); g.userData.art = true;
-    if (shadow) { const sh = aoBlob(h * a.width / a.height * .95, shadow); sh.position.set(x, y + .01, z); g.add(sh); }
+    placeArt(g, key, h, x, z, groundY, shadow); g.userData.art = true;
   });
 }
 function swapHospital() {
   swapProps();
   const g = BOARD.hospG, a = artReady.bld_hosp; if (!g || !a || g.userData.art) return;
   g.children.forEach(c => { c.visible = false; });
-  const y = GROUND.land - g.position.y, sp = artSprite(a, 5); sp.position.set(0, y, .3); g.add(sp); g.userData.art = true;
-  const sh = aoBlob(5 * a.width / a.height * .95, .45); sh.position.set(0, y + .01, .3); g.add(sh);
+  placeArt(g, 'bld_hosp', 5, 0, .3, GROUND.land); g.userData.art = true;
 }
 /* ---------- 多狀態換圖：idle 待機、walk 走路、stunned 倒地、shocked 驚恐、happy 慶祝 ---------- */
 // 每個角色的狀態圖只載一次、存成貼圖；切換時只換 SpriteMaterial.map（不新建材質），寬度依那張圖的比例調整
@@ -3195,7 +3216,7 @@ function rebuild(i, pop = true) {
   const c = G.players[st.owner].char.color;
   { const a = aoBlob(4.4, .45); a.position.set(.2, .015, 0); g.add(a); }
   // 陣營色底座：一眼看出是誰的地
-  cyl(1.55, 1.62, .1, c, .2, .05, 0, g, 28); cyl(1.32, 1.32, .02, '#ffffff', .2, .11, 0, g, 28).material = M('#fffaf0');
+  cyl(1.55, 1.62, .1, c, .2, .05, 0, g, 28).userData.ped = 1; const pedTop = cyl(1.32, 1.32, .02, '#ffffff', .2, .11, 0, g, 28); pedTop.material = M('#fffaf0'); pedTop.userData.pedTop = 1;
   cyl(.05, .05, 1.6, '#ffffff', -1.4, .8, 0, g, 6);
   box(.6, .4, .04, c, -1.1, 1.4, 0, g);
   if (st.kind === 'hq') {
