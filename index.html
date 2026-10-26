@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261026b';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261026-2133';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261026-2146';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -1996,6 +1996,7 @@ function buildBoard(id, seed = 0) {
     boardAnims.push(t => { const a = t * .5; pl.position.set(Math.cos(a) * 4, Math.sin(t * 1.3) * .4, Math.sin(a) * 4); pl.rotation.set(-.35, -a - Math.PI / 2, 0); });
   });
   cornerProp(HOSP, g => {
+    BOARD.hospG = g;
     // 凍蒜醫院：白色兩層樓、藍色玻璃窗、屋頂發光紅十字、門口雨遮，旁邊一台閃燈救護車
     box(3.4, 2.6, 2.2, '#fafafa', 0, 1.3, 0, g); box(3.6, .2, 2.4, '#b3e5fc', 0, 2.7, 0, g);
     for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) box(.5, .45, .05, '#81d4fa', -1.2 + c * .8, .9 + r * .95, 1.11, g);
@@ -2009,6 +2010,7 @@ function buildBoard(id, seed = 0) {
     boardAnims.push(t => { cr.emissiveIntensity = .7 + Math.abs(Math.sin(t * 2)) * .8; sl.material.emissiveIntensity = Math.sin(t * 10) > 0 ? 1.5 : .1; });
   });
   if (G && G.tiles) TILES.forEach((t, i) => drawTile(i));
+  if (typeof swapHospital === 'function' && typeof artReady !== 'undefined') swapHospital();
 }
 
 anim.push(() => sky.position.copy(camera.position));
@@ -2277,7 +2279,18 @@ const ART = {
   ma: { file: 'ma.webp', cut: .853, key: 1 },
   wsj: { file: 'wsj.jpg', cut: .905 },
   chiang: { file: 'chiang.jpg', cut: .932 },
+  bian: { file: 'bian.jpg', cut: .918 },
+  gou: { file: 'gou.jpg', cut: .912 },
+  kc: { file: 'kc.jpg', cut: .906 },
+  puma: { file: 'puma.jpg', cut: .912 },
+  // 路人、神明
+  cops: { file: 'cops.jpg', cut: .862 },
+  god_cai: { file: 'god_cai.jpg' }, god_land: { file: 'god_land.jpg' }, god_poor: { file: 'god_poor.jpg' }, god_shuai: { file: 'god_shuai.jpg' },
+  // 建築（保留模型底座）
+  bld_hosp: { file: 'bld_hosp.jpg' }, bld_town: { file: 'bld_town.jpg' }, bld_tower: { file: 'bld_tower.jpg' },
 };
+// 角色的其他狀態圖（之後有圖時加在這裡，例如 han: { walk: { file: 'han_walk.png' }, stunned: {...}, happy: {...} }）；沒有的狀態就用原本那張
+const ART_STATES = {};
 const artCache = {};
 function loadArt(id) {
   if (artCache[id] !== undefined) return artCache[id];
@@ -2367,10 +2380,61 @@ function cutout(img, opt = {}) {
   return out;
 }
 const ART_H = 3.4;   // 看板公仔的身高（跟 3D 模型差不多）
+const artTexCache = new Map(), artReady = {};
+function artTex(art) {
+  let t = artTexCache.get(art);
+  if (!t) { t = new THREE.CanvasTexture(art); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; artTexCache.set(art, t); }
+  return t;
+}
+function artSprite(art, h) {
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: artTex(art), transparent: true, alphaTest: .35, depthWrite: true }));
+  sp.center.set(.5, 0); sp.scale.set(h * art.width / art.height, h, 1); sp.userData.noHit = true; sp.userData.art = true;
+  return sp;
+}
+// 路人（檢調）、神明：有圖就把 3D 造型藏起來換成看板，名牌移到頭上
+function npcArt(n) {
+  const key = n.god ? 'god_' + n.god : n.def.id === 'cops' ? 'cops' : null; if (!key || !ART[key]) return;
+  loadArt(key).then(art => {
+    if (!art || !n.mesh || n.sprite) return;
+    const h = n.god ? 3.2 : 3.4, sp = artSprite(art, h);
+    n.mesh.children.forEach(c => { if (c.userData.label) c.position.y = h + .35; else c.visible = false; });
+    n.mesh.add(sp); n.sprite = sp;
+  });
+}
+// 建築：透天厝（2 層）、摩天樓（5 層）有圖就用圖；醫院角落也換成醫院模型圖
+const BLD_ART = { 2: ['bld_town', 4.4], 5: ['bld_tower', 9] };
+function buildingArt(g, level) {
+  const b = BLD_ART[level], a = b && artReady[b[0]]; if (!a) return false;
+  const sp = artSprite(a, b[1]); sp.position.set(.3, .05, 0); g.add(sp); return true;
+}
+function swapHospital() {
+  const g = BOARD.hospG, a = artReady.bld_hosp; if (!g || !a || g.userData.art) return;
+  g.children.forEach(c => { c.visible = false; });
+  const sp = artSprite(a, 5); sp.position.set(0, .05, .3); g.add(sp); g.userData.art = true;
+}
+/* ---------- 多狀態換圖：idle 待機、walk 走路、stunned 倒地、shocked 驚恐、happy 慶祝 ---------- */
+// 每個角色的狀態圖只載一次、存成貼圖；切換時只換 SpriteMaterial.map（不新建材質），寬度依那張圖的比例調整
+function loadStates(p) {
+  const id = p.char.id, st = ART_STATES[id]; p.artTex = p.artTex || {};
+  if (!st) return;
+  Object.entries(st).forEach(([name, cfg]) => {
+    const key = id + '_' + name; if (!ART[key]) ART[key] = cfg;
+    loadArt(key).then(a => { if (a) p.artTex[name] = { tex: artTex(a), aspect: a.width / a.height }; });
+  });
+}
+function setArtState(p, name, ms) {
+  if (!p || !p.sprite || !p.artTex) return;
+  const t = p.artTex[name] || p.artTex.idle; if (!t) return;
+  clearTimeout(p.artT);
+  if (p.sprite.material.map !== t.tex) { p.sprite.material.map = t.tex; p.sprite.material.needsUpdate = true; }
+  p.artW = ART_H * t.aspect; p.artState = name;
+  if (ms) p.artT = setTimeout(() => setArtState(p, 'idle'), ms);
+}
 function applyArt(p, art) {
-  const tex = new THREE.CanvasTexture(art); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
+  const tex = artTex(art);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, alphaTest: .35, depthWrite: true }));
   const w = ART_H * art.width / art.height;
+  p.artW = w; p.artTex = { idle: { tex, aspect: art.width / art.height } }; loadStates(p);
   sp.center.set(.5, 0); sp.scale.set(w, ART_H, 1); sp.position.y = .12; sp.userData.noHit = true;
   // 原本的方塊人藏起來，只留底座（換成角色色）和肩膀上的配件
   p.mesh.children.forEach((c, k) => { if (k === 0) c.material = M(p.char.color); else if (!c.userData.keep) c.visible = false; });
@@ -2378,7 +2442,7 @@ function applyArt(p, art) {
   // 待機時輕輕呼吸（上下伸縮一點點）
   const ph = p.seat * 1.3;
   p.sqX = p.sqY = 1;
-  anim.push(t => { if (p.out || !p.sprite) return; const k = 1 + Math.sin(t * 2.4 + ph) * .018; sp.scale.set(w / Math.sqrt(k) * p.sqX, ART_H * k * p.sqY, 1); });
+  anim.push(t => { if (p.out || !p.sprite) return; const k = 1 + Math.sin(t * 2.4 + ph) * .018; sp.scale.set(p.artW / Math.sqrt(k) * p.sqX, ART_H * k * p.sqY, 1); });
   // 點選範圍：看板的寬度、高度
   if (p.hit) { p.mesh.remove(p.hit); p.hit.geometry.dispose(); }
   const hit = new THREE.Mesh(new THREE.CylinderGeometry(Math.max(.5, w * .32), Math.max(.5, w * .32), ART_H, 12), CharacterManager.hitMat);
@@ -2668,7 +2732,7 @@ function godLabel(text, bg) {
     x.beginPath(); x.roundRect ? x.roundRect(6, 6, w - 12, h - 12, 30) : x.rect(6, 6, w - 12, h - 12); x.fill(); x.stroke();
     x.fillStyle = '#ffffff'; x.font = `900 40px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineWidth = 7; x.strokeText(text, w / 2, h / 2 + 2); x.fillText(text, w / 2, h / 2 + 2);
   });
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false })); sp.scale.set(1.5, .42, 1); return sp;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false })); sp.scale.set(1.5, .42, 1); sp.userData.label = true; return sp;
 }
 function makeGod(k) {
   const g = new THREE.Group(), happy = GODS[k].good;
@@ -3039,7 +3103,7 @@ function rebuild(i, pop = true) {
     cyl(.05, .05, 1.4, '#ffffff', .2, 1.4, 0, g, 6);
     cone(1.3, .5, c, .2, 2.1, 0, g, 8);
     const s = textPlane('雞排', 1.4, .4, '#ffffff', '#e53935', 140); s.position.set(.2, .6, .52); g.add(s);
-  } else BUILD[st.level](g, c, i);
+  } else if (!buildingArt(g, st.level)) BUILD[st.level](g, c, i);
   if (pop) {
     // 蓋好時從地面「長」出來，再彈一下；冒一圈工地粉塵
     g.scale.set(1, .01, 1);
@@ -3933,6 +3997,7 @@ function startGame(cfg) {
     const g = makeGod(k), n = { def: { id: 'god', name: GODS[k].name }, god: k, host: -1, pos, mesh: g, person: g };
     const [x, z] = npcSpot(pos); g.position.set(x, .2, z); g.rotation.y = tileTheta(pos); scene.add(g); G.npcs.push(n);
   });
+  G.npcs.forEach(npcArt);
 
   TILES.forEach((t, i) => drawTile(i));
   $('#setup').hidden = true;
@@ -5177,6 +5242,7 @@ function hopTo(p, to, th, ms = 150) {
   const m = p.mesh, from = m.position.clone(), r0 = m.rotation.y, base = p.baseS || (p.baseS = m.scale.x || 1);
   const dr = ((th - r0 + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
   const side = p.hopSide = -(p.hopSide || 1);
+  if (p.artState !== 'walk') setArtState(p, 'walk');
   return tween(ms, k => {
     const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2, up = Math.sin(Math.PI * k);
     m.position.lerpVectors(from, to, e); m.position.y = up * 1.05;
@@ -5194,6 +5260,7 @@ function hopTo(p, to, th, ms = 150) {
 // 飛到某一格：去醫院的是被炸飛（邊飛邊翻滾、冒星星），其他是被拎走；落地壓扁再彈回來
 async function flyTo(p, corner) {
   const m = p.mesh, base = p.baseS || (p.baseS = m.scale.x || 1), [x, z] = spot(p, corner), tumble = corner === HOSP;
+  setArtState(p, tumble ? 'stunned' : 'shocked', 2600);
   if (tumble) burst(m.position.clone().setY(1.5), ['#ffd23f', '#ff8a1c', '#ffffff'], LITE ? 6 : 12, .3);
   await tween(380, k => { m.position.y = k * 10; if (tumble) { m.rotation.x = k * Math.PI * 3; m.rotation.z = k * Math.PI * 1.5; spriteTilt(p, k * Math.PI * 4); } else { m.rotation.z = Math.sin(k * 20) * .25; spriteTilt(p, Math.sin(k * 20) * .35); } });
   m.position.set(x, 10, z); m.rotation.y = tileTheta(corner);
@@ -5207,6 +5274,7 @@ async function flyTo(p, corner) {
 function cheer(p) {
   const m = p.mesh; if (!m || p.moving || p.animating || p.cheering || p.out) return;
   const base = p.baseS || (p.baseS = m.scale.x || 1), r0 = m.rotation.y; p.cheering = true;
+  setArtState(p, 'happy', 2000);
   tween(700, k => { const up = Math.abs(Math.sin(k * Math.PI * 2)); m.position.y = up * .9; m.rotation.y = r0 + k * Math.PI * 2; spriteTilt(p, Math.sin(k * Math.PI * 4) * .3); const q = 1 + .12 * up; m.scale.set(base / Math.sqrt(q), base * q, base / Math.sqrt(q)); })
     .then(() => { m.position.y = 0; m.rotation.y = r0; m.scale.setScalar(base); p.cheering = false; spriteTilt(p, 0); spriteSquash(p); });
 }
@@ -5256,7 +5324,7 @@ async function moveSteps(p, n, back = false) {
       break;
     }
   }
-  p.moving = false;
+  p.moving = false; setArtState(p, 'idle');
 }
 
 async function passStart(p) {
@@ -6795,6 +6863,12 @@ async function practice() {
   } finally { modal.hidden = true; practicing = false; document.body.classList.remove('practicing'); }
 }
 $('#btn-practice').onclick = () => practice();
+// 建築圖先載好：載好後醫院馬上換圖，已經蓋好的透天厝、摩天樓也換
+['bld_hosp', 'bld_town', 'bld_tower'].forEach(k => loadArt(k).then(a => {
+  if (!a) return; artReady[k] = a;
+  if (k === 'bld_hosp') swapHospital();
+  else if (G && G.tiles) G.tiles.forEach((st, i) => { if (st.owner >= 0 && !st.kind && ((k === 'bld_town' && st.level === 2) || (k === 'bld_tower' && st.level === 5))) rebuild(i, false); });
+}));
 
 /* ---------- PK 看板：對決時畫面上方左右兩邊各一人，中間 VS ---------- */
 let pkEl = null, pkHide = 0;
@@ -7674,7 +7748,7 @@ async function runAnim(p) {
     else await flyTo(p, tile);
     p.mesh.position.y = 0; p.lastAnim = performance.now();
   }
-  p.animating = false;
+  p.animating = false; setArtState(p, 'idle');
 }
 function applyState(s) {
   if (!s || !Array.isArray(s.P)) return;
