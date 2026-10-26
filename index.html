@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261026b';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261026-2120';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261026-2133';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -2267,14 +2267,30 @@ function toyMat(src) {
 /* ---------- 🖼️ 公仔看板：AI 畫的盲盒公仔圖直接放進棋盤 ---------- */
 // 放法：把圖存成 art/<角色 id>.png（或 .jpg），例如 art/han.jpg＝韓國瑜。背景用單色（白、灰都可以），遊戲會自動去背；
 // 圖上旁邊的名字貼紙等「沒有連著人」的東西會自動拿掉，只留最大的那一塊（人物本身）
+// 有哪些角色有圖、檔名是什麼；cut＝公仔底座頂端在圖片高度的哪裡（以下整片去掉），key＝底座顏色跟鞋子不同，把腳邊露出的底座邊緣也去掉
+const ART = {
+  han: { file: 'han.jpg' },
+  tsai: { file: 'tsai.webp', cut: .854, key: 1 },
+  ko: { file: 'ko.webp', cut: .866, key: 1 },
+  lai: { file: 'lai.webp', cut: .872, key: 1 },
+  gz: { file: 'gz.webp', cut: .846 },
+  ma: { file: 'ma.webp', cut: .853, key: 1 },
+  wsj: { file: 'wsj.jpg', cut: .905 },
+  chiang: { file: 'chiang.jpg', cut: .932 },
+};
 const artCache = {};
 function loadArt(id) {
   if (artCache[id] !== undefined) return artCache[id];
-  const tryOne = ext => new Promise(ok => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = `art/${id}.${ext}`; });
-  return artCache[id] = (async () => { const im = (await tryOne('png')) || (await tryOne('jpg')); if (!im) return null; try { return cutout(im); } catch (e) { return null; } })();
+  const a = ART[id]; if (!a) return artCache[id] = Promise.resolve(null);
+  return artCache[id] = new Promise(ok => {
+    const im = new Image();
+    im.onload = () => { try { ok(cutout(im, a)); } catch (e) { ok(null); } };
+    im.onerror = () => ok(null);
+    im.src = 'art/' + a.file;
+  });
 }
 // 去背：從四邊往內「淹水」，跟背景色很接近、而且跟隔壁很像的都算背景；再只保留最大的一塊前景，最後裁成剛好包住人物
-function cutout(img) {
+function cutout(img, opt = {}) {
   const H = Math.min(720, img.naturalHeight), sc = H / img.naturalHeight, W = Math.max(1, Math.round(img.naturalWidth * sc));
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const x = cv.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0, W, H);
@@ -2284,15 +2300,33 @@ function cutout(img) {
     for (let i = 0; i < n; i++) if (px[i * 4 + 3] < 40) bg[i] = 1;   // 已經是去背 PNG
   } else {
     // 每一列的背景色：取那一列最左、最右各 6 格的平均（攝影棚背景通常上下有漸層）
-    const rowBg = new Float32Array(H * 3);
+    // 有東西碰到圖片邊緣的那幾列（例如啞鈴、小提琴），改用左右另一邊或上一列的背景色，才不會被帶偏
+    const rowBg = new Float32Array(H * 3), side = (Y, X0) => { let r = 0, g = 0, b = 0; for (let k = 0; k < 6; k++) { const i = (Y * W + Math.abs(X0 - k)) * 4; r += px[i]; g += px[i + 1]; b += px[i + 2]; } return [r / 6, g / 6, b / 6]; };
+    let prev = side(0, 5);
     for (let Y = 0; Y < H; Y++) {
-      let r = 0, g = 0, b = 0, c = 0;
-      for (let k = 0; k < 6; k++) for (const X of [k, W - 1 - k]) { const i = (Y * W + X) * 4; r += px[i]; g += px[i + 1]; b += px[i + 2]; c++; }
-      rowBg[Y * 3] = r / c; rowBg[Y * 3 + 1] = g / c; rowBg[Y * 3 + 2] = b / c;
+      const L = side(Y, 5), R = side(Y, W - 1), dd = c => (c[0] - prev[0]) ** 2 + (c[1] - prev[1]) ** 2 + (c[2] - prev[2]) ** 2;
+      const dl = dd(L), dr = dd(R), lim = 40 * 40;
+      const pickC = dl < lim && dr < lim ? [(L[0] + R[0]) / 2, (L[1] + R[1]) / 2, (L[2] + R[2]) / 2] : dl < lim ? L : dr < lim ? R : prev;
+      rowBg[Y * 3] = pickC[0]; rowBg[Y * 3 + 1] = pickC[1]; rowBg[Y * 3 + 2] = pickC[2]; prev = pickC;
     }
     const far = i => { const Y = (i / W) | 0, dr = px[i * 4] - rowBg[Y * 3], dg = px[i * 4 + 1] - rowBg[Y * 3 + 1], db = px[i * 4 + 2] - rowBg[Y * 3 + 2]; return dr * dr + dg * dg + db * db; };
     const near2 = (i, j) => { const dr = px[i * 4] - px[j * 4], dg = px[i * 4 + 1] - px[j * 4 + 1], db = px[i * 4 + 2] - px[j * 4 + 2]; return dr * dr + dg * dg + db * db; };
     const T = 30 * 30, S = 14 * 14, q = new Int32Array(n); let h = 0, t = 0;
+    // 公仔底座：先把切線以下整片當背景；key 的話，切線上方一小段裡「跟底座同色、而且有顏色（不是黑白灰）」的也去掉（鞋子是黑的不會被誤刪）
+    if (opt.cut) {
+      const cy = Math.floor(H * opt.cut);
+      if (opt.key) {
+        let r = 0, g = 0, b = 0, c = 0;
+        for (let Y = Math.floor(H * (opt.cut + .02)); Y < Math.min(H, Math.floor(H * (opt.cut + .05))); Y++) for (let X = Math.floor(W * .25); X < Math.floor(W * .35); X++) { const i = (Y * W + X) * 4; r += px[i]; g += px[i + 1]; b += px[i + 2]; c++; }
+        if (c) { r /= c; g /= c; b /= c;
+          for (let Y = Math.max(0, Math.floor(H * (opt.cut - .07))); Y < cy; Y++) for (let X = 0; X < W; X++) {
+            const i = Y * W + X, R = px[i * 4], Gg = px[i * 4 + 1], B = px[i * 4 + 2], dr = R - r, dg = Gg - g, db = B - b;
+            if (dr * dr + dg * dg + db * db < 40 * 40 && Math.max(R, Gg, B) - Math.min(R, Gg, B) > 18) bg[i] = 1;
+          } }
+      }
+      for (let i = cy * W; i < n; i++) bg[i] = 1;
+      for (let X = 0; X < W; X++) { const i = (cy - 1) * W + X; if (cy > 0) q[t++] = i + W; }   // 從切線往上淹：腿中間被底座圍住的背景也清得掉
+    }
     const seed = i => { if (!bg[i] && far(i) < T) { bg[i] = 1; q[t++] = i; } };
     for (let X = 0; X < W; X++) { seed(X); seed((H - 1) * W + X); }
     for (let Y = 0; Y < H; Y++) { seed(Y * W); seed(Y * W + W - 1); }
@@ -2300,7 +2334,7 @@ function cutout(img) {
       const i = q[h++], X = i % W;
       for (const j of [X > 0 ? i - 1 : -1, X < W - 1 ? i + 1 : -1, i - W, i + W]) {
         if (j < 0 || j >= n || bg[j]) continue;
-        if (far(j) < T && near2(i, j) < S) { bg[j] = 1; q[t++] = j; }
+        if (far(j) < T && (bg[i] && near2(i, j) < S || (opt.cut && (i / W | 0) >= Math.floor(H * opt.cut)))) { bg[j] = 1; q[t++] = j; }
       }
     }
     // 地上的影子：圖片下方 25% 裡，灰灰的（不太有顏色）、比背景暗一些的也算背景
@@ -2343,12 +2377,20 @@ function applyArt(p, art) {
   p.mesh.add(sp); p.model = sp; p.sprite = sp;
   // 待機時輕輕呼吸（上下伸縮一點點）
   const ph = p.seat * 1.3;
-  anim.push(t => { if (p.out || !p.sprite) return; const k = 1 + Math.sin(t * 2.4 + ph) * .018; sp.scale.set(w / Math.sqrt(k), ART_H * k, 1); });
+  p.sqX = p.sqY = 1;
+  anim.push(t => { if (p.out || !p.sprite) return; const k = 1 + Math.sin(t * 2.4 + ph) * .018; sp.scale.set(w / Math.sqrt(k) * p.sqX, ART_H * k * p.sqY, 1); });
   // 點選範圍：看板的寬度、高度
   if (p.hit) { p.mesh.remove(p.hit); p.hit.geometry.dispose(); }
   const hit = new THREE.Mesh(new THREE.CylinderGeometry(Math.max(.5, w * .32), Math.max(.5, w * .32), ART_H, 12), CharacterManager.hitMat);
   hit.position.y = ART_H / 2; hit.visible = false; hit.userData.noHit = true; hit.userData.player = p.seat; p.mesh.add(hit); p.hit = hit;
 }
+// 看板公仔的果凍回彈：落地瞬間壓扁、橫向變寬，再彈回原狀（不用等它做完）
+function spriteSquash(p, amt = .12, ms = 180) {
+  if (!p.sprite) return;
+  tween(ms, k => { const q = Math.sin(Math.PI * k) * (1 - k * .3); p.sqY = 1 - amt * q; p.sqX = 1 + amt * q; }).then(() => { p.sqX = p.sqY = 1; });
+}
+// 看板公仔的貼圖轉角（只轉圖片本身，一樣永遠面向鏡頭）
+const spriteTilt = (p, a) => { if (p.sprite) p.sprite.material.rotation = a; };
 async function upgradeToken(p) {
   if (!p.mesh || p.model) return;
   const art = await loadArt(p.char.id);
@@ -5140,10 +5182,12 @@ function hopTo(p, to, th, ms = 150) {
     m.position.lerpVectors(from, to, e); m.position.y = up * 1.05;
     m.rotation.y = r0 + dr * Math.min(1, k * 2.2);
     m.rotation.z = up * .2 * side; m.rotation.x = up * .14;   // 誇張的左右搖擺＋往前衝
+    spriteTilt(p, Math.sin(Math.PI * k) * .26 * side);   // 看板公仔：企鵝搖擺（左右腳交替，最大約 15 度）
     const sy = 1 + .16 * up - .16 * Math.pow(1 - up, 5);   // 起跳和落地壓扁、空中拉長
     m.scale.set(base / Math.sqrt(sy), base * sy, base / Math.sqrt(sy));
   }).then(() => {
     m.scale.setScalar(base); m.position.y = 0; m.rotation.x = m.rotation.z = 0;
+    spriteTilt(p, 0); spriteSquash(p);
     if (!LITE) burst(new THREE.Vector3(to.x, .15, to.z), ['#efe3c8', '#ffffff'], 3, .18);
   });
 }
@@ -5151,10 +5195,10 @@ function hopTo(p, to, th, ms = 150) {
 async function flyTo(p, corner) {
   const m = p.mesh, base = p.baseS || (p.baseS = m.scale.x || 1), [x, z] = spot(p, corner), tumble = corner === HOSP;
   if (tumble) burst(m.position.clone().setY(1.5), ['#ffd23f', '#ff8a1c', '#ffffff'], LITE ? 6 : 12, .3);
-  await tween(380, k => { m.position.y = k * 10; if (tumble) { m.rotation.x = k * Math.PI * 3; m.rotation.z = k * Math.PI * 1.5; } else m.rotation.z = Math.sin(k * 20) * .25; });
+  await tween(380, k => { m.position.y = k * 10; if (tumble) { m.rotation.x = k * Math.PI * 3; m.rotation.z = k * Math.PI * 1.5; spriteTilt(p, k * Math.PI * 4); } else { m.rotation.z = Math.sin(k * 20) * .25; spriteTilt(p, Math.sin(k * 20) * .35); } });
   m.position.set(x, 10, z); m.rotation.y = tileTheta(corner);
-  await tween(380, k => { m.position.y = 10 * (1 - k * k); if (tumble) { m.rotation.x = Math.PI * (3 + k); m.rotation.z = Math.PI * (1.5 + k * .5); } else m.rotation.z = Math.sin(k * 20) * .25 * (1 - k); });
-  m.rotation.x = m.rotation.z = 0; m.position.y = 0;
+  await tween(380, k => { m.position.y = 10 * (1 - k * k); if (tumble) { m.rotation.x = Math.PI * (3 + k); m.rotation.z = Math.PI * (1.5 + k * .5); spriteTilt(p, Math.PI * (4 + 2 * k)); } else { m.rotation.z = Math.sin(k * 20) * .25 * (1 - k); spriteTilt(p, Math.sin(k * 20) * .35 * (1 - k)); } });
+  m.rotation.x = m.rotation.z = 0; m.position.y = 0; spriteTilt(p, 0); spriteSquash(p, .3, 320);
   burst(new THREE.Vector3(x, .2, z), ['#efe3c8', '#ffffff'], LITE ? 4 : 8, .25);
   await tween(280, k => { const q = 1 - .38 * Math.sin(Math.PI * k) * (1 - k * .4); m.scale.set(base / Math.sqrt(q), base * q, base / Math.sqrt(q)); });
   m.scale.setScalar(base);
@@ -5163,8 +5207,8 @@ async function flyTo(p, corner) {
 function cheer(p) {
   const m = p.mesh; if (!m || p.moving || p.animating || p.cheering || p.out) return;
   const base = p.baseS || (p.baseS = m.scale.x || 1), r0 = m.rotation.y; p.cheering = true;
-  tween(700, k => { const up = Math.abs(Math.sin(k * Math.PI * 2)); m.position.y = up * .9; m.rotation.y = r0 + k * Math.PI * 2; const q = 1 + .12 * up; m.scale.set(base / Math.sqrt(q), base * q, base / Math.sqrt(q)); })
-    .then(() => { m.position.y = 0; m.rotation.y = r0; m.scale.setScalar(base); p.cheering = false; });
+  tween(700, k => { const up = Math.abs(Math.sin(k * Math.PI * 2)); m.position.y = up * .9; m.rotation.y = r0 + k * Math.PI * 2; spriteTilt(p, Math.sin(k * Math.PI * 4) * .3); const q = 1 + .12 * up; m.scale.set(base / Math.sqrt(q), base * q, base / Math.sqrt(q)); })
+    .then(() => { m.position.y = 0; m.rotation.y = r0; m.scale.setScalar(base); p.cheering = false; spriteTilt(p, 0); spriteSquash(p); });
 }
 async function moveSteps(p, n, back = false) {
   p.moving = true;
