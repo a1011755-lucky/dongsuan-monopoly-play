@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261026b';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261027-1459';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261027-2230';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -2360,10 +2360,18 @@ const ART = {
     blocks: [[0, 1, 0, 1, 0, 20], [.16, .89, .38, .83, 20, 334], [.28, .86, .45, .85, 334, 435], [.5, .97, .06, .38, 20, 175]] } },
   bld_tower: { file: 'bld_tower.jpg', box: { F: [189, 685], L: [2, 566], R: [429, 564],
     blocks: [[0, 1, 0, 1, 0, 15], [.08, .92, .08, .92, 15, 110], [.3, .72, .3, .72, 110, 450], [.42, .6, .42, .6, 450, 600], [.6, .85, .06, .3, 110, 220], [.06, .3, .6, .85, 110, 220]] } },
-  bld_go: { file: 'bld_go.jpg' }, bld_police: { file: 'bld_police.jpg', box: { F: [747, 520], L: [76, 491], R: [807, 270], depth: .5,
+  bld_go: { file: 'bld_go.jpg', box: { view: { C: [378, 500], rx: 372, ry: 167, a: .26 },
+    blocks: [[-.2, 1.2, -.2, 1.2, 0, 30], [.8, 1, .58, .76, 30, 330], [-.02, .18, .58, .76, 30, 300], [.15, .85, .64, .71, 180, 330], [.42, .62, .64, .71, 330, 420]] } },
+  bld_police: { file: 'bld_police.jpg', box: { F: [747, 520], L: [76, 491], R: [807, 270], depth: .5,
     blocks: [[-.05, 1.08, -.75, .55, 0, 20], [0, 1, 0, .45, 20, 336], [.27, .56, .08, .22, 336, 470]] } },
-  bld_wheel: { file: 'bld_wheel.jpg', holes: .0006 }, bld_arch: { file: 'bld_arch.jpg', holes: .002 },
-  bld_101: { file: 'bld_101.webp' }, bld_island: { file: 'bld_island.webp' },
+  bld_wheel: { file: 'bld_wheel.jpg', holes: .0006, box: { view: { C: [390, 590], rx: 400, ry: 90, a: .02, size: 600 },
+    blocks: [[-.05, 1.05, 0, .56, 0, 25], [.02, .86, .38, .5, 25, 585], [.68, .95, .05, .35, 25, 150], [.33, .62, .08, .3, 25, 170], [-.11, .06, .3, .42, 25, 260], [.9, 1.08, .3, .42, 25, 250]] } },
+  bld_arch: { file: 'bld_arch.jpg', holes: .002, box: { view: { C: [400, 590], rx: 450, ry: 135, a: -.25, size: 640 },
+    blocks: [[-.08, 1.06, .1, .9, 0, 15], [.77, .97, .4, .6, 15, 470], [.02, .22, .4, .6, 15, 440], [.2, .8, .45, .55, 280, 430], [.42, .6, .45, .55, 430, 550]] } },
+  bld_101: { file: 'bld_101.webp', box: { view: { C: [262, 613], rx: 258, ry: 64, a: .08 },
+    blocks: [[-.21, 1.21, -.21, 1.21, 0, 30], [.36, .64, .36, .64, 30, 510], [.45, .55, .45, .55, 510, 615], [.62, .95, .3, .75, 30, 190], [.02, .32, .3, .75, 30, 195]] } },
+  bld_island: { file: 'bld_island.webp', box: { view: { C: [392, 494], rx: 392, ry: 164, a: .12 },
+    blocks: [[-.2, 1.2, -.2, 1.2, 0, 15], [.1, .92, .28, .92, 15, 150], [.08, .9, .4, .88, 150, 200], [.1, .62, .44, .76, 150, 300], [.62, .82, .5, .7, 150, 470]] } },
   boss: { file: 'boss.webp' },
   // 街頭小物：同一張圖，crop＝[左, 上, 右, 下]（占整張圖的比例）切出一個
   deco_lamp: { file: 'deco.webp', crop: [0, 0, .285, .985] }, deco_cone: { file: 'deco.webp', crop: [.25, .16, .49, .56] },
@@ -2577,14 +2585,29 @@ function createStaticBuilding(art, width, height, customYOffset = 0) {
 // blocks 每一個方塊＝[s0, s1, t0, t1, 底高, 頂高]：s 是從前角往左角走幾成（0～1）、t 是往右角走幾成，高度是圖片上往上幾個像素
 // 從 F、L、R 反推拍照的角度，把每個方塊換成真正的 3D 尺寸；每一面的貼圖座標＝那個點在原圖上的位置（所以從原本的角度看跟圖一模一樣）
 // 看不到的兩面（後面）貼對面那面左右翻過來的圖，從後面看也是完整的牆和窗
+// 也可以不寫 F、L、R，改寫 view：{ C: 地面中心的像素位置, rx: 地面圓的半寬, ry: 半高, a: 往右轉幾度（弧度，0＝正面）, size: 地基正方形邊長（像素，預設內接正方形） }
+// face：哪一面當正面轉向前方（'L'＝圖上左前那面，'R'＝右前那面，預設 L）；turn：再多轉幾度（弧度）
+function blockView(art, cfg) {
+  let fx, fy, Ax, Ay, Bx, By, sinT, al, La, Lb;
+  if (cfg.view) {
+    const v = cfg.view; sinT = Math.min(.98, v.ry / v.rx); al = v.a || 0; La = Lb = v.size || v.rx * Math.SQRT2;
+    Ax = -La * Math.cos(al); Ay = -La * Math.sin(al) * sinT; Bx = Lb * Math.sin(al); By = -Lb * Math.cos(al) * sinT;
+    fx = v.C[0] - (Ax + Bx) / 2; fy = v.C[1] - (Ay + By) / 2;
+  } else {
+    [fx, fy] = cfg.F; Ax = cfg.L[0] - fx; Ay = cfg.L[1] - fy; Bx = cfg.R[0] - fx; By = cfg.R[1] - fy;
+    sinT = Math.min(.98, Math.sqrt(Math.abs(Ay * By / (Ax * Bx))));
+    al = Math.atan2(Math.abs(Ay), Math.abs(Ax) * sinT); La = Math.abs(Ax) / Math.cos(al); Lb = Math.abs(Bx) / Math.sin(al);
+  }
+  Lb *= cfg.depth || 1;   // depth：前後深度再乘幾倍（幾乎正面拍的圖算出來會太深）
+  const cosT = Math.sqrt(1 - sinT * sinT), ca = Math.cos(al), sa = Math.sin(al), W = art.width, H = art.height;
+  return { al, ca, sa, La, Lb,
+    world: (S, T, Hh) => [-S * La * ca + T * Lb * sa, Hh / cosT, -S * La * sa - T * Lb * ca],   // 單位：像素
+    img: (S, T, Hh) => [fx + S * Ax + T * Bx, fy + S * Ay + T * By - Hh],                       // 在圖上的像素位置
+    uvAt(S, T, Hh) { const [x, y] = this.img(S, T, Hh); return [x / W, 1 - y / H]; } };
+}
 function createBlockBuilding(art, cfg, h) {
-  const W = art.width, H = art.height, k = h / H;
-  const [fx, fy] = cfg.F, Ax = cfg.L[0] - fx, Ay = cfg.L[1] - fy, Bx = cfg.R[0] - fx, By = cfg.R[1] - fy;
-  const sinT = Math.min(.98, Math.sqrt(Math.abs(Ay * By / (Ax * Bx)))), cosT = Math.sqrt(1 - sinT * sinT);
-  const al = Math.atan2(Math.abs(Ay), Math.abs(Ax) * sinT), La = Math.abs(Ax) / Math.cos(al), Lb = Math.abs(Bx) / Math.sin(al) * (cfg.depth || 1);   // depth：前後深度再乘幾倍（幾乎正面拍的圖算出來會太深）
-  const ca = Math.cos(al), sa = Math.sin(al);
-  const world = (S, T, Hh) => [(-S * La * ca + T * Lb * sa) * k, Hh / cosT * k, (-S * La * sa - T * Lb * ca) * k];
-  const uvAt = (S, T, Hh) => [(fx + S * Ax + T * Bx) / W, 1 - (fy + S * Ay + T * By - Hh) / H];
+  const k = h / art.height, V = blockView(art, cfg), { al, ca, sa, La, Lb } = V;
+  const world = (S, T, Hh) => V.world(S, T, Hh).map(v => v * k), uvAt = (S, T, Hh) => V.uvAt(S, T, Hh);
   const c0 = world(.5, .5, 0), pos = [], uv = [];
   cfg.blocks.forEach(([s0, s1, t0, t1, h0, h1]) => {
     const quad = (pts, map, out) => {   // pts：四個角的 [s,t,高]；map：算貼圖時換成哪個點；out：朝外的大概方向
@@ -2594,12 +2617,16 @@ function createBlockBuilding(art, cfg, h) {
       if (n[0] * out[0] + n[1] * out[1] + n[2] * out[2] < 0) { P = P.reverse(); U = U.reverse(); }
       [0, 1, 2, 0, 2, 3].forEach(i => { pos.push(P[i][0] - c0[0], P[i][1], P[i][2] - c0[2]); uv.push(...U[i]); });
     };
-    const id = p => p;
-    quad([[s0, t0, h1], [s1, t0, h1], [s1, t1, h1], [s0, t1, h1]], id, [0, 1, 0]);                                   // 頂
-    quad([[s0, t0, h0], [s0, t1, h0], [s0, t1, h1], [s0, t0, h1]], id, [ca, 0, sa]);                                // 右前面（看得到）
-    quad([[s0, t0, h0], [s1, t0, h0], [s1, t0, h1], [s0, t0, h1]], id, [-sa, 0, ca]);                               // 左前面（看得到）
-    quad([[s1, t0, h0], [s1, t1, h0], [s1, t1, h1], [s1, t0, h1]], ([, T, Hh]) => [s0, t0 + t1 - T, Hh], [-ca, 0, -sa]);   // 左後面：用右前面翻過來
-    quad([[s0, t1, h0], [s1, t1, h0], [s1, t1, h1], [s0, t1, h1]], ([S, , Hh]) => [s0 + s1 - S, t0, Hh], [sa, 0, -ca]);   // 右後面：用左前面翻過來
+    // 看得到的側牆：照原圖投影；如果它在圖上幾乎是一條線（斜度不到 20 度），改貼正面從牆角往內同樣長度的那一段
+    const sv = sa >= 0 ? s0 : s1, sd = sv === s0 ? 1 : -1, clampS = v => Math.max(s0, Math.min(s1, v)), clampT = v => Math.max(t0, Math.min(t1, v));
+    const side = ([, T, Hh]) => Math.abs(sa) < .35 ? [clampS(sv + sd * (T - t0) * Lb / La), t0, Hh] : [sv, T, Hh];
+    const front = ([S, , Hh]) => ca < .35 ? [sv, clampT(t0 + Math.abs(S - sv) * La / Lb), Hh] : [S, t0, Hh];
+    quad([[s0, t0, h1], [s1, t0, h1], [s1, t1, h1], [s0, t1, h1]], p => p, [0, 1, 0]);                               // 頂
+    quad([[sv, t0, h0], [sv, t1, h0], [sv, t1, h1], [sv, t0, h1]], side, [sd * ca, 0, sd * sa]);                     // 看得到的側牆
+    quad([[s0, t0, h0], [s1, t0, h0], [s1, t0, h1], [s0, t0, h1]], front, [-sa, 0, ca]);                             // 正面
+    const sh = sv === s0 ? s1 : s0;
+    quad([[sh, t0, h0], [sh, t1, h0], [sh, t1, h1], [sh, t0, h1]], ([, T, Hh]) => side([sv, t0 + t1 - T, Hh]), [-sd * ca, 0, -sd * sa]);   // 另一邊側牆：用看得到的那面翻過來
+    quad([[s0, t1, h0], [s1, t1, h0], [s1, t1, h1], [s0, t1, h1]], ([S, , Hh]) => front([s0 + s1 - S, t0, Hh]), [sa, 0, -ca]);          // 背面：用正面翻過來
   });
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
@@ -2608,6 +2635,7 @@ function createBlockBuilding(art, cfg, h) {
   const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: .5, roughness: .85, metalness: 0,
     emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: .45 });
   const mesh = new THREE.Mesh(g, mat); mesh.castShadow = mesh.receiveShadow = true; mesh.userData.noHit = true;
+  mesh.rotation.y = (cfg.face === 'R' ? al - Math.PI / 2 : al) + (cfg.turn || 0);   // 正面轉成跟前方地塊平行
   const group = new THREE.Group(); group.add(mesh); group.userData.art = true; group.userData.noHit = true;
   return group;
 }
