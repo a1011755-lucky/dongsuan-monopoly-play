@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261026b';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261027-0805';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261027-0812';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -2488,20 +2488,79 @@ function artSprite(art, h) {
   sp.center.set(.5, 0); sp.scale.set(h * art.width / art.height, h, 1); sp.userData.noHit = true; sp.userData.art = true;
   return sp;
 }
-// 固定立牌：PlaneGeometry 原點移到圖片底邊，所以 position.y 就是底邊的高度；不會跟著鏡頭轉
-// 正面朝群組的 +Z（鏡頭停在這一格時看過來的方向）；背面再貼一張朝 -Z 的，從後面看字也不會左右顛倒
-const LEAN = 0;     // 立牌往後仰的角度（弧度，0＝完全直立）。越大正面越不扁，但從背面看越扁
-function createStaticBuilding(texture, width, height, customYOffset = 0) {
-  const geometry = new THREE.PlaneGeometry(width, height);
-  geometry.translate(0, height / 2, 0);   // 原點＝圖片最下緣
-  const material = new THREE.MeshStandardMaterial({ map: texture, transparent: true, side: THREE.FrontSide, alphaTest: .5,
-    roughness: .85, metalness: 0, emissive: '#ffffff', emissiveMap: texture, emissiveIntensity: .45 });   // 自發一點光：直立的牌子在頂光下才不會太暗
-  const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: texture, alphaTest: .5 });   // 影子照圖片的形狀，不是一整塊方形
-  const group = new THREE.Group(); group.position.y = customYOffset; group.rotation.x = -LEAN;   // 以底邊為軸往後仰，底邊還是貼地
-  [0, Math.PI].forEach(ry => {
-    const m = new THREE.Mesh(geometry, material); m.rotation.y = ry; m.castShadow = true; m.customDepthMaterial = depth;
-    m.userData.noHit = true; group.add(m);
-  });
+// 立體木片：把去背圖的外框描出來，擠出厚度，像桌遊裡雷射切割的木頭配件
+// 正面（朝群組 +Z）貼建築圖；背面也貼（左右翻回來，從後面看字不會反）；側邊是米白消光木頭
+const LEAN = 0;                 // 往後仰的角度（弧度，0＝完全直立）
+const TOKEN_DEPTH = .12;        // 木片厚度＝寬度的幾倍
+const TOKEN_SIDE = new THREE.MeshStandardMaterial({ color: '#F5F5DC', roughness: .9, metalness: 0 });
+const outlineCache = new WeakMap();
+// 描外框：去背圖縮成小格子 → 每塊連在一起的區域用「摩爾鄰域」沿邊走一圈 → 去掉多餘的點
+function artOutline(art) {
+  if (outlineCache.has(art)) return outlineCache.get(art);
+  const k = 96 / Math.max(art.width, art.height), W = Math.max(4, Math.round(art.width * k)), H = Math.max(4, Math.round(art.height * k));
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const x = cv.getContext('2d'); x.drawImage(art, 0, 0, W, H);
+  const al = x.getImageData(0, 0, W, H).data, raw = new Uint8Array(W * H), m = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) raw[i] = al[i * 4 + 3] > 100;
+  for (let y = 0; y < H; y++) for (let X = 0; X < W; X++) {   // 往外膨脹一格：細的地方（燈柱、摩天輪輻條）才不會斷掉
+    let v = 0; for (let dy = -1; dy <= 1 && !v; dy++) for (let dx = -1; dx <= 1; dx++) { const yy = y + dy, xx = X + dx; if (yy >= 0 && yy < H && xx >= 0 && xx < W && raw[yy * W + xx]) { v = 1; break; } }
+    m[y * W + X] = v;
+  }
+  const D = [[-1, 0], [-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1]];
+  const inside = (X, y) => X >= 0 && y >= 0 && X < W && y < H && m[y * W + X];
+  const lab = new Int32Array(W * H).fill(-1), loops = [];
+  for (let s0 = 0; s0 < W * H; s0++) {
+    if (!m[s0] || lab[s0] >= 0) continue;
+    // 這一塊有多大（8 方向相連）
+    const q = [s0]; lab[s0] = s0;
+    for (let h = 0; h < q.length; h++) { const i = q[h], X = i % W, y = i / W | 0; for (const [dx, dy] of D) if (inside(X + dx, y + dy) && lab[(y + dy) * W + X + dx] < 0) { lab[(y + dy) * W + X + dx] = s0; q.push((y + dy) * W + X + dx); } }
+    if (q.length < 6) continue;
+    // 沿邊走一圈（s0 是這塊最上面最左邊的點，它的左邊一定是外面）
+    let cx = s0 % W, cy = s0 / W | 0, bd = 0, first = null; const pts = [[cx, cy]];
+    for (let step = 0; step < W * H * 4; step++) {
+      let moved = false;
+      for (let t = 1; t <= 8; t++) {
+        const d = (bd + t) % 8, nx = cx + D[d][0], ny = cy + D[d][1];
+        if (!inside(nx, ny)) continue;
+        const p = D[(bd + t - 1) % 8], ox = cx + p[0] - nx, oy = cy + p[1] - ny;
+        bd = D.findIndex(e => e[0] === ox && e[1] === oy); cx = nx; cy = ny; moved = true; break;
+      }
+      if (!moved) break;
+      const st = cx + ',' + cy + ',' + bd;
+      if (first === null) first = st; else if (st === first) break;
+      pts.push([cx, cy]);
+    }
+    if (pts.length > 2 && pts[pts.length - 1][0] === pts[0][0] && pts[pts.length - 1][1] === pts[0][1]) pts.pop();
+    if (pts.length < 3) continue;
+    // 去掉多餘的點（Ramer–Douglas–Peucker，誤差 0.6 格）
+    const simp = (P, e) => { if (P.length < 3) return P; const [ax, ay] = P[0], [bx, by] = P[P.length - 1], L = Math.hypot(bx - ax, by - ay) || 1; let iM = 0, dM = 0;
+      for (let i = 1; i < P.length - 1; i++) { const dd = Math.abs((bx - ax) * (ay - P[i][1]) - (ax - P[i][0]) * (by - ay)) / L; if (dd > dM) { dM = dd; iM = i; } }
+      return dM > e ? simp(P.slice(0, iM + 1), e).slice(0, -1).concat(simp(P.slice(iM), e)) : [P[0], P[P.length - 1]]; };
+    const half = pts.length >> 1, out = simp(pts.slice(0, half + 1), .6).slice(0, -1).concat(simp(pts.slice(half).concat([pts[0]]), .6).slice(0, -1));
+    if (out.length >= 3) loops.push(out.map(([X, y]) => [(X + .5) / W, 1 - (y + .5) / H]));   // 換成 0～1（左下角是原點）
+  }
+  outlineCache.set(art, loops);
+  return loops;
+}
+function createStaticBuilding(art, width, height, customYOffset = 0) {
+  const texture = artTex(art), depth = Math.max(.15, width * TOKEN_DEPTH), loops = artOutline(art);
+  const shapes = loops.map(L => new THREE.Shape(L.map(([u, v]) => new THREE.Vector2((u - .5) * width, v * height))));   // 原點在底邊中間
+  if (!shapes.length) shapes.push(new THREE.Shape([new THREE.Vector2(-width / 2, 0), new THREE.Vector2(width / 2, 0), new THREE.Vector2(width / 2, height), new THREE.Vector2(-width / 2, height)]));
+  const geometry = new THREE.ExtrudeGeometry(shapes, { depth, bevelEnabled: false, curveSegments: 1 });
+  geometry.translate(0, 0, -depth / 2);   // 厚度前後各一半，底邊還是在 y＝0
+  // 正反兩面（第 0 組）的貼圖座標：照位置換算成圖片上的位置；背面左右翻，從後面看字是正的
+  const pos = geometry.attributes.position, uv = geometry.attributes.uv, cap = geometry.groups[0];
+  for (let i = cap.start; i < cap.start + cap.count; i++) {
+    const u = pos.getX(i) / width + .5;
+    uv.setXY(i, pos.getZ(i) > 0 ? u : 1 - u, pos.getY(i) / height);
+  }
+  geometry.computeVertexNormals();
+  const face = new THREE.MeshStandardMaterial({ map: texture, transparent: true, alphaTest: .5, roughness: .85, metalness: 0,
+    emissive: '#ffffff', emissiveMap: texture, emissiveIntensity: .45 });   // 自發一點光：直立的面在頂光下才不會太暗
+  const mesh = new THREE.Mesh(geometry, [face, TOKEN_SIDE]);
+  mesh.castShadow = mesh.receiveShadow = true; mesh.userData.noHit = true;
+  const group = new THREE.Group(); group.add(mesh);
+  group.position.y = customYOffset; group.rotation.x = -LEAN;
   group.userData.art = true; group.userData.noHit = true;
   return group;
 }
@@ -2515,7 +2574,7 @@ function artYOffset(key, art, h) {
 function placeArt(g, key, h, x, z, groundY, shadow = .45) {
   const a = artReady[key]; if (!a) return null;
   const sy = g.getWorldScale(new THREE.Vector3()).y || 1, wy = g.getWorldPosition(new THREE.Vector3()).y;   // 不管外層群組怎麼縮放、擺多高都算得對
-  const sp = createStaticBuilding(artTex(a), h * a.width / a.height, h); g.add(sp);
+  const sp = createStaticBuilding(a, h * a.width / a.height, h); g.add(sp);
   sp.position.set(x, (groundY + artYOffset(key, a, h * sy) - wy) / sy, z);   // 絕對高度：地面＋下壓量，換算回群組裡的座標
   if (shadow) { const sh = aoBlob(h * a.width / a.height * .95, shadow); sh.position.set(x, (groundY + .01 - wy) / sy, z); g.add(sh); }
   return sp;
