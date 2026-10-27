@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261026b';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261027-0812';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261027-1459';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -2353,8 +2353,16 @@ const ART = {
   cops: { file: 'cops.jpg', cut: .862 },
   god_cai: { file: 'god_cai.jpg' }, god_land: { file: 'god_land.jpg' }, god_poor: { file: 'god_poor.jpg' }, god_shuai: { file: 'god_shuai.jpg' },
   // 建築（保留模型底座）。每張圖可加 yOffset（世界座標，負的往下沉），例如 bld_town: { file: 'bld_town.jpg', yOffset: -0.8 }；不寫就自動算
-  bld_hosp: { file: 'bld_hosp.jpg' }, bld_town: { file: 'bld_town.jpg' }, bld_tower: { file: 'bld_tower.jpg' },
-  bld_go: { file: 'bld_go.jpg' }, bld_police: { file: 'bld_police.jpg' }, bld_wheel: { file: 'bld_wheel.jpg', holes: .0006 }, bld_arch: { file: 'bld_arch.jpg', holes: .002 },
+  // blocks：把建築拆成幾個方塊（座標見 createBlockBuilding 的說明），有寫就蓋成立體建築，沒寫就是立體木片
+  bld_hosp: { file: 'bld_hosp.jpg', box: { F: [512, 705], L: [2, 555], R: [785, 506],
+    blocks: [[0, 1, 0, 1, 0, 20], [.29, .98, .55, .97, 20, 287], [.42, .75, .62, .92, 287, 440], [.04, .29, .62, .98, 20, 290]] } },
+  bld_town: { file: 'bld_town.jpg', box: { F: [450, 712], L: [2, 595], R: [640, 523],
+    blocks: [[0, 1, 0, 1, 0, 20], [.16, .89, .38, .83, 20, 334], [.28, .86, .45, .85, 334, 435], [.5, .97, .06, .38, 20, 175]] } },
+  bld_tower: { file: 'bld_tower.jpg', box: { F: [189, 685], L: [2, 566], R: [429, 564],
+    blocks: [[0, 1, 0, 1, 0, 15], [.08, .92, .08, .92, 15, 110], [.3, .72, .3, .72, 110, 450], [.42, .6, .42, .6, 450, 600], [.6, .85, .06, .3, 110, 220], [.06, .3, .6, .85, 110, 220]] } },
+  bld_go: { file: 'bld_go.jpg' }, bld_police: { file: 'bld_police.jpg', box: { F: [747, 520], L: [76, 491], R: [807, 270], depth: .5,
+    blocks: [[-.05, 1.08, -.75, .55, 0, 20], [0, 1, 0, .45, 20, 336], [.27, .56, .08, .22, 336, 470]] } },
+  bld_wheel: { file: 'bld_wheel.jpg', holes: .0006 }, bld_arch: { file: 'bld_arch.jpg', holes: .002 },
   bld_101: { file: 'bld_101.webp' }, bld_island: { file: 'bld_island.webp' },
   boss: { file: 'boss.webp' },
   // 街頭小物：同一張圖，crop＝[左, 上, 右, 下]（占整張圖的比例）切出一個
@@ -2564,6 +2572,45 @@ function createStaticBuilding(art, width, height, customYOffset = 0) {
   group.userData.art = true; group.userData.noHit = true;
   return group;
 }
+// 立體建築：圖片是從斜上方看的模型照，地基是一個平行四邊形
+// box.F＝地基最前面那個角（去背後圖片上的像素位置）、L＝地基最左角、R＝地基最右角
+// blocks 每一個方塊＝[s0, s1, t0, t1, 底高, 頂高]：s 是從前角往左角走幾成（0～1）、t 是往右角走幾成，高度是圖片上往上幾個像素
+// 從 F、L、R 反推拍照的角度，把每個方塊換成真正的 3D 尺寸；每一面的貼圖座標＝那個點在原圖上的位置（所以從原本的角度看跟圖一模一樣）
+// 看不到的兩面（後面）貼對面那面左右翻過來的圖，從後面看也是完整的牆和窗
+function createBlockBuilding(art, cfg, h) {
+  const W = art.width, H = art.height, k = h / H;
+  const [fx, fy] = cfg.F, Ax = cfg.L[0] - fx, Ay = cfg.L[1] - fy, Bx = cfg.R[0] - fx, By = cfg.R[1] - fy;
+  const sinT = Math.min(.98, Math.sqrt(Math.abs(Ay * By / (Ax * Bx)))), cosT = Math.sqrt(1 - sinT * sinT);
+  const al = Math.atan2(Math.abs(Ay), Math.abs(Ax) * sinT), La = Math.abs(Ax) / Math.cos(al), Lb = Math.abs(Bx) / Math.sin(al) * (cfg.depth || 1);   // depth：前後深度再乘幾倍（幾乎正面拍的圖算出來會太深）
+  const ca = Math.cos(al), sa = Math.sin(al);
+  const world = (S, T, Hh) => [(-S * La * ca + T * Lb * sa) * k, Hh / cosT * k, (-S * La * sa - T * Lb * ca) * k];
+  const uvAt = (S, T, Hh) => [(fx + S * Ax + T * Bx) / W, 1 - (fy + S * Ay + T * By - Hh) / H];
+  const c0 = world(.5, .5, 0), pos = [], uv = [];
+  cfg.blocks.forEach(([s0, s1, t0, t1, h0, h1]) => {
+    const quad = (pts, map, out) => {   // pts：四個角的 [s,t,高]；map：算貼圖時換成哪個點；out：朝外的大概方向
+      let P = pts.map(p => world(...p)), U = pts.map(p => uvAt(...map(p)));
+      const e1 = P[1].map((v, i) => v - P[0][i]), e2 = P[2].map((v, i) => v - P[0][i]);
+      const n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+      if (n[0] * out[0] + n[1] * out[1] + n[2] * out[2] < 0) { P = P.reverse(); U = U.reverse(); }
+      [0, 1, 2, 0, 2, 3].forEach(i => { pos.push(P[i][0] - c0[0], P[i][1], P[i][2] - c0[2]); uv.push(...U[i]); });
+    };
+    const id = p => p;
+    quad([[s0, t0, h1], [s1, t0, h1], [s1, t1, h1], [s0, t1, h1]], id, [0, 1, 0]);                                   // 頂
+    quad([[s0, t0, h0], [s0, t1, h0], [s0, t1, h1], [s0, t0, h1]], id, [ca, 0, sa]);                                // 右前面（看得到）
+    quad([[s0, t0, h0], [s1, t0, h0], [s1, t0, h1], [s0, t0, h1]], id, [-sa, 0, ca]);                               // 左前面（看得到）
+    quad([[s1, t0, h0], [s1, t1, h0], [s1, t1, h1], [s1, t0, h1]], ([, T, Hh]) => [s0, t0 + t1 - T, Hh], [-ca, 0, -sa]);   // 左後面：用右前面翻過來
+    quad([[s0, t1, h0], [s1, t1, h0], [s1, t1, h1], [s0, t1, h1]], ([S, , Hh]) => [s0 + s1 - S, t0, Hh], [sa, 0, -ca]);   // 右後面：用左前面翻過來
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.computeVertexNormals();
+  const tex = artTex(art);
+  const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: .5, roughness: .85, metalness: 0,
+    emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: .45 });
+  const mesh = new THREE.Mesh(g, mat); mesh.castShadow = mesh.receiveShadow = true; mesh.userData.noHit = true;
+  const group = new THREE.Group(); group.add(mesh); group.userData.art = true; group.userData.noHit = true;
+  return group;
+}
 // 把看板圖立在地面上：底邊對齊 groundY（世界座標），再往下沉 yOffset（世界座標，負的＝往下）
 // yOffset 沒填就自動算：沉到底座最寬那一列的 SINK 倍；ART 裡寫 yOffset: -0.8 就用你填的數字
 const SINK = .55;
@@ -2574,8 +2621,9 @@ function artYOffset(key, art, h) {
 function placeArt(g, key, h, x, z, groundY, shadow = .45) {
   const a = artReady[key]; if (!a) return null;
   const sy = g.getWorldScale(new THREE.Vector3()).y || 1, wy = g.getWorldPosition(new THREE.Vector3()).y;   // 不管外層群組怎麼縮放、擺多高都算得對
-  const sp = createStaticBuilding(a, h * a.width / a.height, h); g.add(sp);
-  sp.position.set(x, (groundY + artYOffset(key, a, h * sy) - wy) / sy, z);   // 絕對高度：地面＋下壓量，換算回群組裡的座標
+  const box = ART[key] && ART[key].box;
+  const sp = box ? createBlockBuilding(a, box, h) : createStaticBuilding(a, h * a.width / a.height, h); g.add(sp);
+  sp.position.set(x, (groundY + (box ? -.02 : artYOffset(key, a, h * sy)) - wy) / sy, z);   // 絕對高度：地面＋下壓量，換算回群組裡的座標（立體建築的地基直接放在地上）
   if (shadow) { const sh = aoBlob(h * a.width / a.height * .95, shadow); sh.position.set(x, (groundY + .01 - wy) / sy, z); g.add(sh); }
   return sp;
 }
