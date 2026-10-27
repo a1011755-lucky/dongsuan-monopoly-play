@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261026b';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261027-2329';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261028-0003';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -2354,26 +2354,27 @@ const ART = {
   god_cai: { file: 'god_cai.jpg' }, god_land: { file: 'god_land.jpg' }, god_poor: { file: 'god_poor.jpg' }, god_shuai: { file: 'god_shuai.jpg' },
   // 建築（保留模型底座）。每張圖可加 yOffset（世界座標，負的往下沉），例如 bld_town: { file: 'bld_town.jpg', yOffset: -0.8 }；不寫就自動算
   // blocks：把建築拆成幾個方塊（座標見 createBlockBuilding 的說明），有寫就蓋成立體建築，沒寫就是立體木片
-  bld_hosp: { file: 'bld_hosp.jpg', box: { F: [512, 705], L: [2, 555], R: [785, 506],
+  bld_hosp: { file: 'bld_hosp.jpg', box: { floor: { top: '#dcd8cf', line: '#bdb7aa', side: '#8f8a80' }, F: [512, 705], L: [2, 555], R: [785, 506],
     blocks: [[0, 1, 0, 1, 0, 20], [.29, .98, .55, .97, 20, 287], [.42, .75, .62, .92, 287, 440], [.04, .29, .62, .98, 20, 290]] } },
-  bld_town: { file: 'bld_town.jpg', box: { F: [450, 712], L: [2, 595], R: [640, 523],
+  bld_town: { file: 'bld_town.jpg', box: { floor: { top: '#d6cdbd', line: '#b3a78f', side: '#8a7f6e' }, F: [450, 712], L: [2, 595], R: [640, 523],
     blocks: [[0, 1, 0, 1, 0, 20], [.16, .89, .38, .83, 20, 334], [.28, .86, .45, .85, 334, 435], [.5, .97, .06, .38, 20, 175]] } },
-  bld_tower: { file: 'bld_tower.jpg', box: { F: [189, 685], L: [2, 566], R: [429, 564],
+  bld_tower: { file: 'bld_tower.jpg', box: { floor: { top: '#d9d5cc', line: '#b8b1a3', side: '#6f6d6a' }, F: [189, 685], L: [2, 566], R: [429, 564],
     blocks: [[0, 1, 0, 1, 0, 15], [.08, .92, .08, .92, 15, 110], [.3, .72, .3, .72, 110, 450], [.42, .6, .42, .6, 450, 600], [.6, .85, .06, .3, 110, 220], [.06, .3, .6, .85, 110, 220]] } },
-  bld_go: { file: 'bld_go.jpg', box: { view: { C: [378, 500], rx: 372, ry: 167, a: .26 },
+  bld_go: { file: 'bld_go.jpg', box: { floor: { round: true, top: '#efe2c4', line: '#d8c39a', side: '#c94343', rim: '#ffd54f' }, view: { C: [378, 500], rx: 372, ry: 167, a: .26 },
     blocks: [[-.2, 1.2, -.2, 1.2, 0, 30], [.8, 1, .58, .76, 30, 330], [-.02, .18, .58, .76, 30, 300], [.15, .85, .64, .71, 180, 330], [.42, .62, .64, .71, 330, 420]] } },
-  bld_police: { file: 'bld_police.jpg', box: { F: [747, 520], L: [76, 491], R: [807, 270], depth: .5,
+  bld_police: { file: 'bld_police.jpg', box: { floor: { top: '#d3d7dc', line: '#b0b6bd', side: '#7f868f' }, F: [747, 520], L: [76, 491], R: [807, 270], depth: .5,
     blocks: [[-.05, 1.08, -.75, .55, 0, 20], [0, 1, 0, .45, 20, 336], [.27, .56, .08, .22, 336, 470]] } },
-  bld_wheel: { file: 'bld_wheel.jpg', holes: .0006, box: { view: { C: [390, 590], rx: 400, ry: 90, a: .02, size: 600 },
+  bld_wheel: { file: 'bld_wheel.jpg', holes: .0006, box: { floor: { top: '#ead9b8', line: '#cdb68d', side: '#9a8a74', rim: '#ffe08a' }, view: { C: [390, 590], rx: 400, ry: 90, a: .02, size: 600 },
     blocks: [[-.05, 1.05, 0, .56, 0, 25], [.68, .95, .05, .35, 25, 150], [.33, .62, .08, .3, 25, 170], [-.11, .0, .3, .42, 25, 260], [.9, 1.08, .3, .42, 25, 250]],
     // 輪子本身用 3D 做（會轉）：hub＝圖上輪心像素、T＝輪子在地基的前後位置、R 外框半徑、R2 內圈、Rc 車廂離輪心多遠、cr 車廂半徑、depth 輪子厚度、legs 支架腳張開多寬（都是圖上像素）
     wheel: { hub: [408, 242], T: .44, R: 160, R2: 85, Rc: 192, cr: 47, depth: 56, legs: 100, base: 25,
       cabins: [[419, 64], [545, 92], [625, 204], [634, 329], [584, 424], [255, 414], [217, 312], [232, 208], [304, 102]] } } },
-  bld_arch: { file: 'bld_arch.jpg', holes: .002, box: { view: { C: [400, 590], rx: 450, ry: 135, a: -.25, size: 640 },
+  bld_arch: { file: 'bld_arch.jpg', holes: .002, box: { floor: { top: '#dac8a6', line: '#b9a37f', side: '#9b866a' }, view: { C: [400, 590], rx: 450, ry: 135, a: -.25, size: 640 },
     blocks: [[-.08, 1.06, .1, .9, 0, 15], [.77, .97, .4, .6, 15, 470], [.02, .22, .4, .6, 15, 440], [.2, .8, .45, .55, 280, 430], [.42, .6, .45, .55, 430, 550]] } },
-  bld_101: { file: 'bld_101.webp', box: { view: { C: [262, 613], rx: 258, ry: 64, a: .08 },
-    blocks: [[-.21, 1.21, -.21, 1.21, 0, 30], [.36, .64, .36, .64, 30, 510], [.45, .55, .45, .55, 510, 615], [.62, .95, .3, .75, 30, 190], [.02, .32, .3, .75, 30, 195]] } },
-  bld_island: { file: 'bld_island.webp', box: { view: { C: [392, 494], rx: 392, ry: 164, a: .12 },
+  bld_101: { file: 'bld_101.webp', box: { floor: { round: true, top: '#dedbd3', line: '#bfb9ab', side: '#5f6168', rim: '#ffe08a' }, view: { C: [262, 613], rx: 258, ry: 64, a: .08 },
+    blocks: [[-.21, 1.21, -.21, 1.21, 0, 30], [.62, .95, .3, .75, 30, 190, '#6fa253'], [.02, .32, .3, .75, 30, 195, '#6fa253']],
+    t101: { base: 30, top: 510, spire: 615, w: 100 } } },   // 主塔用 3D 做（像素：底高、塔頂、塔尖、塔身寬）
+  bld_island: { file: 'bld_island.webp', box: { floor: { round: true, sand: true, top: '#ead7a4', line: '#cdb27a', side: '#c4a873' }, view: { C: [392, 494], rx: 392, ry: 164, a: .12 },
     blocks: [[-.2, 1.2, -.2, 1.2, 0, 15], [.1, .92, .28, .92, 15, 150], [.08, .9, .4, .88, 150, 200], [.1, .62, .44, .76, 150, 300], [.62, .82, .5, .7, 150, 470]] } },
   boss: { file: 'boss.webp' },
   // 街頭小物：同一張圖，crop＝[左, 上, 右, 下]（占整張圖的比例）切出一個
@@ -2589,6 +2590,7 @@ function createStaticBuilding(art, width, height, customYOffset = 0) {
 // 從 F、L、R 反推拍照的角度，把每個方塊換成真正的 3D 尺寸；每一面的貼圖座標＝那個點在原圖上的位置（所以從原本的角度看跟圖一模一樣）
 // 看不到的兩面（後面）貼對面那面左右翻過來的圖，從後面看也是完整的牆和窗
 // 也可以不寫 F、L、R，改寫 view：{ C: 地面中心的像素位置, rx: 地面圓的半寬, ry: 半高, a: 往右轉幾度（弧度，0＝正面）, size: 地基正方形邊長（像素，預設內接正方形） }
+// floor：第一個方塊（地基）改成乾淨的 3D 地板 { top 鋪磚色, line 磚縫色, side 側邊色, rim 邊緣燈條色, round 圓形, water 海水, sand 沙灘 }
 // face：哪一面當正面轉向前方（'L'＝圖上左前那面，'R'＝右前那面，預設 L）；turn：再多轉幾度（弧度）
 function blockView(art, cfg) {
   let fx, fy, Ax, Ay, Bx, By, sinT, al, La, Lb;
@@ -2603,7 +2605,7 @@ function blockView(art, cfg) {
   }
   Lb *= cfg.depth || 1;   // depth：前後深度再乘幾倍（幾乎正面拍的圖算出來會太深）
   const cosT = Math.sqrt(1 - sinT * sinT), ca = Math.cos(al), sa = Math.sin(al), W = art.width, H = art.height;
-  return { al, ca, sa, La, Lb,
+  return { al, ca, sa, La, Lb, sinT,
     world: (S, T, Hh) => [-S * La * ca + T * Lb * sa, Hh / cosT, -S * La * sa - T * Lb * ca],   // 單位：像素
     img: (S, T, Hh) => [fx + S * Ax + T * Bx, fy + S * Ay + T * By - Hh],                       // 在圖上的像素位置
     uvAt(S, T, Hh) { const [x, y] = this.img(S, T, Hh); return [x / W, 1 - y / H]; } };
@@ -2611,8 +2613,19 @@ function blockView(art, cfg) {
 function createBlockBuilding(art, cfg, h) {
   const k = h / art.height, V = blockView(art, cfg), { al, ca, sa, La, Lb } = V;
   const world = (S, T, Hh) => V.world(S, T, Hh).map(v => v * k), uvAt = (S, T, Hh) => V.uvAt(S, T, Hh);
-  const c0 = world(.5, .5, 0), pos = [], uv = [];
-  cfg.blocks.forEach(([s0, s1, t0, t1, h0, h1]) => {
+  const c0 = world(.5, .5, 0), pos = [], uv = [], rpos = [], rcol = [], flatRoof = V.sinT < .4;
+  // 屋頂顏色：取方塊頂面在圖上那一塊的平均色（不透明的像素才算）；幾乎全透明就不蓋屋頂
+  const px = (flatRoof || cfg.blocks.some(b => b[6])) && art.getContext('2d').getImageData(0, 0, art.width, art.height).data;
+  const roofColor = pts => {
+    const P = pts.map(p => V.img(...p)), xs = P.map(p => p[0]), ys = P.map(p => p[1]);
+    const x0 = Math.max(0, Math.floor(Math.min(...xs))), x1 = Math.min(art.width - 1, Math.ceil(Math.max(...xs)));
+    const y0 = Math.max(0, Math.floor(Math.min(...ys)) - 6), y1 = Math.min(art.height - 1, Math.ceil(Math.max(...ys)) + 6);
+    let r = 0, g = 0, b = 0, n = 0, all = 0;
+    for (let y = y0; y <= y1; y += 2) for (let x = x0; x <= x1; x += 2) { const i = (y * art.width + x) * 4; all++; if (px[i + 3] > 128) { r += px[i]; g += px[i + 1]; b += px[i + 2]; n++; } }
+    return n > all * .4 ? new THREE.Color(r / n / 255 * .9, g / n / 255 * .9, b / n / 255 * .9).convertSRGBToLinear() : null;
+  };
+  cfg.blocks.forEach(([s0, s1, t0, t1, h0, h1, roofHex], bi) => {
+    if (bi === 0 && cfg.floor) return;   // 地基改用 blockFloor 做
     const quad = (pts, map, out) => {   // pts：四個角的 [s,t,高]；map：算貼圖時換成哪個點；out：朝外的大概方向
       let P = pts.map(p => world(...p)), U = pts.map(p => uvAt(...map(p)));
       const e1 = P[1].map((v, i) => v - P[0][i]), e2 = P[2].map((v, i) => v - P[0][i]);
@@ -2624,7 +2637,9 @@ function createBlockBuilding(art, cfg, h) {
     const sv = sa >= 0 ? s0 : s1, sd = sv === s0 ? 1 : -1, clampS = v => Math.max(s0, Math.min(s1, v)), clampT = v => Math.max(t0, Math.min(t1, v));
     const side = ([, T, Hh]) => Math.abs(sa) < .35 ? [clampS(sv + sd * (T - t0) * Lb / La), t0, Hh] : [sv, T, Hh];
     const front = ([S, , Hh]) => ca < .35 ? [sv, clampT(t0 + Math.abs(S - sv) * La / Lb), Hh] : [S, t0, Hh];
-    quad([[s0, t0, h1], [s1, t0, h1], [s1, t1, h1], [s0, t1, h1]], p => p, [0, 1, 0]);                               // 頂
+    const topPts = [[s0, t0, h1], [s1, t0, h1], [s1, t1, h1], [s0, t1, h1]];
+    if (!flatRoof && !roofHex) quad(topPts, p => p, [0, 1, 0]);                                                                  // 頂
+    else { const col = roofHex ? new THREE.Color(roofHex).convertSRGBToLinear() : roofColor(topPts); if (col) [0, 1, 2, 0, 2, 3].map(i => world(...[topPts[0], topPts[3], topPts[2], topPts[1]][i])).forEach(P => { rpos.push(P[0] - c0[0], P[1], P[2] - c0[2]); rcol.push(col.r, col.g, col.b); }); }
     quad([[sv, t0, h0], [sv, t1, h0], [sv, t1, h1], [sv, t0, h1]], side, [sd * ca, 0, sd * sa]);                     // 看得到的側牆
     quad([[s0, t0, h0], [s1, t0, h0], [s1, t0, h1], [s0, t0, h1]], front, [-sa, 0, ca]);                             // 正面
     const sh = sv === s0 ? s1 : s0;
@@ -2640,11 +2655,74 @@ function createBlockBuilding(art, cfg, h) {
   const mesh = new THREE.Mesh(g, mat); mesh.castShadow = mesh.receiveShadow = true; mesh.userData.noHit = true;
   mesh.rotation.y = (cfg.face === 'R' ? al - Math.PI / 2 : al) + (cfg.turn || 0);   // 正面轉成跟前方地塊平行
   const group = new THREE.Group(); group.add(mesh); group.userData.art = true; group.userData.noHit = true;
-  if (cfg.wheel) {   // 會轉的摩天輪：放在跟方塊一樣的座標裡
-    const hold = new THREE.Group(); hold.rotation.y = mesh.rotation.y; group.add(hold);
-    hold.add(blockWheel(art, cfg.wheel, V, k, c0, ca, sa));
+  const hold = new THREE.Group(); hold.rotation.y = mesh.rotation.y; group.add(hold);   // 3D 零件放在跟方塊一樣的座標裡
+  if (rpos.length) {   // 乾淨屋頂
+    const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(rpos, 3)); rg.setAttribute('color', new THREE.Float32BufferAttribute(rcol, 3)); rg.computeVertexNormals();
+    const roof = new THREE.Mesh(rg, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .85, side: THREE.DoubleSide })); roof.castShadow = roof.receiveShadow = true; roof.userData.noHit = true; hold.add(roof);
   }
+  if (cfg.floor) hold.add(blockFloor(cfg.floor, cfg.blocks[0], V, k, c0));
+  if (cfg.wheel) hold.add(blockWheel(art, cfg.wheel, V, k, c0, ca, sa));   // 會轉的摩天輪
+  if (cfg.t101) hold.add(block101(cfg.t101, V, k, c0));                    // 101 主塔
   return group;
+}
+// 地板：方形或圓形的石板，上面鋪磚（綠島是會動的海水），邊緣一圈小燈
+const floorTex = {};
+function blockFloor(f, [s0, s1, t0, t1, , h1], V, k, c0) {
+  const w = V.La * (s1 - s0) * k, dp = V.Lb * (t1 - t0) * k, ht = Math.max(.08, V.world(0, 0, h1)[1] * k);
+  const c = V.world((s0 + s1) / 2, (t0 + t1) / 2, 0).map(v => v * k), key = f.top + f.line + !!f.water + !!f.sand;
+  const tex = (floorTex[key] = floorTex[key] || canvasTex(256, 256, (x, W, H) => {
+    x.fillStyle = f.top; x.fillRect(0, 0, W, H);
+    if (f.water) {   // 海水：深淺漸層＋白色浪花
+      const gr = x.createLinearGradient(0, 0, W, H); gr.addColorStop(0, 'rgba(255,255,255,.18)'); gr.addColorStop(1, 'rgba(0,40,90,.18)'); x.fillStyle = gr; x.fillRect(0, 0, W, H);
+      x.strokeStyle = f.line; x.lineWidth = 3; x.lineCap = 'round';
+      for (let i = 0; i < 14; i++) { const px = (i * 73) % W, py = (i * 151) % H; x.beginPath(); x.arc(px, py, 14, Math.PI * 1.1, Math.PI * 1.9); x.stroke(); }
+    } else if (f.sand) {   // 沙灘：細細的顆粒
+      for (let i = 0; i < 900; i++) { x.fillStyle = i % 3 ? f.line : 'rgba(255,255,255,.5)'; x.fillRect((i * 97) % W, (i * 61 + (i >> 4) * 13) % H, 2, 2); }
+    } else {         // 鋪磚：每塊磚深淺有一點不同
+      const n = 8, sz = W / n;
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { x.fillStyle = `rgba(${(i * 7 + j * 3) % 2 ? '255,255,255' : '0,0,0'},${.03 + ((i * 13 + j * 29) % 5) * .012})`; x.fillRect(i * sz + (j % 2) * sz / 2, j * sz, sz, sz); }
+      x.strokeStyle = f.line; x.lineWidth = 3;
+      for (let j = 0; j <= n; j++) { x.beginPath(); x.moveTo(0, j * sz); x.lineTo(W, j * sz); x.stroke(); }
+      for (let j = 0; j < n; j++) for (let i = 0; i <= n; i++) { const px = i * sz + (j % 2) * sz / 2; x.beginPath(); x.moveTo(px, j * sz); x.lineTo(px, j * sz + sz); x.stroke(); }
+    }
+  }));
+  const t = tex.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  const r = Math.min(w, dp) / 2; t.repeat.set(Math.max(1, (f.round ? r * 2 : w) / 2.2), Math.max(1, (f.round ? r * 2 : dp) / 2.2));
+  const top = new THREE.MeshStandardMaterial({ map: t, roughness: f.water ? .25 : .9, metalness: f.water ? .1 : 0, transparent: !!f.water, opacity: f.water ? .9 : 1 });
+  const side = new THREE.MeshStandardMaterial({ color: f.side, roughness: .8 });
+  const geo = f.round ? new THREE.CylinderGeometry(r, r * 1.03, ht, 48) : new THREE.BoxGeometry(w, ht, dp);
+  const m = new THREE.Mesh(geo, f.round ? [side, top, side] : [side, side, top, side, side, side]);
+  m.position.set(c[0] - c0[0], ht / 2, c[2] - c0[2]); m.rotation.y = -V.al; m.receiveShadow = true; m.castShadow = !f.water; m.userData.noHit = true;
+  const g = new THREE.Group(); g.add(m);
+  if (f.rim) {   // 邊緣一圈小燈
+    const bm = new THREE.MeshBasicMaterial({ color: f.rim }), bg = new THREE.SphereGeometry(Math.max(.05, ht * .18), 6, 4), pts = [];
+    if (f.round) for (let i = 0; i < 40; i++) { const a = i / 40 * Math.PI * 2; pts.push([Math.cos(a) * r * 1.02, Math.sin(a) * r * 1.02]); }
+    else { const n = 10; for (let i = 0; i < n; i++) { const u = (i + .5) / n - .5; pts.push([u * w, dp / 2 + .02], [u * w, -dp / 2 - .02], [w / 2 + .02, u * dp], [-w / 2 - .02, u * dp]); } }
+    pts.forEach(([px, pz]) => { const b = new THREE.Mesh(bg, bm); b.position.set(px, -ht * .1, pz); m.add(b); });
+  }
+  if (f.water) boardAnims.push(tt => { t.offset.set(tt * .02, Math.sin(tt * .5) * .03); });
+  return g;
+}
+// 台北 101：底座＋8 節往外張的玻璃塔身（每節頂端一圈金色燈邊）＋塔頂＋發光塔尖
+function block101(p, V, k, c0) {
+  const u = k * V.world(0, 0, 1)[1], c = V.world(.5, .5, 0).map(v => v * k), g = new THREE.Group(); g.position.set(c[0] - c0[0], 0, c[2] - c0[2]); g.rotation.y = -V.al;
+  const glass = canvasTex(64, 128, (x, W, H) => {   // 玻璃帷幕：深青色，橫向一排排亮窗
+    const gr = x.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, '#1f6f7a'); gr.addColorStop(.5, '#3aa6ad'); gr.addColorStop(1, '#1f6f7a'); x.fillStyle = gr; x.fillRect(0, 0, W, H);
+    for (let r = 0; r < 8; r++) { x.fillStyle = r % 3 ? 'rgba(255,214,120,.55)' : 'rgba(255,240,190,.85)'; x.fillRect(2, r * 16 + 6, W - 4, 3); }
+    x.fillStyle = 'rgba(10,40,50,.6)'; for (let c = 0; c <= 4; c++) x.fillRect(c * 16 - 1, 0, 2, H);
+  });
+  const gm = new THREE.MeshStandardMaterial({ map: glass, roughness: .35, metalness: .3, emissive: '#ffffff', emissiveMap: glass, emissiveIntensity: .35 });
+  const gold = new THREE.MeshStandardMaterial({ color: '#b98d3a', roughness: .45, metalness: .5, emissive: '#ffb84d', emissiveIntensity: .25 });
+  const sq = (rb, rt, h, y, m) => { const geo = new THREE.CylinderGeometry(rt, rb, h, 4, 1); geo.rotateY(Math.PI / 4); const o = new THREE.Mesh(geo, m); o.position.y = y + h / 2; o.castShadow = o.receiveShadow = true; o.userData.noHit = true; g.add(o); return o; };
+  const W = p.w * u / Math.SQRT2, b = p.base * u, top = p.top * u, trunk = (p.top - p.base) * .26 * u, seg = (top - b - trunk) / 8;
+  sq(W * 1.05, W * .92, trunk, b, gm);                      // 底座塔身（往上收）
+  sq(W * 1.06, W * 1.06, seg * .07, b + trunk - seg * .035, gold);
+  for (let i = 0; i < 8; i++) { const y = b + trunk + i * seg; sq(W * .78, W * 1.02, seg * .94, y, gm); sq(W * 1.035, W * 1.035, seg * .05, y + seg * .93, gold); }   // 8 節往外張
+  sq(W * .62, W * .5, seg * .7, top, gm); sq(W * .4, W * .3, seg * .6, top + seg * .7, gold);
+  const sp = new THREE.Mesh(new THREE.CylinderGeometry(W * .03, W * .07, p.spire * u - top - seg * 1.3, 8), gold); sp.position.y = (p.spire * u + top + seg * 1.3) / 2; g.add(sp);
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(W * .09, 10, 8), new THREE.MeshBasicMaterial({ color: '#fff3c4' })); tip.position.y = p.spire * u; g.add(tip);
+  boardAnims.push(t => { tip.visible = (t * 1.2) % 1 < .6; gold.emissiveIntensity = .25 + Math.sin(t * 2) * .1; });
+  return g;
 }
 // 摩天輪的輪子：輪框、輪輻、燈泡、支架是 3D 做的；車廂和輪心星星從原圖切下來貼上（車廂一直保持正立）
 function blockWheel(art, w, V, k, c0, ca, sa) {
