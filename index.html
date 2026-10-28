@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261026b';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261028-0003';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261028-2143';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -2354,11 +2354,11 @@ const ART = {
   god_cai: { file: 'god_cai.jpg' }, god_land: { file: 'god_land.jpg' }, god_poor: { file: 'god_poor.jpg' }, god_shuai: { file: 'god_shuai.jpg' },
   // 建築（保留模型底座）。每張圖可加 yOffset（世界座標，負的往下沉），例如 bld_town: { file: 'bld_town.jpg', yOffset: -0.8 }；不寫就自動算
   // blocks：把建築拆成幾個方塊（座標見 createBlockBuilding 的說明），有寫就蓋成立體建築，沒寫就是立體木片
-  bld_hosp: { file: 'bld_hosp.jpg', box: { floor: { top: '#dcd8cf', line: '#bdb7aa', side: '#8f8a80' }, F: [512, 705], L: [2, 555], R: [785, 506],
+  bld_hosp: { file: 'bld_hosp.jpg', glb: 'models/hf_hosp.glb', glbH: .9, box: { floor: { top: '#dcd8cf', line: '#bdb7aa', side: '#8f8a80' }, F: [512, 705], L: [2, 555], R: [785, 506],
     blocks: [[0, 1, 0, 1, 0, 20], [.29, .98, .55, .97, 20, 287], [.42, .75, .62, .92, 287, 440], [.04, .29, .62, .98, 20, 290]] } },
-  bld_town: { file: 'bld_town.jpg', box: { floor: { top: '#d6cdbd', line: '#b3a78f', side: '#8a7f6e' }, F: [450, 712], L: [2, 595], R: [640, 523],
+  bld_town: { file: 'bld_town.jpg', glb: 'models/hf_town.glb', glbH: .95, box: { floor: { top: '#d6cdbd', line: '#b3a78f', side: '#8a7f6e' }, F: [450, 712], L: [2, 595], R: [640, 523],
     blocks: [[0, 1, 0, 1, 0, 20], [.16, .89, .38, .83, 20, 334], [.28, .86, .45, .85, 334, 435], [.5, .97, .06, .38, 20, 175]] } },
-  bld_tower: { file: 'bld_tower.jpg', box: { floor: { top: '#d9d5cc', line: '#b8b1a3', side: '#6f6d6a' }, F: [189, 685], L: [2, 566], R: [429, 564],
+  bld_tower: { file: 'bld_tower.jpg', glb: 'models/hf_tower.glb', glbH: .97, box: { floor: { top: '#d9d5cc', line: '#b8b1a3', side: '#6f6d6a' }, F: [189, 685], L: [2, 566], R: [429, 564],
     blocks: [[0, 1, 0, 1, 0, 15], [.08, .92, .08, .92, 15, 110], [.3, .72, .3, .72, 110, 450], [.42, .6, .42, .6, 450, 600], [.6, .85, .06, .3, 110, 220], [.06, .3, .6, .85, 110, 220]] } },
   bld_go: { file: 'bld_go.jpg', box: { floor: { round: true, top: '#efe2c4', line: '#d8c39a', side: '#c94343', rim: '#ffd54f' }, view: { C: [378, 500], rx: 372, ry: 167, a: .26 },
     blocks: [[-.2, 1.2, -.2, 1.2, 0, 30], [.8, 1, .58, .76, 30, 330], [-.02, .18, .58, .76, 30, 300], [.15, .85, .64, .71, 180, 330], [.42, .62, .64, .71, 330, 420]] } },
@@ -2369,9 +2369,9 @@ const ART = {
     // 輪子本身用 3D 做（會轉）：hub＝圖上輪心像素、T＝輪子在地基的前後位置、R 外框半徑、R2 內圈、Rc 車廂離輪心多遠、cr 車廂半徑、depth 輪子厚度、legs 支架腳張開多寬（都是圖上像素）
     wheel: { hub: [408, 242], T: .44, R: 160, R2: 85, Rc: 192, cr: 47, depth: 56, legs: 100, base: 25,
       cabins: [[419, 64], [545, 92], [625, 204], [634, 329], [584, 424], [255, 414], [217, 312], [232, 208], [304, 102]] } } },
-  bld_arch: { file: 'bld_arch.jpg', holes: .002, box: { floor: { top: '#dac8a6', line: '#b9a37f', side: '#9b866a' }, view: { C: [400, 590], rx: 450, ry: 135, a: -.25, size: 640 },
+  bld_arch: { file: 'bld_arch.jpg', glb: 'models/hf_arch.glb', glbH: .9, holes: .002, box: { floor: { top: '#dac8a6', line: '#b9a37f', side: '#9b866a' }, view: { C: [400, 590], rx: 450, ry: 135, a: -.25, size: 640 },
     blocks: [[-.08, 1.06, .1, .9, 0, 15], [.77, .97, .4, .6, 15, 470], [.02, .22, .4, .6, 15, 440], [.2, .8, .45, .55, 280, 430], [.42, .6, .45, .55, 430, 550]] } },
-  bld_101: { file: 'bld_101.webp', box: { floor: { round: true, top: '#dedbd3', line: '#bfb9ab', side: '#5f6168', rim: '#ffe08a' }, view: { C: [262, 613], rx: 258, ry: 64, a: .08 },
+  bld_101: { file: 'bld_101.webp', glb: 'models/hf_101.glb', glbH: .9, box: { floor: { round: true, top: '#dedbd3', line: '#bfb9ab', side: '#5f6168', rim: '#ffe08a' }, view: { C: [262, 613], rx: 258, ry: 64, a: .08 },
     blocks: [[-.21, 1.21, -.21, 1.21, 0, 30], [.62, .95, .3, .75, 30, 190, '#6fa253'], [.02, .32, .3, .75, 30, 195, '#6fa253']],
     t101: { base: 30, top: 510, spire: 615, w: 100 } } },   // 主塔用 3D 做（像素：底高、塔頂、塔尖、塔身寬）
   bld_island: { file: 'bld_island.webp', box: { floor: { round: true, sand: true, top: '#ead7a4', line: '#cdb27a', side: '#c4a873' }, view: { C: [392, 494], rx: 392, ry: 164, a: .12 },
@@ -2724,6 +2724,20 @@ function block101(p, V, k, c0) {
   boardAnims.push(t => { tip.visible = (t * 1.2) % 1 < .6; gold.emissiveIntensity = .25 + Math.sin(t * 2) * .1; });
   return g;
 }
+// 真 3D 模型的建築（Higgsfield 從原圖做的 GLB）：先蓋地板，模型載好後放在地板上，高度＝h×glbH，正面朝 +Z
+function glbBuilding(art, A, h) {
+  const g = new THREE.Group(); g.userData.art = true; g.userData.noHit = true;
+  let top = 0;
+  if (A.box && A.box.floor) { const fl = createBlockBuilding(art, { ...A.box, blocks: [A.box.blocks[0]], wheel: null, t101: null }, h); g.add(fl); fl.updateMatrixWorld(true); top = new THREE.Box3().setFromObject(fl).max.y; }
+  loadGLB(A.glb).then(gl => {
+    const m = gl.scene, b = new THREE.Box3().setFromObject(m), sz = b.getSize(new THREE.Vector3()), k = h * (A.glbH || .95) / sz.y, c = b.getCenter(new THREE.Vector3());
+    m.scale.setScalar(k); m.position.set(-c.x * k, top - b.min.y * k, -c.z * k);
+    m.traverse(o => { if (!o.isMesh) return; o.castShadow = o.receiveShadow = true; o.userData.noHit = true;
+      const mt = o.material; if (mt && mt.map) { mt.metalness = 0; mt.roughness = .8; mt.emissive = new THREE.Color('#ffffff'); mt.emissiveMap = mt.map; mt.emissiveIntensity = .3; } });
+    g.add(m);
+  }).catch(e => console.warn('3D 模型載入失敗', A.glb, e));
+  return g;
+}
 // 摩天輪的輪子：輪框、輪輻、燈泡、支架是 3D 做的；車廂和輪心星星從原圖切下來貼上（車廂一直保持正立）
 function blockWheel(art, w, V, k, c0, ca, sa) {
   const x0 = V.img(0, w.T, 0), x1 = V.img(1, w.T, 0), S = (w.hub[0] - x0[0]) / (x1[0] - x0[0]);
@@ -2789,9 +2803,9 @@ function artYOffset(key, art, h) {
 function placeArt(g, key, h, x, z, groundY, shadow = .45) {
   const a = artReady[key]; if (!a) return null;
   const sy = g.getWorldScale(new THREE.Vector3()).y || 1, wy = g.getWorldPosition(new THREE.Vector3()).y;   // 不管外層群組怎麼縮放、擺多高都算得對
-  const box = ART[key] && ART[key].box;
-  const sp = box ? createBlockBuilding(a, box, h) : createStaticBuilding(a, h * a.width / a.height, h); g.add(sp);
-  sp.position.set(x, (groundY + (box ? -.02 : artYOffset(key, a, h * sy)) - wy) / sy, z);   // 絕對高度：地面＋下壓量，換算回群組裡的座標（立體建築的地基直接放在地上）
+  const box = ART[key] && ART[key].box, glb = ART[key] && ART[key].glb;
+  const sp = glb ? glbBuilding(a, ART[key], h) : box ? createBlockBuilding(a, box, h) : createStaticBuilding(a, h * a.width / a.height, h); g.add(sp);
+  sp.position.set(x, (groundY + (box || glb ? -.02 : artYOffset(key, a, h * sy)) - wy) / sy, z);   // 絕對高度：地面＋下壓量，換算回群組裡的座標（立體建築的地基直接放在地上）
   if (shadow) { const sh = aoBlob(h * a.width / a.height * .95, shadow); sh.position.set(x, (groundY + .01 - wy) / sy, z); g.add(sh); }
   return sp;
 }
