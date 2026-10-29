@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261029a';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261030-0012';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261030-0028';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -1829,7 +1829,12 @@ function ribbon(points, width, mat, y) {
   const m = new THREE.Mesh(geo, mat); m.receiveShadow = true; return m;
 }
 // 樹：一半是三層的針葉樹，一半是圓圓蓬蓬的闊葉樹（一面一面的低多邊形）
+const KIT_TREES = ['tree1', 'tree2', 'tree3', 'tree4', 'tree5', 'tree6', 'tree7'];
 function tree(g, x, z, s = 1, y = -.15) {
+  kitPlace(g, pick(KIT_TREES), x, y, z, (2.3 + Math.random() * .9) * s, Math.random() * 6.28).catch(() => treeBlocks(g, x, z, s, y));
+}
+// 程式拼的樹（Kenney 模型載不到時的備用）
+function treeBlocks(g, x, z, s = 1, y = -.15) {
   const parts = [cyl(.11 * s, .16 * s, .8 * s, '#7a5236', x, y + .4 * s, z, g, 6)];
   if (Math.random() < .5) {
     const c = pick(['#2e7d32', '#388e3c', '#2f6f3a', '#3c8d40']);
@@ -1909,12 +1914,35 @@ function buildScenery(m) {
   if (m.mount) label('⛰ ' + m.mount, vx - vw * .25, vz1 + 1.2, '#33691e');
   // 埤塘（桃園）
   for (let k = 0; k < (m.ponds || 0); k++) { const p = cyl(1.2 + Math.random() * .6, 1.2, .05, '#4fc3f7', vx + vw * .1 + k * 2.6 - 3, -.1, vz0 - 2.2 - (k % 2) * 2.6, BG, 18); p.material = rmat; }
-  // 樹
-  const nt = LITE ? 10 : 22;
-  for (let k = 0; k < nt; k++) {
+  // Kenney 郊區小村：河谷前緣一排房子，前面一條小路有車來回跑
+  const nh = LITE ? 3 : 5, hz = vz0 - 3.3, roadZ = vz0 - 1, homes = [];
+  for (let k = 0; k < nh; k++) homes.push([vx - vw * .4 + (k + .5) * (vw * .8 / nh) + (Math.random() - .5) * .8, hz - Math.random() * .8]);
+  homes.forEach(([x, z], k) => {
+    kitPlace(BG, 'house' + (1 + (k + rnd(5)) % 5), x, -.15, z, 1.9 + Math.random() * .4, (Math.random() - .5) * .3).catch(() => { });
+    if (k % 2 === 0) kitPlace(BG, 'fence', x + 1.6, -.15, z + .4, .55, Math.PI / 2).catch(() => { });
+  });
+  box(vw * .96, .06, 1.7, '#7d8590', vx, -.13, roadZ, BG);                         // 柏油路
+  for (let x = vx - vw * .46; x < vx + vw * .46; x += 1.6) box(.7, .07, .1, '#ffffff', x, -.12, roadZ, BG);   // 白色虛線
+  const cars = LITE ? ['taxi', 'police', 'ambulance'] : ['taxi', 'police', 'ambulance', 'sedan', 'van'], half = vw * .46;
+  cars.forEach((name, k) => {
+    const dir = k % 2 ? -1 : 1, lane = roadZ + dir * .42, holder = new THREE.Group(); holder.position.set(vx, -.1, lane); BG.add(holder);
+    kitPlace(holder, name, 0, 0, 0, .75, dir > 0 ? Math.PI / 2 : -Math.PI / 2).catch(() => { });
+    const sp = 1.6 + Math.random() * .8, off = Math.random() * half * 2;
+    boardAnims.push(t => { holder.position.x = vx - dir * half + dir * ((t * sp + off) % (half * 2)); });
+  });
+  // 樹（避開河、房子和路）
+  const nt = LITE ? 12 : 22;
+  for (let k = 0, done = 0; k < nt * 5 && done < nt; k++) {   // 位置不合就重抽，種滿 nt 棵為止
     const x = vx + (Math.random() - .5) * vw * .95, z = vz1 + 1 + Math.random() * (vz0 - vz1 - 2);
-    if (pts.some(p => Math.hypot(p[0] - x, p[1] - z) < 2.2)) continue;
-    tree(BG, x, z, .7 + Math.random() * .5);
+    if (pts.some(p => Math.hypot(p[0] - x, p[1] - z) < 2.2) || homes.some(([hx, hz2]) => Math.hypot(hx - x, hz2 - z) < 2.4) || Math.abs(z - roadZ) < 1.6) continue;
+    tree(BG, x, z, .7 + Math.random() * .5); done++;
+  }
+  // 花草、灌木、石頭：點綴在河谷裡
+  const deco = [['bush1', .7], ['bush2', .6], ['flower1', .45], ['flower2', .45], ['flower3', .45], ['rock2', .4], ['rock3', 1]];
+  for (let k = 0, done = 0, nd = LITE ? 10 : 18; k < nd * 5 && done < nd; k++) {
+    const x = vx + (Math.random() - .5) * vw * .95, z = vz1 + 1 + Math.random() * (vz0 - vz1 - 2);
+    if (pts.some(p => Math.hypot(p[0] - x, p[1] - z) < 1.6) || homes.some(([hx, hz2]) => Math.hypot(hx - x, hz2 - z) < 1.8) || Math.abs(z - roadZ) < 1.2) continue;
+    const [n, h] = pick(deco); kitPlace(BG, n, x, -.15, z, h * (.8 + Math.random() * .5), Math.random() * 6.28).catch(() => { }); done++;
   }
   boardAnims.push(t => { wt.offset.set(t * .01, t * .02); rtex.offset.y = -t * .6; });
 }
@@ -2221,6 +2249,40 @@ const KEY_ANIM = { buy: 'emote-yes', upgrade: 'emote-yes', earn: 'emote-yes', wi
   pay: 'emote-no', lose: 'emote-no', hit: 'emote-no', jail: 'emote-no', broke: 'die', hosp: 'die', attack: 'attack-melee-right', item: 'interact-right', card: 'interact-right', defuse: 'pick-up', roll: 'jump' };
 let gltf = null;
 try { gltf = THREE.GLTFLoader ? new THREE.GLTFLoader() : null; } catch (e) { gltf = null; }
+/* ---------- Kenney 模型（kenney.nl，CC0 免費授權）：樹、花草石頭、郊區房子、汽車，打包在 models/kenney.json ---------- */
+let kitJson = null; const kitCache = {};
+function kitModel(name) {
+  if (!gltf) return Promise.reject(new Error('沒有 GLTFLoader'));
+  kitJson = kitJson || fetch('models/kenney.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  kitCache[name] = kitCache[name] || kitJson.then(j => {
+    if (!j[name]) throw new Error('沒有模型 ' + name);
+    const t = atob(j[name]), b = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) b[i] = t.charCodeAt(i);
+    return new Promise((res, rej) => gltf.parse(b.buffer, '', g => {
+      const m = g.scene, bb = new THREE.Box3().setFromObject(m);
+      m.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; o.userData.mtn = true; } });
+      // 自然包原本的葉子是薄荷藍綠、樹幹偏橘，改成跟遊戲一致的綠色和咖啡色（每種樹一個綠）
+      if (/^(tree|bush|flower|rock)/.test(name)) {
+        const greens = ['#4caf50', '#66bb6a', '#3c8d40', '#7cc35a', '#2e7d32', '#5cb85c', '#8bc34a'], hsl = {};
+        m.traverse(o => { if (!o.isMesh) return; o.material = [].concat(o.material).map(mt => { mt = mt.clone(); mt.color.getHSL(hsl);
+          if (hsl.h > .38 && hsl.h < .56) mt.color.set(greens[(name.charCodeAt(name.length - 1) + name.length) % greens.length]);
+          else if (hsl.h < .1 && hsl.s > .4 && /^tree/.test(name)) mt.color.set('#7a5236');
+          return mt; }); if (o.material.length === 1) o.material = o.material[0]; });
+      }
+      m.userData.h = bb.max.y - bb.min.y || 1; m.userData.y0 = bb.min.y; res(m);
+    }, rej));
+  });
+  return kitCache[name].then(m => m.clone(true));
+}
+// 在 g 裡放一個 Kenney 模型：高度縮放成 h、底部貼在 y；回傳的 Promise 給模型（載入失敗會 reject）
+function kitPlace(g, name, x, y, z, h, ry = 0) {
+  const holder = new THREE.Group(); holder.position.set(x, y, z); holder.rotation.y = ry; g.add(holder);
+  return kitModel(name).then(m => {
+    const k = h / m.userData.h; m.scale.setScalar(k); m.position.y = -m.userData.y0 * k; holder.add(m);
+    // 綠島那一帶的樹木要讓位給小島（和程式蓋的樹一樣處理）
+    if (BOARD.island) { const wp = holder.getWorldPosition(new THREE.Vector3()); if (Math.hypot(wp.x - BOARD.island[0], wp.z - BOARD.island[1]) < 8) holder.visible = false; }
+    return m;
+  });
+}
 // 模型檔以 {"glb":"base64"} 的 .json 存放（網頁主機不直接提供 .glb），讀回來再交給 GLTFLoader 解析
 const glbCache = {};
 function loadGLB(url) {
