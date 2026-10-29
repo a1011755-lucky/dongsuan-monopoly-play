@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261029a';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261030-0050';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261030-0101';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -1463,8 +1463,8 @@ function fitFont(x, text, maxW, size, weight = 900) {
 }
 const TILE_CAT = {
   start: { bg: '#ffd23f', base: '#ffc21a', edge: '#1d1633', lw: 14 },
-  fly: { bg: '#bfe9ff', base: '#8fd4f2', edge: '#1d6fb8', lw: 14 },
-  jail: { bg: '#d3d9e3', base: '#aab3c2', edge: '#1d1633', lw: 14 },
+  fly: { bg: '#7fd3f7', base: '#4fb6e6', edge: '#1d6fb8', lw: 14 },
+  jail: { bg: '#b8c2d4', base: '#8d99ad', edge: '#1d1633', lw: 14 },
   hosp: { bg: '#e8f5ff', base: '#c7e5fb', edge: '#e53935', lw: 14 },
   event: { bg: '#f3ecff', base: '#d9c8ff', edge: '#7c4dff', lw: 10 },
 };
@@ -1475,9 +1475,9 @@ function drawTile(i) {
   x.textAlign = 'center'; x.textBaseline = 'middle';
   if (t.type === 'prop') {
     const z = ZONES[t.zone];
-    x.fillStyle = '#fffdf6'; x.fillRect(0, 0, 256, 256);
-    x.fillStyle = z.color; x.fillRect(0, 0, 256, 74);
-    x.fillStyle = '#fff'; fitFont(x, t.name, 228, 40); x.fillText(t.name, 128, 40);
+    x.fillStyle = z.color; x.fillRect(0, 0, 256, 256);
+    { const gr = x.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, 'rgba(255,255,255,.22)'); gr.addColorStop(.5, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(0,0,0,.12)'); x.fillStyle = gr; x.fillRect(0, 0, 256, 256); }   // 塑膠表面的光澤
+    x.fillStyle = '#fff'; fitFont(x, t.name, 228, 40); x.lineWidth = 8; x.strokeStyle = 'rgba(29,22,51,.55)'; x.strokeText(t.name, 128, 44); x.fillText(t.name, 128, 44);
     if (st.owner >= 0) {
       const o = G.players[st.owner];
       x.fillStyle = o.char.color; x.fillRect(0, 74, 256, 182);
@@ -1487,20 +1487,24 @@ function drawTile(i) {
       x.font = `900 28px ${FONT}`; x.fillText('過路 ' + fmt(rentOf(i)), 128, 212);
       x.lineWidth = 14; x.strokeStyle = '#1d1633'; x.strokeRect(7, 7, 242, 242);
     } else {
-      x.fillStyle = '#1d1633'; x.font = `900 46px ${FONT}`; x.fillText(fmt(t.price), 128, 142);
-      x.fillStyle = '#6b6380'; x.font = `700 24px ${FONT}`; x.fillText(z.name, 128, 204);
-      x.lineWidth = 8; x.strokeStyle = '#1d1633'; x.strokeRect(4, 4, 248, 248);
+      x.fillStyle = 'rgba(255,255,255,.9)'; x.beginPath(); x.roundRect ? x.roundRect(30, 104, 196, 76, 38) : x.rect(30, 104, 196, 76); x.fill();   // 價格白色膠囊
+      x.fillStyle = '#1d1633'; x.font = `900 46px ${FONT}`; x.fillText(fmt(t.price), 128, 144);
+      x.fillStyle = '#ffffff'; x.font = `800 24px ${FONT}`; x.fillText(z.name, 128, 214);
+      x.lineWidth = 8; x.strokeStyle = 'rgba(29,22,51,.7)'; x.strokeRect(4, 4, 248, 248);
     }
   } else {
     // 色彩編碼：凍蒜廣場＝金黃、機場＝天藍、檢調＝灰藍、醫院＝淡藍、其他事件格＝淡紫底＋彩色圓章
     const sp = SPECIAL[t.type], ty = t.type, cat = TILE_CAT[ty] || TILE_CAT.event;
-    x.fillStyle = cat.bg; x.fillRect(0, 0, 256, 256);
+    x.fillStyle = cat === TILE_CAT.event ? sp.bg : cat.bg; x.fillRect(0, 0, 256, 256);
+    { const gr = x.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, 'rgba(255,255,255,.25)'); gr.addColorStop(.5, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(0,0,0,.1)'); x.fillStyle = gr; x.fillRect(0, 0, 256, 256); }
     if (ty === 'start') { for (let k = 0; k < 16; k++) { x.fillStyle = k % 2 ? '#1d1633' : '#ffffff'; x.fillRect(k * 16, 0, 16, 16); x.fillStyle = k % 2 ? '#ffffff' : '#1d1633'; x.fillRect(k * 16, 16, 16, 16); } }
     if (ty === 'fly') { x.fillStyle = '#5a6476'; x.fillRect(96, 0, 64, 256); x.fillStyle = '#ffffff'; for (let k = 0; k < 6; k++) x.fillRect(124, 8 + k * 44, 8, 24); }
-    if (cat === TILE_CAT.event) { x.fillStyle = sp.bg; x.beginPath(); x.arc(128, 100, 62, 0, 7); x.fill(); x.lineWidth = 6; x.strokeStyle = '#1d1633'; x.stroke(); }
+    if (cat === TILE_CAT.event) { x.fillStyle = '#ffffff'; x.beginPath(); x.arc(128, 100, 62, 0, 7); x.fill(); x.lineWidth = 6; x.strokeStyle = '#1d1633'; x.stroke(); }
     x.font = `90px ${FONT}`; x.fillText(sp.icon, 128, 102);
     x.fillStyle = '#1d1633'; fitFont(x, t.name, 230, 40);
+    if (cat === TILE_CAT.event) x.fillStyle = '#ffffff';
     if (ty === 'fly' || ty === 'start') { x.lineWidth = 10; x.strokeStyle = '#ffffff'; x.strokeText(t.name, 128, 206); }
+    else if (cat === TILE_CAT.event) { x.lineWidth = 9; x.strokeStyle = 'rgba(29,22,51,.6)'; x.strokeText(t.name, 128, 206); }
     x.fillText(t.name, 128, 206);
     x.lineWidth = cat.lw; x.strokeStyle = cat.edge; x.strokeRect(cat.lw / 2, cat.lw / 2, 256 - cat.lw, 256 - cat.lw);
   }
@@ -2056,19 +2060,19 @@ function buildBoard(id, seed = 0) {
     const s0 = tileSize / 2 - .05, r = .22, sh = new THREE.Shape();
     sh.moveTo(-s0 + r, -s0); sh.lineTo(s0 - r, -s0); sh.quadraticCurveTo(s0, -s0, s0, -s0 + r); sh.lineTo(s0, s0 - r); sh.quadraticCurveTo(s0, s0, s0 - r, s0);
     sh.lineTo(-s0 + r, s0); sh.quadraticCurveTo(-s0, s0, -s0, s0 - r); sh.lineTo(-s0, -s0 + r); sh.quadraticCurveTo(-s0, -s0, -s0 + r, -s0);
-    const g = new THREE.ExtrudeGeometry(sh, { depth: .3, bevelEnabled: true, bevelThickness: .05, bevelSize: .05, bevelSegments: 2, curveSegments: 4 });
-    g.rotateX(-Math.PI / 2); g.translate(0, -.15, 0); return g;
+    const g = new THREE.ExtrudeGeometry(sh, { depth: .5, bevelEnabled: true, bevelThickness: .08, bevelSize: .08, bevelSegments: 3, curveSegments: 4 });
+    g.rotateX(-Math.PI / 2); g.translate(0, -.38, 0); return g;
   })(), tileMats = {};
   TILES.forEach((t, i) => {
     const [x, z] = tilePos(i), th = tileTheta(i);
     const lift = (i % 2) * .03;
-    const col = t.type === 'prop' ? ZONES[t.zone].tint : (TILE_CAT[t.type] || TILE_CAT.event).base;
-    const b = new THREE.Mesh(tileGeo, tileMats[col] || (tileMats[col] = new THREE.MeshStandardMaterial({ color: col, map: boardNoise, bumpMap: boardNoise, bumpScale: .025, roughness: .9, metalness: 0 })));
+    const col = t.type === 'prop' ? ZONES[t.zone].color : (TILE_CAT[t.type] || TILE_CAT.event) === TILE_CAT.event ? SPECIAL[t.type].bg : TILE_CAT[t.type].base;
+    const b = new THREE.Mesh(tileGeo, tileMats[col] || (tileMats[col] = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(col).multiplyScalar(.82), roughness: .45, metalness: 0, clearcoat: .6, clearcoatRoughness: .3 })));
     b.position.set(x, lift, z); b.rotation.y = th; b.castShadow = b.receiveShadow = true; BG.add(b); b.userData.tile = i; tileMeshes.push(b);
     const curb = box(3.98, .3, 3.98, '#2a2540', x, lift - .12, z, BG); curb.rotation.y = th; curb.castShadow = false; curb.receiveShadow = true;   // 板塊底下的深色底盤：板塊之間露出一條接縫
     const cv = document.createElement('canvas'); cv.width = cv.height = 256; tileCanvases.push(cv);
     const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 8; tileTex.push(tex);
-    const ls = Math.min(3.7, tileSize - .14), label = new THREE.Mesh(new THREE.PlaneGeometry(ls, ls), new THREE.MeshStandardMaterial({ map: tex, bumpMap: boardNoise, bumpScale: .012, roughness: .9 }));
+    const ls = Math.min(3.7, tileSize - .14), label = new THREE.Mesh(new THREE.PlaneGeometry(ls, ls), new THREE.MeshPhysicalMaterial({ map: tex, roughness: .5, clearcoat: .5, clearcoatRoughness: .35 }));
     label.rotation.order = 'YXZ'; label.rotation.set(-Math.PI / 2, th, 0);
     label.position.set(x, .205 + lift, z); label.receiveShadow = true; label.userData.tile = i; BG.add(label); tileMeshes.push(label);
     const hi = new THREE.Mesh(new THREE.BoxGeometry(3.9, .5, 3.9), hiMat); hi.position.set(x, .3, z); hi.rotation.y = th; hi.visible = false; hi.userData.tile = i; BG.add(hi); hiMeshes.push(hi);
@@ -3988,10 +3992,12 @@ function lookBack() { hostFx('unlook'); cam.look = null; cam.lookTile = null; }
 
 function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); if (FX.composer) FX.size(); }
 // 高畫質：物件交接處（頭和身體、腳和地板、房子和地面）自動加上柔和暗部。需要額外下載 three.js 後處理模組，載不到就照舊
+const TILT = { r: .5, amt: 3.2 };   // 移軸景深：清楚的那條線在畫面高度的哪裡（0 下、1 上）、模糊多強
 const FX = {
   composer: null, on: false, want: false, loading: null, frames: 0, t0: 0,
   base: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/',
-  files: ['shaders/CopyShader.js', 'shaders/SSAOShader.js', 'shaders/GammaCorrectionShader.js', 'math/SimplexNoise.js', 'postprocessing/EffectComposer.js', 'postprocessing/ShaderPass.js', 'postprocessing/SSAOPass.js'],
+  files: ['shaders/CopyShader.js', 'shaders/SSAOShader.js', 'shaders/GammaCorrectionShader.js', 'math/SimplexNoise.js', 'postprocessing/EffectComposer.js', 'postprocessing/ShaderPass.js', 'postprocessing/SSAOPass.js',
+    'shaders/HorizontalTiltShiftShader.js', 'shaders/VerticalTiltShiftShader.js'],
   load() {
     if (this.loading) return this.loading;
     const one = f => new Promise((ok, bad) => { const sc = document.createElement('script'); sc.src = this.base + f; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc); });
@@ -4001,6 +4007,7 @@ const FX = {
   size() {
     const pr = Math.min(renderer.getPixelRatio(), 1.5), w = innerWidth, h = innerHeight;
     this.composer.setPixelRatio(pr); this.composer.setSize(w, h); this.ssao.setSize(w * pr, h * pr);
+    if (this.tiltH) { this.tiltH.uniforms.h.value = TILT.amt / (w * pr); this.tiltV.uniforms.v.value = TILT.amt / (h * pr); }
   },
   async enable(v) {
     this.want = v; try { localStorage.setItem('ds-hq', v ? '1' : '0'); } catch (e) { }
@@ -4011,7 +4018,11 @@ const FX = {
       if (!this.composer) {
         const c = new THREE.EffectComposer(renderer), ss = new THREE.SSAOPass(scene, camera, innerWidth, innerHeight);
         ss.kernelRadius = 3.2; ss.minDistance = .0008; ss.maxDistance = .06;
-        c.addPass(ss); c.addPass(new THREE.ShaderPass(THREE.GammaCorrectionShader));
+        c.addPass(ss);
+        // 移軸景深（微縮模型感）：離畫面中間那條線越遠越模糊
+        const th = new THREE.ShaderPass(THREE.HorizontalTiltShiftShader), tv = new THREE.ShaderPass(THREE.VerticalTiltShiftShader);
+        th.uniforms.r.value = tv.uniforms.r.value = TILT.r; c.addPass(th); c.addPass(tv); this.tiltH = th; this.tiltV = tv;
+        c.addPass(new THREE.ShaderPass(THREE.GammaCorrectionShader));
         this.composer = c; this.ssao = ss; this.size();
       }
       if (!this.want) return;
