@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261029a';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261030-0101';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261030-0109';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -1953,6 +1953,68 @@ function buildScenery(m) {
 
 /* ---------- 建立整個棋盤（開場和換地圖時呼叫） ---------- */
 let BOARD_SEED = 0, shoalTex = null, shoalMat = null, grassTex = null, boardNoise = null, woodTex = null;
+// 內圈空地點綴：在「棋盤裡面、離格子夠遠（不擋到地上的房子）、不壓到地標舞台和地區名」的地方種樹、花草，舞台旁邊放幾群造勢小人
+function decorateInner(shp, st, obst, m) {
+  const inside = (x, z) => { let c = false; for (let i = 0, j = shp.length - 1; i < shp.length; j = i++) { const [xi, zi] = shp[i], [xj, zj] = shp[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; };
+  const farFromTiles = (x, z, d) => BOARD.pos.every(([px, pz]) => Math.hypot(px - x, pz - z) > d);
+  const nearRail = (x, z) => { if (!RAIL) return false; const [ax, az] = tilePos(RAIL.a), [bx, bz] = tilePos(RAIL.b), dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz, u = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2)); return Math.hypot(ax + dx * u - x, az + dz * u - z) < 2; };
+  const free = (x, z, pad = 0) => inside(x, z) && farFromTiles(x, z, 5.0) && !nearRail(x, z) && obst.every(([ox, oz, r]) => Math.hypot(ox - x, oz - z) > r + pad);
+  const xs = shp.map(p => p[0]), zs = shp.map(p => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
+  // 樹和花草：用格點加一點亂數，避免全部擠在一起
+  const step = LITE ? 3 : 2.3, deco = [['bush1', .7], ['bush2', .6], ['flower1', .45], ['flower2', .45], ['flower3', .45], ['rock2', .4]];
+  for (let x = x0; x <= x1; x += step) for (let z = z0; z <= z1; z += step) {
+    const px = x + (Math.random() - .5) * step * .8, pz = z + (Math.random() - .5) * step * .8;
+    if (!free(px, pz, .3)) continue;
+    const r = Math.random();
+    if (r < .42) tree(BG, px, pz, .55 + Math.random() * .35);
+    else if (r < .72) { const [n, h] = pick(deco); kitPlace(BG, n, px, -.13, pz, h * (.8 + Math.random() * .5), Math.random() * 6.28).catch(() => { }); }
+  }
+  // 造勢小人群：舞台四周三群，拿著各色小旗子
+  const [sx, sz] = [m.stage[0], m.stage[1]], sr = obst[0][2];
+  const skin = ['#f6d2b5', '#eec29c', '#d9a67c'], shirt = ['#ff5d5d', '#3d8bff', '#4cb944', '#ffd23f', '#ff9f1c', '#9c6bff', '#ffffff'];
+  const bodyG = new THREE.CylinderGeometry(.13, .16, .42, 8), headG = new THREE.SphereGeometry(.13, 10, 8);
+  for (let c = 0, tries = 0; c < (LITE ? 2 : 3) && tries < 24; tries++) {
+    const a = Math.random() * Math.PI * 2, cx = sx + Math.cos(a) * (sr + .4), cz = sz + Math.sin(a) * (sr + .4);
+    if (!inside(cx, cz) || !farFromTiles(cx, cz, 4.6) || nearRail(cx, cz) || obst.slice(1).some(([ox, oz, r]) => Math.hypot(ox - cx, oz - cz) < r)) continue;
+    c++;
+    const g = new THREE.Group(); g.position.set(cx, -.13, cz); BG.add(g);
+    const n = LITE ? 6 : 10;
+    for (let k = 0; k < n; k++) {
+      const p = new THREE.Group(), r = Math.sqrt(Math.random()) * 1.3, b = Math.random() * 6.28; p.position.set(Math.cos(b) * r, 0, Math.sin(b) * r); g.add(p);
+      const body = new THREE.Mesh(bodyG, M(pick(shirt))); body.position.y = .21; body.castShadow = true; p.add(body);
+      const head = new THREE.Mesh(headG, M(pick(skin))); head.position.y = .55; p.add(head);
+      if (Math.random() < .5) { cyl(.012, .012, .5, '#ffffff', .15, .65, 0, p, 4); box(.22, .14, .01, pick(shirt), .26, .82, 0, p); }
+      const ph = Math.random() * 6.28; boardAnims.push(t => { p.position.y = Math.max(0, Math.sin(t * 6 + ph)) * .12; });   // 跟著節奏跳
+      p.lookAt(sx, 0, sz);
+    }
+  }
+}
+// 全景時的地段名牌：每塊地上方一個永遠面向鏡頭、固定大小的名牌（區域色底白字），一般跟隨鏡頭時隱藏
+function buildNameTags() {
+  BOARD.tags = [];
+  let np = 0;
+  TILES.forEach((t, i) => {
+    if (t.type !== 'prop') return;   // 只標地段（事件格看格子上的圖示就知道）
+    const col = ZONES[t.zone].color, txt = t.name, hi = np++ % 2;
+    const cv = document.createElement('canvas'), x = cv.getContext('2d'), fs2 = 44;
+    x.font = `900 ${fs2}px ${FONT}`; const w = Math.min(420, Math.ceil(x.measureText(txt).width) + 36); cv.width = w; cv.height = 64;
+    x.fillStyle = col; x.strokeStyle = '#1d1633'; x.lineWidth = 5; x.beginPath(); x.roundRect ? x.roundRect(3, 3, w - 6, 58, 22) : x.rect(3, 3, w - 6, 58); x.fill(); x.stroke();
+    x.font = `900 ${fs2}px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineWidth = 7; x.strokeStyle = 'rgba(29,22,51,.75)'; x.strokeText(txt, w / 2, 34); x.fillStyle = '#ffffff'; x.fillText(txt, w / 2, 34);
+    const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true, opacity: 0, sizeAttenuation: false, fog: false, toneMapped: false }));
+    sp.userData.aspect = w / 64; sp.renderOrder = 7; sp.visible = false;
+    const [px, pz] = tilePos(i), [ix, iz] = tileIn(i); sp.position.set(px - ix * .6, hi ? 4 : 1.4, pz - iz * .6);   // 一高一低錯開，相鄰的名牌才不會疊在一起
+    BG.add(sp); BOARD.tags.push(sp);
+  });
+}
+// 每一幀：全景時名牌淡入、跟隨時淡出；名牌大小固定在畫面高度的一定比例（手機大一點）
+let tagFade = 0;
+function updateNameTags(dt) {
+  if (!BOARD.tags) return;
+  tagFade += ((cam.overview ? 1 : 0) - tagFade) * Math.min(1, dt * 5);
+  const hpx = innerWidth < 700 ? .046 : .03;
+  BOARD.tags.forEach(sp => { sp.visible = tagFade > .02; sp.material.opacity = tagFade; sp.scale.set(hpx * sp.userData.aspect, hpx, 1); });
+}
 function buildRail() {
   const g = new THREE.Group(); BG.add(g);
   const end = i => { const [x, z] = tilePos(i), [ix, iz] = tileIn(i); return new THREE.Vector3(x + ix * 2.1, 0, z + iz * 2.1); };
@@ -1981,7 +2043,7 @@ function buildBoard(id, seed = 0) {
   const m = { ...m0, shape: m0.shape.map(([x, z]) => [x * sc, z * sc]), stage: [m0.stage[0] * sc, m0.stage[1] * sc, m0.stage[2] * Math.min(1, sc)], marks: m0.marks.map(([n, x, z, r]) => [n, x * sc, z * sc, r]) };
   makeTiles(MAP);
   const shp = curvy(m.shape, seed);   // 彎曲的路線（每局隨機）
-  BOARD = buildPath(shp);
+  BOARD = buildPath(shp); BOARD.zoneLbl = [];
   RAIL = null;
   if (m.rail) {   // 找離設定點最近、而且不是角落的格子當交會站
     const nearest = ([px, pz]) => { let best = -1, bd = 1e9; for (let i = 0; i < N; i++) { if (isCorner(i)) continue; const [x, z] = tilePos(i), d = Math.hypot(x - px * sc, z - pz * sc); if (d < bd) { bd = d; best = i; } } return best; };
@@ -2014,7 +2076,7 @@ function buildBoard(id, seed = 0) {
     });
     grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping; grassTex.repeat.set(1 / 7, 1 / 7);
   }
-  const inner = new THREE.Mesh(new THREE.ShapeGeometry(toShape(offsetPoly(shp, -2.3, BOARD.sgn))), new THREE.MeshStandardMaterial({ color: m.ground, map: grassTex, roughness: .95 }));
+  const inner = new THREE.Mesh(new THREE.ShapeGeometry(toShape(offsetPoly(shp, -2.3, BOARD.sgn))), new THREE.MeshStandardMaterial({ color: new THREE.Color(m.ground).lerp(new THREE.Color('#5aa83a'), .78), map: grassTex, roughness: .95 }));
   inner.rotation.x = -Math.PI / 2; inner.position.y = -.13; inner.receiveShadow = true; BG.add(inner);
   buildScenery(m);
   {
@@ -2091,16 +2153,21 @@ function buildBoard(id, seed = 0) {
     });
     const lm = new THREE.Mesh(new THREE.PlaneGeometry(9, 1.7), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
     lm.rotation.order = 'YXZ'; lm.rotation.set(-Math.PI / 2, Math.atan2(-nx, -nz), 0);
-    lm.position.set(cx + nx * 5.4, -.08, cz + nz * 5.4); BG.add(lm);
+    lm.position.set(cx + nx * 5.4, -.08, cz + nz * 5.4); BG.add(lm); (BOARD.zoneLbl = BOARD.zoneLbl || []).push([cx + nx * 5.4, cz + nz * 5.4]);
   });
   // 中間的投票箱舞台與地標
   const st = new THREE.Group(); st.position.set(m.stage[0], 0, m.stage[1]); BG.add(st); buildStage(st, m.stage[2]);
+  const obst = [];   // 內圈點綴要避開的圓：[x, z, 半徑]
+  { const bb = new THREE.Box3().setFromObject(st); obst.push([m.stage[0], m.stage[1], Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2 + 1.2]); }
+  (BOARD.zoneLbl || []).forEach(([x, z]) => obst.push([x, z, 2.4]));
   BOARD.artProps = [];
   const markArt = { wheel: ['bld_wheel', 7.5], gate: ['bld_arch', 5.5], t101: ['bld_101', 10] };
   m.marks.forEach(([name, x, z, ry]) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry || 0; g.scale.setScalar(Math.min(1, .2 + sc * .8)); BG.add(g); MARKS[name](g);
     if (markArt[name]) BOARD.artProps.push([g, ...markArt[name], 0, 0, GROUND.grass]); g.traverse(o => { if (o.isMesh) o.castShadow = true; });
-    { const bb = new THREE.Box3().setFromObject(g), sz = Math.min(14, Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) * 1.25 + 1.5), a = aoBlob(sz, .4); a.position.set(x, -.1, z); BG.add(a); } });
+    { const bb = new THREE.Box3().setFromObject(g), sz = Math.min(14, Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) * 1.25 + 1.5), a = aoBlob(sz, .4); a.position.set(x, -.1, z); BG.add(a); obst.push([x, z, Math.max(2.8, sz / 2 + .2)]); } });
   if (RAIL) buildRail();
+  decorateInner(shp, st, obst, m);
+  buildNameTags();
   // 四個角落特殊格旁邊的造型（放在格子外側）
   const cornerProp = (i, build) => { const [x, z] = tilePos(i), [ix, iz] = tileIn(i); const g = new THREE.Group(); g.position.set(x - ix * 4.6, 0, z - iz * 4.6); g.rotation.y = tileTheta(i); BG.add(g); build(g); };
   cornerProp(0, g => { cyl(.3, .3, 3.6, '#ff4f79', -1.6, 1.8, 0, g); cyl(.3, .3, 3.6, '#ff4f79', 1.6, 1.8, 0, g); box(4.2, .7, .5, '#ffd23f', 0, 3.6, 0, g); BOARD.artProps.push([g, 'bld_go', 4.6, 0, .3, GROUND.land]); });
@@ -4099,7 +4166,8 @@ function frame(now) {
     } else if (p.mesh && !p.out && G.players[G.turn] === p && !p.moving) p.mesh.children[1].scale.y = 1 + Math.sin(t * 6) * .04;
   });
   if (spinning) dice.forEach((d, j) => { d.rotation.x += dt * (9 + j); d.rotation.y += dt * 7; });
-  updateCamera(dt, t);
+  updateCamera(dt, t); updateNameTags(dt);
+  if (FX.tiltH) { const k = 1 - tagFade, pr = Math.min(renderer.getPixelRatio(), 1.5); FX.tiltH.uniforms.h.value = TILT.amt * k / (innerWidth * pr); FX.tiltV.uniforms.v.value = TILT.amt * k / (innerHeight * pr); }
   FX.render();
   const tp = G.players[G.turn];
   turnArrow.visible = !!(tp && tp.mesh && !tp.out && G.players.length && !G.over);
