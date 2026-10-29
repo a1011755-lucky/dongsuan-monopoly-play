@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261029a';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261030-0035';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261030-0050';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -2471,16 +2471,16 @@ function toyMat(src) {
 // 有哪些角色有圖、檔名是什麼；cut＝公仔底座頂端在圖片高度的哪裡（以下整片去掉），key＝底座顏色跟鞋子不同，把腳邊露出的底座邊緣也去掉
 const ART = {
   han: { file: 'han.jpg' },
-  tsai: { file: 'tsai.webp', cut: .854, key: 1 },
-  ko: { file: 'ko.webp', cut: .866, key: 1 },
-  lai: { file: 'lai.webp', cut: .872, key: 1 },
-  gz: { file: 'gz.webp', cut: .846 },
-  ma: { file: 'ma.webp', cut: .853, key: 1 },
-  wsj: { file: 'wsj.jpg', cut: .905 },
+  tsai: { file: 'tsai.jpg' },
+  ko: { file: 'ko.jpg' },
+  lai: { file: 'lai.jpg' },
+  gz: { file: 'gz.jpg' },
+  ma: { file: 'ma.jpg' },
+  wsj: { file: 'wsj.jpg' },
   chiang: { file: 'chiang.jpg', cut: .932 },
-  bian: { file: 'bian.jpg', cut: .918 },
-  gou: { file: 'gou.jpg', cut: .912 },
-  kc: { file: 'kc.jpg', cut: .906 },
+  bian: { file: 'bian.jpg' },
+  gou: { file: 'gou.jpg' },
+  kc: { file: 'kc.jpg' },
   puma: { file: 'puma.jpg', cut: .912 },
   // 路人、神明
   cops: { file: 'cops.jpg', cut: .862 },
