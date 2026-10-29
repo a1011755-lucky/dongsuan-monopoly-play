@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261029a';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261030-0028';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261030-0035';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -3979,7 +3979,8 @@ function updateCamera(dt, t) {
   cam.d = (cam.d || d) + (d - (cam.d || d)) * Math.min(1, dt * 3);
   const z = cam.zoom * (innerWidth < 700 ? 1.3 : 1);
   const sk = cam.shake * .6; cam.shake = Math.max(0, cam.shake - dt * 2);
-  camera.position.set(cam.target.x + Math.sin(cam.az) * cam.d * z + (Math.random() - .5) * sk, cam.h * z + (Math.random() - .5) * sk, cam.target.z + Math.cos(cam.az) * cam.d * z);
+  const bob = cam.follow && !cam.overview && (cam.follow.moving || cam.follow.animating) && !REDUCED ? Math.sin(t * 11) * .07 : 0;   // 走路時鏡頭微微晃
+  camera.position.set(cam.target.x + Math.sin(cam.az) * cam.d * z + (Math.random() - .5) * sk, cam.h * z + (Math.random() - .5) * sk + bob, cam.target.z + Math.cos(cam.az) * cam.d * z);
   camera.lookAt(cam.target.x, 0, cam.target.z);
 }
 function lookAtTile(i) { hostFx('look', i); const [x, z] = tilePos(i); cam.look = new THREE.Vector3(x, 0, z); cam.lookTile = i; }
@@ -5820,7 +5821,16 @@ function hopTo(p, to, th, ms = 150) {
     m.scale.setScalar(base); m.position.y = 0; m.rotation.x = m.rotation.z = 0;
     spriteTilt(p, 0); spriteSquash(p);
     if (!LITE) burst(new THREE.Vector3(to.x, .15, to.z), ['#efe3c8', '#ffffff'], 3, .18);
+    if (!LITE && p.char) burst(new THREE.Vector3(to.x, .5, to.z), [p.char.color, '#ffd23f', '#ff4f79', '#4fc3f7'], 3, .3);   // 選戰彩帶紙
   });
+}
+// 走到目的地：面向鏡頭（看板公仔本來就永遠面向鏡頭）左右搖擺像在揮手、小跳一下，噴一把彩帶紙
+function arriveWave(p) {
+  if (!p.mesh || p.out || REDUCED) return;
+  const m = p.mesh;
+  if (!LITE && p.char) burst(new THREE.Vector3(m.position.x, 1.2, m.position.z), [p.char.color, '#ffd23f', '#ff4f79', '#4fc3f7', '#ffffff'], 10, .5);
+  tween(700, k => { if (p.moving) return; m.position.y = Math.sin(Math.PI * Math.min(1, k * 2)) * .35; spriteTilt(p, Math.sin(k * Math.PI * 4) * .2 * (1 - k)); })
+    .then(() => { if (p.moving) return; m.position.y = 0; spriteTilt(p, 0); spriteSquash(p, .1); });
 }
 // 飛到某一格：去醫院的是被炸飛（邊飛邊翻滾、冒星星），其他是被拎走；落地壓扁再彈回來
 async function flyTo(p, corner) {
@@ -5895,7 +5905,7 @@ async function moveSteps(p, n, back = false) {
       break;
     }
   }
-  p.moving = false; setArtState(p, 'idle');
+  p.moving = false; setArtState(p, 'idle'); arriveWave(p);
 }
 
 async function passStart(p) {
@@ -8319,7 +8329,7 @@ async function runAnim(p) {
     else await flyTo(p, tile);
     p.mesh.position.y = 0; p.lastAnim = performance.now();
   }
-  p.animating = false; setArtState(p, 'idle');
+  p.animating = false; setArtState(p, 'idle'); arriveWave(p);
 }
 function applyState(s) {
   if (!s || !Array.isArray(s.P)) return;
