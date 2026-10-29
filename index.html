@@ -871,7 +871,7 @@ function speak(ch, line, prio = 1, vid = '') {
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
 const GAME_VER = '20261029a';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261029-2357';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const BUILD_ID = '20261030-0012';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -1287,14 +1287,29 @@ scene.background = new THREE.Color('#8fd8ff');
 scene.fog = new THREE.Fog('#8fd8ff', 70, 140);
 const camera = new THREE.PerspectiveCamera(45, 1, .1, 400);
 // 柔和全局光：天空色從上照、地面反射的暖綠從下照；主光（太陽）負責陰影，背面再補一盞冷色補光，暗面不會死黑
-const hemi = new THREE.HemisphereLight('#ffffff', '#7fa86a', .75); scene.add(hemi);
+const hemi = new THREE.HemisphereLight('#ffffff', '#7fa86a', .62); scene.add(hemi);
 const fill = new THREE.DirectionalLight('#cfe3ff', .28); fill.position.set(-20, 18, -16); scene.add(fill);
-const sun = new THREE.DirectionalLight('#fff4dd', .85);
+const sun = new THREE.DirectionalLight('#fff4dd', .95);
 sun.position.set(18, 40, 22); sun.castShadow = true;
 sun.shadow.mapSize.set(LITE ? 1024 : 2048, LITE ? 1024 : 2048);
 sun.shadow.bias = -.0008; sun.shadow.normalBias = .02; sun.shadow.radius = LITE ? 2 : 4;   // 減少陰影閃爍（手機的精度比較低）
 Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 100 });
 scene.add(sun);
+let ENV_TEX = null;
+// 環境反射：看不到的小攝影棚（上方天藍、地平線白、下方暖木色，加兩片柔光箱）烘成反射貼圖，
+// 所有 MeshStandardMaterial 都會有玩具塑膠那種柔和的反光；不用另外下載 HDR 圖
+{
+  const pm = new THREE.PMREMGenerator(renderer), es = new THREE.Scene();
+  // 天空罩用頂點顏色做漸層（用內建材質，烘焙時的色彩編碼才會正確）
+  const dg = new THREE.SphereGeometry(50, 32, 16), dp = dg.attributes.position, dc = [], col = new THREE.Color(), up = new THREE.Color(.45, .68, 1), down = new THREE.Color(.55, .42, .3), wt = new THREE.Color(1, 1, 1);
+  for (let k = 0; k < dp.count; k++) { const h = dp.getY(k) / 50; col.copy(wt).lerp(h > 0 ? up : down, Math.min(1, h > 0 ? h / .7 : -h / .4)).multiplyScalar(.15); dc.push(col.r, col.g, col.b); }
+  dg.setAttribute('color', new THREE.Float32BufferAttribute(dc, 3));
+  es.add(new THREE.Mesh(dg, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+  const panel = (w, h, x, y, z, k) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(k, k * .96, k * .9), side: THREE.DoubleSide })); m.position.set(x, y, z); m.lookAt(0, 0, 0); es.add(m); };
+  panel(34, 34, 18, 40, 22, 1.4);  // 太陽那一側的大柔光箱：主要高光（整體壓暗，只留反光、不讓畫面變白）
+  panel(26, 14, -32, 16, -22, .3);  // 背面補光
+  ENV_TEX = scene.environment = pm.fromScene(es, .04).texture; pm.dispose();
+}
 const skyMat = new THREE.ShaderMaterial({
   uniforms: { top: { value: new THREE.Color('#3d9cf0') }, bot: { value: new THREE.Color('#c4ecff') }, lin: { value: 0 } },
   vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
@@ -1307,10 +1322,10 @@ scene.background.set('#c4ecff'); scene.fog.color.set('#c4ecff');
 const nightMats = []; let isNight = false;
 const nightMat = (map, k = .7) => { const m = new THREE.MeshStandardMaterial({ map, emissive: '#ffe7a3', emissiveMap: map, emissiveIntensity: isNight ? k : 0, roughness: .5 }); m.userData.nk = k; nightMats.push(m); return m; };
 // 低多邊形（一面一面的）材質：山、樹、雲用
-const FM = c => matCache['f' + c] || (matCache['f' + c] = new THREE.MeshStandardMaterial({ color: c, roughness: .9, flatShading: true }));
+const FM = c => matCache['f' + c] || (matCache['f' + c] = new THREE.MeshStandardMaterial({ color: c, roughness: .65, metalness: .03, flatShading: true }));
 
 const matCache = {};
-const M = c => matCache[c] || (matCache[c] = new THREE.MeshStandardMaterial({ color: c, roughness: .88, metalness: 0 }));
+const M = c => matCache[c] || (matCache[c] = new THREE.MeshStandardMaterial({ color: c, roughness: .5, metalness: .06 }));   // 塑膠積木質感
 // 拆掉的模型要把顯示卡記憶體還回去（共用的材質留著）
 function disposeTree(o) {
   const keep = new Set(Object.values(matCache));
@@ -3436,7 +3451,8 @@ function setEnv(e, w) {
   cloudMat.emissiveIntensity = E.cloud; cloudMat.color.set(e === 3 ? '#8f9cc8' : e === 2 ? '#ffe2cf' : '#ffffff');
   isNight = e === 3; nightMats.forEach(m => { m.emissiveIntensity = isNight ? m.userData.nk : 0; });
   scene.fog.near = w === 3 ? 25 : 70; scene.fog.far = w === 3 ? 85 : 140;
-  hemi.color.set(E.hemi[0]); hemi.groundColor.set(E.hemi[1]); hemi.intensity = E.hemi[2];
+  hemi.color.set(E.hemi[0]); hemi.groundColor.set(E.hemi[1]); hemi.intensity = E.hemi[2] * .83;   // 有環境反射補亮，半球光打八折
+  scene.environment = e === 3 ? null : ENV_TEX;   // 夜晚不要白天攝影棚的反光
   sun.color.set(E.sun[0]); sun.intensity = E.sun[1];
   sea.material.color.set(E.sea);
   // 夜晚：天上一片星星
