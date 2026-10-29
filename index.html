@@ -870,8 +870,8 @@ function speak(ch, line, prio = 1, vid = '') {
 }
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
-const GAME_VER = '20261026b';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261028-2153';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const GAME_VER = '20261029a';   // 改角色名單、連線格式時要改這個
+const BUILD_ID = '20261029-2357';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -995,7 +995,8 @@ const MAPS = {
     zones: ['港灣區', '市中心', '亞洲新灣區', '山海鄉野'],
     props: [['駁二藝術特區', '旗津', '85大樓', '西子灣', '流行音樂中心'], ['六合夜市', '美麗島站', '愛河', '中央公園', '大立百貨'],
       ['高雄展覽館', '輕軌水岸', '夢時代', '衛武營', '新灣區'], ['壽山動物園', '美濃', '蓮池潭', '英國領事館', '義大世界']],
-    stage: [-11, 3, .7], marks: [['t85', 10.5, 2.5, 0], ['pagoda', -3, 3.5, 0], ['wheel', 3.6, 3.2, 0], ['harbor', 0, -8.5, 0]],
+    stage: [-11, 3, .7], marks: [['t85', 10.5, 2.5, 0], ['pagoda', -5.6, 3.5, 0], ['wheel', 6.8, 3.4, 0], ['harbor', 0, -8.5, 0]],
+    rail: { name: '美麗島快線', a: [0, 10], b: [0, -2] },   // 8 字型：上面和港灣中間各一個交會站，中間有快線直通
   },
   tnn: {
     name: '台南', blurb: '十字形古城棋盤，赤崁樓、安平古堡、七股鹽山、奇美博物館', fly: '台南機場', ground: '#f1ecd2', river: '曾文溪', mount: '關子嶺',
@@ -1403,6 +1404,35 @@ const tilePos = i => BOARD.pos[i];
 const tileTheta = i => BOARD.th[i] || 0;
 const tileIn = i => BOARD.inw[i] || [0, -1];
 const isCorner = i => i % (N / 4) === 0;
+// 快線（8 字型地圖的捷徑）：RAIL = { a, b, name }，a、b 是兩端交會站的格子編號；沒有快線的地圖是 null
+let RAIL = null;
+// 這格往前可以走的路：一般格只有下一格；快線兩端多一條快線（剛搭快線過來的不能馬上搭回去）
+function exitsOf(p) {
+  const i = p.pos, out = [(i + 1) % N];
+  if (RAIL) { const o = i === RAIL.a ? RAIL.b : i === RAIL.b ? RAIL.a : -1; if (o >= 0 && !(p.railAt === i && p.railFrom === o)) out.push(o); }
+  return out;
+}
+// 往前走 n 步可能停的格子（經過交會站會分岔）；第一個是一直沿路走的
+function destsOf(p, n) {
+  const out = [];
+  const go = (pos, ra, rf, k) => {
+    if (!k) { if (!out.includes(pos)) out.push(pos); return; }
+    exitsOf({ pos, railAt: ra, railFrom: rf }).forEach(nx => { const r = nx !== (pos + 1) % N; go(nx, r ? nx : -1, r ? pos : -1, k - 1); });
+  };
+  go(p.pos, p.railAt, p.railFrom, n); return out;
+}
+// 走到交會站：停下來選路（電腦看兩條路的落點哪個比較不會付過路費）
+async function chooseRoute(p, ex, left) {
+  const [ring, rail] = ex;
+  const land = nx => { const r = nx !== (p.pos + 1) % N; return destsOf({ pos: nx, railAt: r ? nx : -1, railFrom: r ? p.pos : -1 }, left - 1)[0]; };
+  const risk = nx => { const t = G.tiles[land(nx)]; return t && t.owner >= 0 && t.owner !== p.seat ? 2 + t.level : 0; };
+  let v;
+  if (p.isAI) { await wait(350); const a = risk(ring), b = risk(rail); v = a === b ? (Math.random() < .5 ? 'rail' : 'ring') : a > b ? 'rail' : 'ring'; }
+  else v = await ask(`<h2>🚇 ${RAIL.name}交會站</h2><p>還要走 <b>${left}</b> 步，要走哪條路？</p><p><small>搭快線直達對面只算 1 步，但會繞過另一半的地圖。</small></p>`,
+    [{ label: `🚇 搭快線，停在「${TILES[land(rail)].name}」`, value: 'rail', cls: 'primary' }, { label: `➡️ 沿路走，停在「${TILES[land(ring)].name}」`, value: 'ring' }], p);
+  if (v === 'rail') caption('🚇 搭上' + RAIL.name, `${p.char.name} 直達 ${TILES[rail].name}`, 900);
+  return v === 'rail' ? rail : ring;
+}
 const fwd = (a, b) => (b - a + N) % N;
 const near = (a, b) => Math.min(fwd(a, b), fwd(b, a));
 
@@ -1876,6 +1906,26 @@ function buildScenery(m) {
 
 /* ---------- 建立整個棋盤（開場和換地圖時呼叫） ---------- */
 let BOARD_SEED = 0, shoalTex = null, shoalMat = null, grassTex = null, boardNoise = null, woodTex = null;
+function buildRail() {
+  const g = new THREE.Group(); BG.add(g);
+  const end = i => { const [x, z] = tilePos(i), [ix, iz] = tileIn(i); return new THREE.Vector3(x + ix * 2.1, 0, z + iz * 2.1); };
+  const A = end(RAIL.a), B = end(RAIL.b), d = B.clone().sub(A), L = d.length(), ry = Math.atan2(d.x, d.z), H = .55;
+  const deck = new THREE.Group(); deck.position.copy(A).lerp(B, .5); deck.rotation.y = ry; g.add(deck);
+  box(1.7, .22, L, '#8d97a8', 0, H, 0, deck);                                   // 橋面
+  [-.45, .45].forEach(x => box(.1, .08, L, '#e8edf3', x, H + .15, 0, deck));     // 兩條鐵軌
+  for (let k = -L / 2 + .5; k < L / 2; k += .7) box(1.25, .05, .18, '#6b5444', 0, H + .12, k, deck);   // 枕木
+  [-.84, .84].forEach(x => box(.08, .22, L, '#00b38a', x, H + .2, 0, deck));     // 綠色護欄（捷運紅橘綠的綠）
+  for (let k = -L / 2 + 1.2; k < L / 2 - .8; k += 2.4) cyl(.18, .24, H, '#c9d1dc', 0, H / 2 - .05, k, deck, 10);   // 橋墩
+  // 小電車：兩節車廂，在兩站之間來回
+  const train = new THREE.Group(); deck.add(train);
+  [-.75, .75].forEach(z => { box(1.05, .62, 1.4, '#ffffff', 0, H + .5, z, train); box(1.07, .16, 1.42, '#00b38a', 0, H + .42, z, train); box(1.08, .2, 1.1, '#3a4d66', 0, H + .66, z, train); });
+  train.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  const run = Math.max(0, L / 2 - 1.6);
+  boardAnims.push(t => { const c = (t * .16) % 2, k = c < 1 ? c : 2 - c, e = k * k * (3 - 2 * k); train.position.z = -run + e * run * 2; });
+  // 兩端站牌
+  [A, B].forEach(P => { const sg = godLabel('🚇 ' + RAIL.name, '#00b38a'); sg.scale.set(3.6, 1, 1); sg.position.set(P.x, 3.1, P.z); g.add(sg); cyl(.08, .08, 2.6, '#c9d1dc', P.x, 1.3, P.z, g, 8); });
+  g.traverse(o => { if (o.isMesh) o.receiveShadow = true; });
+}
 function buildBoard(id, seed = 0) {
   MAP = MAPS[id] ? id : 'tpe'; BOARD_SEED = seed;
   const sc = boardScale(), m0 = MAPS[MAP];
@@ -1885,6 +1935,11 @@ function buildBoard(id, seed = 0) {
   makeTiles(MAP);
   const shp = curvy(m.shape, seed);   // 彎曲的路線（每局隨機）
   BOARD = buildPath(shp);
+  RAIL = null;
+  if (m.rail) {   // 找離設定點最近、而且不是角落的格子當交會站
+    const nearest = ([px, pz]) => { let best = -1, bd = 1e9; for (let i = 0; i < N; i++) { if (isCorner(i)) continue; const [x, z] = tilePos(i), d = Math.hypot(x - px * sc, z - pz * sc); if (d < bd) { bd = d; best = i; } } return best; };
+    const a = nearest(m.rail.a), b = nearest(m.rail.b); if (a >= 0 && b >= 0 && a !== b) RAIL = { a, b, name: m.rail.name };
+  }
   if (BG) scene.remove(BG);
   BG = new THREE.Group(); scene.add(BG); boardAnims = []; nightMats.length = 0;
   tileCanvases.length = tileTex.length = tileMeshes.length = hiMeshes.length = 0;
@@ -1998,6 +2053,7 @@ function buildBoard(id, seed = 0) {
   m.marks.forEach(([name, x, z, ry]) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry || 0; g.scale.setScalar(Math.min(1, .2 + sc * .8)); BG.add(g); MARKS[name](g);
     if (markArt[name]) BOARD.artProps.push([g, ...markArt[name], 0, 0, GROUND.grass]); g.traverse(o => { if (o.isMesh) o.castShadow = true; });
     { const bb = new THREE.Box3().setFromObject(g), sz = Math.min(14, Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) * 1.25 + 1.5), a = aoBlob(sz, .4); a.position.set(x, -.1, z); BG.add(a); } });
+  if (RAIL) buildRail();
   // 四個角落特殊格旁邊的造型（放在格子外側）
   const cornerProp = (i, build) => { const [x, z] = tilePos(i), [ix, iz] = tileIn(i); const g = new THREE.Group(); g.position.set(x - ix * 4.6, 0, z - iz * 4.6); g.rotation.y = tileTheta(i); BG.add(g); build(g); };
   cornerProp(0, g => { cyl(.3, .3, 3.6, '#ff4f79', -1.6, 1.8, 0, g); cyl(.3, .3, 3.6, '#ff4f79', 1.6, 1.8, 0, g); box(4.2, .7, .5, '#ffd23f', 0, 3.6, 0, g); BOARD.artProps.push([g, 'bld_go', 4.6, 0, .3, GROUND.land]); });
@@ -4658,8 +4714,8 @@ async function afterRoll(p, steps, forced) {
   const back = p.nextBack !== undefined && !forced ? p.nextBack : lawOn('reverse') || (!forced && Math.random() < .12);
   p.nextBack = undefined;
   if (back) { SFX.whoosh(); say(p, 'roll', pick(['咦？怎麼往回走？', '倒退嚕～', '這是戰略性撤退！'])); await caption('🔄 倒退嚕！', `${p.char.name} 這次逆時針走 ${steps} 步${lawOn('reverse') ? '（逆行令）' : ''}`, 1300); }
-  const dest = destOf(p, steps, back);
-  setDest([[dest, `🎯 ${steps} 步 → ${TILES[dest].name}`]]);
+  const dest = destOf(p, steps, back), alt = back ? [] : destsOf(p, steps).filter(i => i !== dest);
+  setDest([[dest, `🎯 ${steps} 步 → ${TILES[dest].name}`], ...alt.slice(0, 1).map(i => [i, `🚇 搭快線 → ${TILES[i].name}`])]);
   await moveSteps(p, steps, back);
   setDest([]);
   if (p.out || p.where) return;
@@ -5712,10 +5768,16 @@ function cheer(p) {
 async function moveSteps(p, n, back = false) {
   p.moving = true;
   for (let s = 1; s <= n; s++) {
-    p.pos = (p.pos + (back ? N - 1 : 1)) % N;
+    let rail = false;
+    if (back) p.pos = (p.pos + N - 1) % N;
+    else {
+      const ex = exitsOf(p), nx = ex.length > 1 ? await chooseRoute(p, ex, n - s + 1) : ex[0];
+      rail = nx !== (p.pos + 1) % N; p.railFrom = rail ? p.pos : -1; p.railAt = rail ? nx : -1; p.pos = nx;
+    }
     const from = p.mesh.position.clone(), [tx, tz] = spot(p, p.pos), to = new THREE.Vector3(tx, 0, tz);
-    SFX.step(); hostFx('hop', [p.seat, p.pos, back ? 1 : 0]);
-    await hopTo(p, to, tileTheta(p.pos) + (back ? Math.PI : 0));
+    if (rail) SFX.whoosh(); else SFX.step();
+    hostFx('hop', [p.seat, p.pos, back ? 1 : rail ? 2 : 0]);
+    await hopTo(p, to, tileTheta(p.pos) + (back ? Math.PI : 0), rail ? 900 : 150);
     if (p.pos === 0 && !back) await passStart(p);
     await godStep(p); if (p.out) { p.moving = false; return; }
     // 炸彈：拿著的人每走一步少 1，到 0 就爆
@@ -8175,7 +8237,7 @@ async function runAnim(p) {
   while (p.animQ.length) {
     const [type, tile, back] = p.animQ.shift(); if (!p.mesh) break;
     const [x, z] = spot(p, tile), from = p.mesh.position.clone();
-    if (type === 'hop') { SFX_RAW.step(); await hopTo(p, new THREE.Vector3(x, 0, z), tileTheta(tile) + (back ? Math.PI : 0)); }
+    if (type === 'hop') { SFX_RAW.step(); await hopTo(p, new THREE.Vector3(x, 0, z), tileTheta(tile) + (back === 1 ? Math.PI : 0), back === 2 ? 900 : 150); }
     else await flyTo(p, tile);
     p.mesh.position.y = 0; p.lastAnim = performance.now();
   }
