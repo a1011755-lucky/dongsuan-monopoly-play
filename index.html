@@ -870,8 +870,8 @@ function speak(ch, line, prio = 1, vid = '') {
 }
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
-const GAME_VER = '20261030a';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261030-0801';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const GAME_VER = '20261030b';   // 改角色名單、連線格式時要改這個
+const BUILD_ID = '20261030-0816';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -1888,6 +1888,7 @@ function buildScenery(m) {
   const wt = sea.material.map;
   // 河谷：棋盤後方（遠離鏡頭那側）一塊綠地，接到山腳
   const vw = (maxX - minX) * .62, vx = minX + (maxX - minX) * .45, vz0 = minZ, vz1 = minZ - 11;
+  BOARD.valley = [vx - vw / 2 - 1, vx + vw / 2 + 1, vz0 + 2.2];
   box(vw, 1.2, vz0 - vz1 + 1, '#8fc95a', vx, -.75, (vz0 + vz1) / 2, BG);
   // 山脈：後方一排、左側一排
   const few = LITE ? 2 : 1;
@@ -1989,6 +1990,49 @@ function decorateInner(shp, st, obst, m) {
     }
   }
 }
+// 棋盤外圍：一圈草地，上面是低矮的微縮街區（彩色小樓、Kenney 小屋）和樹叢、花草
+function decorateOuter(shp, m) {
+  const ring = new THREE.Shape(offsetPoly(shp, OUTER - .7, BOARD.sgn).map(([x, z]) => new THREE.Vector2(x, -z)));
+  ring.holes.push(new THREE.Path(offsetPoly(shp, 2.2, BOARD.sgn).map(([x, z]) => new THREE.Vector2(x, -z))));
+  const gm = new THREE.Mesh(new THREE.ShapeGeometry(ring), new THREE.MeshStandardMaterial({ color: new THREE.Color(m.ground).lerp(new THREE.Color('#6cb848'), .8), map: grassTex, roughness: .95 }));
+  gm.rotation.x = -Math.PI / 2; gm.position.y = -.14; gm.receiveShadow = true; BG.add(gm);
+  const V = BOARD.valley, isl = BOARD.island;
+  const blocked = (x, z) => (V && x > V[0] && x < V[1] && z < V[2]) || (isl && Math.hypot(x - isl[0], z - isl[1]) < 10.5)
+    || BOARD.pos.some(([px, pz]) => Math.hypot(px - x, pz - z) < 2.9)
+    || BOARD.pos.some(([px, pz], i) => { if (!isCorner(i)) return false; const [ix, iz] = tileIn(i); return Math.hypot(px - ix * 4.6 - x, pz - iz * 4.6 - z) < 3.6; });   // 角落造型
+  const walls = ['#f6dcae', '#f7b9a8', '#a9d8e8', '#cfe8a6', '#e6dcf5', '#ffe08a', '#ffffff'], roofs = ['#e2574c', '#3d7fd6', '#4a9a52', '#8a5bd1', '#f08a3c'];
+  // 一棟彩色小樓：牆、屋頂板、前後幾排窗戶，有的屋頂上放個水塔（台灣街景）
+  const win = M('#3c4a66'), tank = M('#cfd6de');
+  const lowBlock = (g, w, h, d, x, z) => {
+    box(w, h, d, pick(walls), x, -.15 + h / 2, z, g);
+    box(w + .16, .16, d + .16, pick(roofs), x, -.15 + h + .08, z, g);
+    const cols = w > 1.5 ? [-1, 0, 1] : [-.5, .5];
+    for (let y = .45; y < h - .2; y += .5) cols.forEach(k => [1, -1].forEach(sd => { const wm = box(.26, .26, .04, '#3c4a66', x + k * w * .28, -.15 + y, z + sd * (d / 2 + .01), g); wm.material = win; wm.castShadow = false; }));
+    if (Math.random() < .5) { const t = cyl(.2, .2, .35, '#cfd6de', x + (Math.random() - .5) * w * .5, -.15 + h + .34, z - d * .2, g, 10); t.material = tank; }
+  };
+  for (let i = 0; i < N; i++) {
+    if (isCorner(i)) continue;
+    const [px, pz] = tilePos(i), [ix, iz] = tileIn(i), th = tileTheta(i), tx = -iz, tz = ix;   // 往外的方向是 -tileIn
+    const at = (d, lat) => [px - ix * d + tx * lat, pz - iz * d + tz * lat];
+    const kind = (i + BOARD_SEED) % 3;
+    if (kind === 0) {   // 微縮街區：兩棟高低不同的小樓並排
+      const [x, z] = at(4.5, 0); if (blocked(x, z)) continue;
+      const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = th + Math.PI; BG.add(g);
+      lowBlock(g, 1.5 + Math.random() * .4, 1.1 + Math.random() * 1.3, 1.5, -.95, (Math.random() - .5) * .3);
+      lowBlock(g, 1.3 + Math.random() * .4, .9 + Math.random() * 1.1, 1.4, .95, (Math.random() - .5) * .3);
+    } else if (kind === 1) {   // Kenney 小屋，旁邊一棵樹
+      const [x, z] = at(4.5, -.5); if (blocked(x, z)) continue;
+      kitPlace(BG, 'house' + (1 + rnd(5)), x, -.15, z, 1.8 + Math.random() * .4, th + Math.PI + (Math.random() - .5) * .2).catch(() => { });
+      const [x2, z2] = at(4.3, 1.5); if (!blocked(x2, z2)) tree(BG, x2, z2, .6 + Math.random() * .2);
+    } else {   // 小樹林：兩三棵樹加灌木花草
+      for (let k = 0; k < (LITE ? 3 : 4); k++) {
+        const [x, z] = at(3.8 + Math.random() * 1.6, (Math.random() - .5) * 3.2); if (blocked(x, z)) continue;
+        if (k < 2) tree(BG, x, z, .6 + Math.random() * .3);
+        else kitPlace(BG, pick(['bush1', 'bush2', 'flower1', 'flower2', 'flower3']), x, -.15, z, .6 + Math.random() * .3, Math.random() * 6.28).catch(() => { });
+      }
+    }
+  }
+}
 // 全景時的地段名牌：每塊地上方一個永遠面向鏡頭、固定大小的名牌（區域色底白字），一般跟隨鏡頭時隱藏
 function buildNameTags() {
   BOARD.tags = [];
@@ -2035,6 +2079,7 @@ function buildRail() {
   [A, B].forEach(P => { const sg = godLabel('🚇 ' + RAIL.name, '#00b38a'); sg.scale.set(3.6, 1, 1); sg.position.set(P.x, 3.1, P.z); g.add(sg); cyl(.08, .08, 2.6, '#c9d1dc', P.x, 1.3, P.z, g, 8); });
   g.traverse(o => { if (o.isMesh) o.receiveShadow = true; });
 }
+const OUTER = 6.6;   // 島的邊緣離格子中心線多遠（外圍那一圈放微縮街區）
 function buildBoard(id, seed = 0) {
   MAP = MAPS[id] ? id : 'tpe'; BOARD_SEED = seed;
   const sc = boardScale(), m0 = MAPS[MAP];
@@ -2054,15 +2099,15 @@ function buildBoard(id, seed = 0) {
   tileCanvases.length = tileTex.length = tileMeshes.length = hiMeshes.length = 0;
   // 陸地：沿棋盤外推的一整塊島，內圈鋪草地
   const toShape = pts => new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
-  const land = new THREE.Mesh(new THREE.ExtrudeGeometry(toShape(offsetPoly(shp, 3.4, BOARD.sgn)), { depth: 1.2, bevelEnabled: false }), M('#fff1d0'));
+  const land = new THREE.Mesh(new THREE.ExtrudeGeometry(toShape(offsetPoly(shp, OUTER, BOARD.sgn)), { depth: 1.2, bevelEnabled: false }), M('#fff1d0'));
   land.rotation.x = -Math.PI / 2; land.position.y = -1.35; land.receiveShadow = true; BG.add(land);
   // 海岸：島四周一圈淺藍綠色淺灘＋白色浪花
   if (!shoalTex) shoalTex = canvasTex(128, 128, (x, w, h) => { const gr = x.createRadialGradient(64, 64, 4, 64, 64, 64); gr.addColorStop(0, 'rgba(120,236,224,.85)'); gr.addColorStop(.55, 'rgba(110,226,220,.45)'); gr.addColorStop(1, 'rgba(100,210,220,0)'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
   if (!shoalMat) shoalMat = new THREE.MeshStandardMaterial({ map: shoalTex, transparent: true, depthWrite: false, roughness: .3, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   const shoalGeo = new THREE.PlaneGeometry(17, 17);
-  BOARD.pos.forEach(([x, z], i) => { if (i % 2) return; const [ix, iz] = tileIn(i); const sh = new THREE.Mesh(shoalGeo, shoalMat); sh.rotation.x = -Math.PI / 2; sh.position.set(x - ix * 3, -1.26, z - iz * 3); sh.renderOrder = 1; BG.add(sh); });
+  BOARD.pos.forEach(([x, z], i) => { if (i % 2) return; const [ix, iz] = tileIn(i); const sh = new THREE.Mesh(shoalGeo, shoalMat); sh.rotation.x = -Math.PI / 2; sh.position.set(x - ix * (OUTER - .4), -1.26, z - iz * (OUTER - .4)); sh.renderOrder = 1; BG.add(sh); });
   const foamM = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: .75, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
-  const fsh = toShape(offsetPoly(shp, 4.1, BOARD.sgn)); fsh.holes.push(new THREE.Path(offsetPoly(shp, 3.35, BOARD.sgn).map(([x, z]) => new THREE.Vector2(x, -z))));
+  const fsh = toShape(offsetPoly(shp, OUTER + .7, BOARD.sgn)); fsh.holes.push(new THREE.Path(offsetPoly(shp, OUTER - .05, BOARD.sgn).map(([x, z]) => new THREE.Vector2(x, -z))));
   const foam = new THREE.Mesh(new THREE.ShapeGeometry(fsh), foamM); foam.rotation.x = -Math.PI / 2; foam.position.y = -1.22; foam.renderOrder = 2; BG.add(foam);
   boardAnims.push(t => { foamM.opacity = .45 + Math.sin(t * 1.6) * .3; });
   // 內圈草地：有深淺斑點和小花的紋理
@@ -2129,7 +2174,7 @@ function buildBoard(id, seed = 0) {
     const [x, z] = tilePos(i), th = tileTheta(i);
     const lift = (i % 2) * .03;
     const col = t.type === 'prop' ? ZONES[t.zone].color : (TILE_CAT[t.type] || TILE_CAT.event) === TILE_CAT.event ? SPECIAL[t.type].bg : TILE_CAT[t.type].base;
-    const b = new THREE.Mesh(tileGeo, tileMats[col] || (tileMats[col] = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(col).multiplyScalar(.82), roughness: .45, metalness: 0, clearcoat: .6, clearcoatRoughness: .3 })));
+    const b = new THREE.Mesh(tileGeo, tileMats[col] || (tileMats[col] = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(col).multiplyScalar(.82), roughness: .4, metalness: .1, clearcoat: .6, clearcoatRoughness: .3 })));
     b.position.set(x, lift, z); b.rotation.y = th; b.castShadow = b.receiveShadow = true; BG.add(b); b.userData.tile = i; tileMeshes.push(b);
     const curb = box(3.98, .3, 3.98, '#2a2540', x, lift - .12, z, BG); curb.rotation.y = th; curb.castShadow = false; curb.receiveShadow = true;   // 板塊底下的深色底盤：板塊之間露出一條接縫
     const cv = document.createElement('canvas'); cv.width = cv.height = 256; tileCanvases.push(cv);
@@ -2167,6 +2212,7 @@ function buildBoard(id, seed = 0) {
     { const bb = new THREE.Box3().setFromObject(g), sz = Math.min(14, Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) * 1.25 + 1.5), a = aoBlob(sz, .4); a.position.set(x, -.1, z); BG.add(a); obst.push([x, z, Math.max(2.8, sz / 2 + .2)]); } });
   if (RAIL) buildRail();
   decorateInner(shp, st, obst, m);
+  decorateOuter(shp, m);
   buildNameTags();
   // 四個角落特殊格旁邊的造型（放在格子外側）
   const cornerProp = (i, build) => { const [x, z] = tilePos(i), [ix, iz] = tileIn(i); const g = new THREE.Group(); g.position.set(x - ix * 4.6, 0, z - iz * 4.6); g.rotation.y = tileTheta(i); BG.add(g); build(g); };
@@ -2190,7 +2236,7 @@ function buildBoard(id, seed = 0) {
     // 放在檢調那個角落的斜外側海上；壓到的山、樹先藏起來
     const [jx, jz] = tilePos(JAIL), a1 = tileIn((JAIL + N - 1) % N), a2 = tileIn((JAIL + 1) % N);
     let dx = -(a1[0] + a2[0]), dz = -(a1[1] + a2[1]); const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
-    const cx = jx + dx * 14, cz = jz + dz * 14;
+    const cx = jx + dx * 16.5, cz = jz + dz * 16.5;
     BOARD.island = [cx, cz];
     const wp = new THREE.Vector3();
     BG.traverse(o => { if (o.isMesh && o.geometry && (o.geometry.type === 'ConeGeometry' || o.userData.mtn)) { o.getWorldPosition(wp); if (Math.hypot(wp.x - cx, wp.z - cz) < 8) o.visible = false; } });
@@ -3077,7 +3123,13 @@ function applyArt(p, art) {
   // 待機時輕輕呼吸（上下伸縮一點點）
   const ph = p.seat * 1.3;
   p.sqX = p.sqY = 1;
-  anim.push(t => { if (p.out || !p.sprite) return; const k = 1 + Math.sin(t * 2.4 + ph) * .018; sp.scale.set(p.artW / Math.sqrt(k) * p.sqX, ART_H * k * p.sqY, 1); });
+  if (p.caster) p.mesh.remove(p.caster);
+  const caster = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).translate(0, .5, 0), new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.DoubleSide }));
+  caster.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: tex, alphaTest: .35, side: THREE.DoubleSide });
+  caster.castShadow = true; caster.position.y = sp.position.y; caster.userData.noHit = true; p.mesh.add(caster); p.caster = caster;
+  anim.push(t => { if (p.out || !p.sprite) return; const k = 1 + Math.sin(t * 2.4 + ph) * .018; sp.scale.set(p.artW / Math.sqrt(k) * p.sqX, ART_H * k * p.sqY, 1);
+    caster.scale.set(sp.scale.x, sp.scale.y, 1); caster.position.y = sp.position.y; caster.customDepthMaterial.map = sp.material.map;
+    caster.rotation.y = Math.atan2(sun.position.x - sun.target.position.x, sun.position.z - sun.target.position.z) - p.mesh.rotation.y; });   // 投影板面向太陽，影子才是完整的人形
   // 點選範圍：看板的寬度、高度
   if (p.hit) { p.mesh.remove(p.hit); p.hit.geometry.dispose(); }
   const hit = new THREE.Mesh(new THREE.CylinderGeometry(Math.max(.5, w * .32), Math.max(.5, w * .32), ART_H, 12), CharacterManager.hitMat);
@@ -3584,9 +3636,9 @@ function setEnv(e, w) {
   cloudMat.emissiveIntensity = E.cloud; cloudMat.color.set(e === 3 ? '#8f9cc8' : e === 2 ? '#ffe2cf' : '#ffffff');
   isNight = e === 3; nightMats.forEach(m => { m.emissiveIntensity = isNight ? m.userData.nk : 0; });
   scene.fog.near = w === 3 ? 25 : 70; scene.fog.far = w === 3 ? 85 : 140;
-  hemi.color.set(E.hemi[0]); hemi.groundColor.set(E.hemi[1]); hemi.intensity = E.hemi[2] * .83;   // 有環境反射補亮，半球光打八折
+  hemi.color.set(E.hemi[0]); hemi.groundColor.set(E.hemi[1]); hemi.intensity = E.hemi[2] * .66;   // 有環境反射補亮，半球光打八折
   scene.environment = e === 3 ? null : ENV_TEX;   // 夜晚不要白天攝影棚的反光
-  sun.color.set(E.sun[0]); sun.intensity = E.sun[1];
+  sun.color.set(E.sun[0]); sun.intensity = E.sun[1] * 1.3;   // 太陽強一點、半球光弱一點：陰影比較明顯（微縮模型的立體感）
   sea.material.color.set(E.sea);
   // 夜晚：天上一片星星
   if (!starPts) {
