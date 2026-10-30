@@ -870,8 +870,8 @@ function speak(ch, line, prio = 1, vid = '') {
 }
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
-const GAME_VER = '20261030c';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261030-0909';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const GAME_VER = '20261030d';   // 改角色名單、連線格式時要改這個
+const BUILD_ID = '20261030-0912';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -3127,7 +3127,9 @@ function applyArt(p, art) {
   const caster = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).translate(0, .5, 0), new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.DoubleSide }));
   caster.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: tex, alphaTest: .35, side: THREE.DoubleSide });
   caster.castShadow = true; caster.position.y = sp.position.y; caster.userData.noHit = true; p.mesh.add(caster); p.caster = caster;
-  anim.push(t => { if (p.out || !p.sprite) return; const k = 1 + Math.sin(t * 2.4 + ph) * .018; sp.scale.set(p.artW / Math.sqrt(k) * p.sqX, ART_H * k * p.sqY, 1);
+  p.spBaseY = sp.position.y; p.walkSq = 1;
+  anim.push(t => { if (p.out || !p.sprite) return; WalkingAnimator.update(p, t, !!p.walking);
+    const k = (1 + Math.sin(t * 2.4 + ph) * .018) * p.walkSq; sp.scale.set(p.artW / Math.sqrt(k) * p.sqX, ART_H * k * p.sqY, 1);
     caster.scale.set(sp.scale.x, sp.scale.y, 1); caster.position.y = sp.position.y; caster.customDepthMaterial.map = sp.material.map;
     caster.rotation.y = Math.atan2(sun.position.x - sun.target.position.x, sun.position.z - sun.target.position.z) - p.mesh.rotation.y; });   // 投影板面向太陽，影子才是完整的人形
   // 點選範圍：看板的寬度、高度
@@ -6029,11 +6031,43 @@ async function bombBoom(p) {
   if (by && by !== p) { by.stats.sends++; by.stats.boom++; }
 }
 // 跳一格：緩動移動＋平滑轉向＋伸縮彈跳（棋子人多時本來就縮小，所以乘上原本大小）
+const WALK_MS = 200;   // 走一格的時間
+// 程式化走路律動：走路中（p.walking）上下彈跳、左右微晃、往前傾；停在格子上就是溫和的呼吸起伏。
+// 看板公仔是永遠面向鏡頭的平面圖，不能真的轉 x/z 軸：左右晃用貼圖旋轉，前傾用一點點上下壓扁表現。
+const WalkingAnimator = {
+  update(p, time, isWalking) {
+    const sp = p.sprite; if (!sp) return;
+    const base = p.spBaseY;
+    if (isWalking && !REDUCED) {
+      const bounceSpeed = 15, bounceHeight = .16, tiltSpeed = 15, maxTilt = .07;
+      const up = Math.abs(Math.sin(time * bounceSpeed));
+      sp.position.y = base + up * bounceHeight;
+      spriteTilt(p, Math.sin(time * tiltSpeed) * maxTilt);
+      p.walkSq = 1 - (.03 + Math.sin(time * bounceSpeed * 2) * .03) * (1 - up);   // 腳著地時壓一點（前傾感）
+      p.wasWalking = true;
+    } else {
+      const idleSpeed = 3, idleBreath = .02;
+      sp.position.y = base + idleBreath + Math.sin(time * idleSpeed + p.seat) * idleBreath;
+      p.walkSq = 1;
+      if (p.wasWalking) { p.wasWalking = false; spriteTilt(p, 0); }   // 剛停下來才歸零一次，不蓋掉揮手等其他動作的搖擺
+    }
+  },
+};
 function hopTo(p, to, th, ms = 150) {
   const m = p.mesh, from = m.position.clone(), r0 = m.rotation.y, base = p.baseS || (p.baseS = m.scale.x || 1);
   const dr = ((th - r0 + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
   const side = p.hopSide = -(p.hopSide || 1);
   if (p.artState !== 'walk') setArtState(p, 'walk');
+  const jump = ms >= 600 || !p.sprite;   // 搭快線的長跳、沒有看板圖的備用模型：照舊大跳
+  p.walking = !jump;
+  if (!jump) return tween(ms, k => {
+    m.position.lerpVectors(from, to, k); m.position.y = 0;   // 等速往前走，上下彈和左右晃由 WalkingAnimator 每幀處理
+    m.rotation.y = r0 + dr * Math.min(1, k * 2.2);
+  }).then(() => {
+    p.walking = false;
+    if (!LITE) burst(new THREE.Vector3(to.x, .15, to.z), ['#efe3c8', '#ffffff'], 3, .18);
+    if (!LITE && p.char) burst(new THREE.Vector3(to.x, .5, to.z), [p.char.color, '#ffd23f', '#ff4f79', '#4fc3f7'], 3, .3);   // 選戰彩帶紙
+  });
   return tween(ms, k => {
     const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2, up = Math.sin(Math.PI * k);
     m.position.lerpVectors(from, to, e); m.position.y = up * 1.05;
@@ -6090,7 +6124,7 @@ async function moveSteps(p, n, back = false) {
     const from = p.mesh.position.clone(), [tx, tz] = spot(p, p.pos), to = new THREE.Vector3(tx, 0, tz);
     if (rail) SFX.whoosh(); else SFX.step();
     hostFx('hop', [p.seat, p.pos, back ? 1 : rail ? 2 : 0]);
-    await hopTo(p, to, tileTheta(p.pos) + (back ? Math.PI : 0), rail ? 900 : 150);
+    await hopTo(p, to, tileTheta(p.pos) + (back ? Math.PI : 0), rail ? 900 : WALK_MS);
     if (p.pos === 0 && !back) await passStart(p);
     await godStep(p); if (p.out) { p.moving = false; return; }
     // 炸彈：拿著的人每走一步少 1，到 0 就爆
@@ -8550,7 +8584,7 @@ async function runAnim(p) {
   while (p.animQ.length) {
     const [type, tile, back] = p.animQ.shift(); if (!p.mesh) break;
     const [x, z] = spot(p, tile), from = p.mesh.position.clone();
-    if (type === 'hop') { SFX_RAW.step(); await hopTo(p, new THREE.Vector3(x, 0, z), tileTheta(tile) + (back === 1 ? Math.PI : 0), back === 2 ? 900 : 150); }
+    if (type === 'hop') { SFX_RAW.step(); await hopTo(p, new THREE.Vector3(x, 0, z), tileTheta(tile) + (back === 1 ? Math.PI : 0), back === 2 ? 900 : WALK_MS); }
     else await flyTo(p, tile);
     p.mesh.position.y = 0; p.lastAnim = performance.now();
   }
