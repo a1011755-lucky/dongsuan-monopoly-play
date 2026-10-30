@@ -870,8 +870,8 @@ function speak(ch, line, prio = 1, vid = '') {
 }
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
-const GAME_VER = '20261029a';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261030-0109';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const GAME_VER = '20261030a';   // 改角色名單、連線格式時要改這個
+const BUILD_ID = '20261030-0801';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -2012,8 +2012,8 @@ let tagFade = 0;
 function updateNameTags(dt) {
   if (!BOARD.tags) return;
   tagFade += ((cam.overview ? 1 : 0) - tagFade) * Math.min(1, dt * 5);
-  const hpx = innerWidth < 700 ? .046 : .03;
-  BOARD.tags.forEach(sp => { sp.visible = tagFade > .02; sp.material.opacity = tagFade; sp.scale.set(hpx * sp.userData.aspect, hpx, 1); });
+  const hpx = innerWidth < 700 ? .034 : .03, occ = new Set(G.players.filter(p => !p.out).map(p => p.pos));
+  BOARD.tags.forEach((sp, i) => { sp.visible = tagFade > .02; sp.material.opacity = tagFade * (occ.has(i) ? .25 : 1); sp.scale.set(hpx * sp.userData.aspect, hpx, 1); });
 }
 function buildRail() {
   const g = new THREE.Group(); BG.add(g);
@@ -4053,6 +4053,8 @@ function updateCamera(dt, t) {
   const bob = cam.follow && !cam.overview && (cam.follow.moving || cam.follow.animating) && !REDUCED ? Math.sin(t * 11) * .07 : 0;   // 走路時鏡頭微微晃
   camera.position.set(cam.target.x + Math.sin(cam.az) * cam.d * z + (Math.random() - .5) * sk, cam.h * z + (Math.random() - .5) * sk + bob, cam.target.z + Math.cos(cam.az) * cam.d * z);
   camera.lookAt(cam.target.x, 0, cam.target.z);
+  { const dist = camera.position.distanceTo(new THREE.Vector3(cam.target.x, 0, cam.target.z)), base = wxKind === 3 ? [25, 85] : [70, 140];
+    scene.fog.near = Math.max(base[0], dist * (wxKind === 3 ? .8 : 1.2)); scene.fog.far = Math.max(base[1], dist * (wxKind === 3 ? 2.2 : 2.6)); }
 }
 function lookAtTile(i) { hostFx('look', i); const [x, z] = tilePos(i); cam.look = new THREE.Vector3(x, 0, z); cam.lookTile = i; }
 function lookBack() { hostFx('unlook'); cam.look = null; cam.lookTile = null; }
