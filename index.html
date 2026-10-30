@@ -870,8 +870,8 @@ function speak(ch, line, prio = 1, vid = '') {
 }
 
 /* ---------- 角色（台詞皆為虛構搞笑） ---------- */
-const GAME_VER = '20261030b';   // 改角色名單、連線格式時要改這個
-const BUILD_ID = '20261030-0816';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
+const GAME_VER = '20261030c';   // 改角色名單、連線格式時要改這個
+const BUILD_ID = '20261030-0909';   // 公開網站版本：tools/build-site.js 每次發布會自動換成發布時間
 const CHARS = [
   { id: 'bian', name: '陳水扁', glyph: '扁', color: '#1f9d55', title: '前總統', look: { hair: 'short', glasses: true, extra: 'sash' },
     skill: '希望相隨：擲出對子（兩顆一樣）多拿 1,500 元。',
@@ -1044,7 +1044,7 @@ function setBoardSize(k) {
 }
 const boardScale = () => N / 32;   // 棋盤大小比例（中地圖＝1）
 const LEVEL_MULT = [1, 2, 4, 6, 9, 13];   // 過路費倍率（蓋越高差距越大）
-const LEVEL_NAME = ['空地', '平房', '透天厝', '公寓', '大樓', '摩天樓'];
+const LEVEL_NAME = ['空地', '紅磚平房', '老公寓', '透天厝', '摩天住宅', '摩天樓'];
 const KINDS = { hq: { name: '競選總部', mult: 5 }, stand: { name: '雞排攤', mult: 4 } };
 
 const ITEMS = {
@@ -3071,7 +3071,7 @@ function npcArt(n) {
   });
 }
 // 建築：透天厝（2 層）、摩天樓（5 層）有圖就用圖；醫院角落也換成醫院模型圖
-const BLD_ART = { 2: ['bld_town', 4.4], 5: ['bld_tower', 9] };
+const BLD_ART = { 5: ['bld_tower', 9] };   // 只剩地標摩天樓用圖；1～4 級是程式做的台灣住宅微縮模型（見 BLD_MODELS）
 function buildingArt(g, level) {
   const b = BLD_ART[level], a = b && artReady[b[0]]; if (!a) return false;
   // 底座變成貼在地上的陣營色圓圈：不擋住建築圖（只有地面會遮住沉下去的那一截）
@@ -3791,12 +3791,19 @@ function rebuild(i, pop = true) {
     cyl(.05, .05, 1.4, '#ffffff', .2, 1.4, 0, g, 6);
     cone(1.3, .5, c, .2, 2.1, 0, g, 8);
     const s = textPlane('雞排', 1.4, .4, '#ffffff', '#e53935', 140); s.position.set(.2, .6, .52); g.add(s);
-  } else if (!buildingArt(g, st.level)) BUILD[st.level](g, c, i);
+  } else if (!buildingArt(g, st.level)) buildLevel(g, st.level, c, i);
   if (pop) {
-    // 蓋好時從地面「長」出來，再彈一下；冒一圈工地粉塵
-    g.scale.set(1, .01, 1);
-    tween(520, k => g.scale.set(1 + Math.sin(k * Math.PI) * .12, .01 + .99 * (1 - Math.pow(1 - k, 3)), 1 + Math.sin(k * Math.PI) * .12));
+    // 蓋好時：從地面彈出來（超過一點再縮回，像玩具彈簧），冒工地粉塵＋主人顏色彩帶，地上擴散一圈光環
+    const back = k => { const c1 = 2.2, k1 = k - 1; return 1 + (c1 + 1) * k1 * k1 * k1 + c1 * k1 * k1; };
+    g.scale.set(.5, .01, .5);
+    tween(REDUCED ? 1 : 720, k => { const f = Math.max(.01, back(k)); g.scale.set(.5 + .5 * Math.min(1.08, f), f, .5 + .5 * Math.min(1.08, f)); }).then(() => g.scale.set(1, 1, 1));
     burst(new THREE.Vector3(g.position.x, .3, g.position.z), ['#d7ccc8', '#bcaaa4', '#ffffff'], 14, .5);
+    if (!REDUCED) {
+      setTimeout(() => burst(new THREE.Vector3(g.position.x, 2.2, g.position.z), [c, '#ffd23f', '#ffffff', '#ff4f79'], LITE ? 8 : 16, .7), 300);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(.8, 1.1, 40), new THREE.MeshBasicMaterial({ color: '#fff3b0', transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+      ring.rotation.x = -Math.PI / 2; ring.position.set(g.position.x, .25, g.position.z); scene.add(ring);
+      tween(650, k => { ring.scale.setScalar(1 + k * 2.4); ring.material.opacity = .9 * (1 - k); }).then(() => { scene.remove(ring); ring.geometry.dispose(); ring.material.dispose(); });
+    }
   }
 }
 const buildingAnims = [];   // 每塊地自己的建築動畫（拆掉就一起清掉）
@@ -3884,65 +3891,150 @@ function faced(w, h, d, front, side, top, x, y, z, p) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [side, side, M(top), M(top), front, side]);
   m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; p.add(m); return m;
 }
+// 1～4 級建築的模型設定：glb 填路徑（models/xxx.glb，網站上放成同名 .json，見 loadGLB）就會改載入外部模型，
+// 載不到或沒填就用下面程式做的微縮模型。h 是模型在棋盤上的高度。
+const BLD_MODELS = {
+  1: { id: 'Traditional_Bungalow', name: '傳統紅磚平房', glb: '', h: 1.7 },
+  2: { id: 'Old_Apartment', name: '台灣老公寓', glb: '', h: 4.6 },
+  3: { id: 'Modern_Townhouse', name: '現代透天厝', glb: '', h: 3.4 },
+  4: { id: 'Metropolitan_Skyscraper', name: '都會摩天住宅', glb: '', h: 7.4 },
+};
+function buildLevel(g, level, c, i) {
+  const n0 = g.children.length; BUILD[level](g, c, i);
+  const cfg = BLD_MODELS[level]; if (!cfg || !cfg.glb || !gltf) return;
+  loadGLB(cfg.glb).then(gl => {
+    if (buildingGroups[i] !== g) return;   // 已經拆掉或又升級了
+    const m = gl.scene; m.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; if (o.material && o.material.isMeshStandardMaterial) o.material = toyMat(o.material); } });
+    const bb = new THREE.Box3().setFromObject(m), k = cfg.h / Math.max(.01, bb.max.y - bb.min.y);
+    m.scale.setScalar(k); m.position.set(.3 - (bb.min.x + bb.max.x) / 2 * k, -bb.min.y * k, -(bb.min.z + bb.max.z) / 2 * k);
+    g.children.slice(n0).forEach(o => { o.visible = false; }); g.add(m);
+  }).catch(() => { });
+}
+// 建築用的貼圖（畫一次共用）：紅磚、屋瓦、白磁磚老公寓、鐵窗、鐵捲門、石材、玻璃帷幕
+const BTEX = {
+  brick: () => facade('brick', 128, (x, w, h) => {
+    x.fillStyle = '#d9c7b0'; x.fillRect(0, 0, w, h);
+    for (let r = 0; r < 16; r++) for (let c = -1; c < 6; c++) { const bx = c * 24 + (r % 2) * 12, by = r * 8; x.fillStyle = ['#b5523b', '#a84a35', '#c25e45', '#9e4432'][(r * 7 + c * 3) & 3]; x.fillRect(bx + 1, by + 1, 22, 6); }
+  }),
+  roof: () => facade('roof', 128, (x, w, h) => {
+    x.fillStyle = '#b8462f'; x.fillRect(0, 0, w, h);
+    for (let c = 0; c < 8; c++) { const gr = x.createLinearGradient(c * 16, 0, c * 16 + 16, 0); gr.addColorStop(0, '#8f3322'); gr.addColorStop(.5, '#df6a48'); gr.addColorStop(1, '#8f3322'); x.fillStyle = gr; x.fillRect(c * 16, 0, 16, h); }
+    x.fillStyle = 'rgba(80,20,10,.35)'; for (let r = 0; r < 8; r++) x.fillRect(0, r * 16 + 13, w, 3);
+  }),
+  aptF: () => facade('aptF', 256, (x, w, h) => {   // 白磁磚：細格線、每層一條腰帶、雨水痕
+    x.fillStyle = '#f3efe6'; x.fillRect(0, 0, w, h);
+    x.strokeStyle = 'rgba(160,150,130,.35)'; x.lineWidth = 1;
+    for (let k = 0; k < w; k += 6) { x.beginPath(); x.moveTo(k, 0); x.lineTo(k, h); x.stroke(); }
+    for (let k = 0; k < h; k += 4) { x.beginPath(); x.moveTo(0, k); x.lineTo(w, k); x.stroke(); }
+    x.fillStyle = 'rgba(120,100,80,.25)'; for (let f = 1; f < 5; f++) x.fillRect(0, h - f * 51 - 2, w, 3);
+    x.fillStyle = 'rgba(90,80,60,.15)'; for (let k = 0; k < 14; k++) x.fillRect(rnd(w), rnd(h), 2, 10 + rnd(20));
+  }),
+  bars: () => facade('bars', 64, (x, w, h) => {   // 鐵窗：深色玻璃＋白色鐵條＋盆栽
+    x.fillStyle = '#5f7f95'; x.fillRect(0, 0, w, h); x.fillStyle = 'rgba(255,255,255,.25)'; x.fillRect(4, 4, 30, 20);
+    x.fillStyle = '#5ea54d'; [14, 34, 52, 96, 112].forEach(px => { x.beginPath(); x.arc(px, 52, 7, 0, 7); x.fill(); });
+    x.fillStyle = '#e8e8e2'; for (let k = 0; k <= w; k += 10) x.fillRect(k, 0, 3, h); x.fillRect(0, 0, w, 4); x.fillRect(0, h - 5, w, 5); x.fillRect(0, h / 2 - 1, w, 2);
+  }),
+  shutter: () => facade('shutter', 64, (x, w, h) => { for (let k = 0; k < h; k += 4) { x.fillStyle = k % 8 ? '#a9b2b8' : '#c5ccd1'; x.fillRect(0, k, w, 4); } }),
+  stone: () => facade('stone', 128, (x, w, h) => {   // 透天厝正面的石材直條
+    x.fillStyle = '#c9b494'; x.fillRect(0, 0, w, h);
+    for (let r = 0; r < 16; r++) { let bx = (r % 2) * -14; while (bx < w) { const bw = 18 + rnd(14); x.fillStyle = ['#b89f7b', '#d6c3a2', '#a88f6c', '#c4ad88'][rnd(4)]; x.fillRect(bx + 1, r * 8 + 1, bw - 2, 6); bx += bw; } }
+  }),
+  curtain: () => facade('curtain', 256, (x, w, h) => {   // 玻璃帷幕：深藍灰玻璃、反光、部分窗戶亮燈
+    const gr = x.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#6f8fa8'); gr.addColorStop(.5, '#3e5a74'); gr.addColorStop(1, '#2c4258'); x.fillStyle = gr; x.fillRect(0, 0, w, h);
+    for (let r = 0; r < 16; r++) for (let c = 0; c < 4; c++) if (Math.random() < .28) { x.fillStyle = 'rgba(255,214,140,.8)'; x.fillRect(c * 32 + 3, r * 16 + 3, 26, 10); }
+    x.fillStyle = '#dfe5ea'; for (let c = 0; c <= 4; c++) x.fillRect(c * 32 - 1, 0, 3, h); for (let r = 0; r <= 16; r++) x.fillRect(0, r * 16 - 1, w, 2);
+    x.fillStyle = 'rgba(255,255,255,.18)'; x.beginPath(); x.moveTo(0, 0); x.lineTo(60, 0); x.lineTo(0, 110); x.fill();
+  }),
+};
+const steelMat = () => steelMat.m || (steelMat.m = new THREE.MeshStandardMaterial({ color: '#e3e8ec', roughness: .25, metalness: .6 }));   // 不鏽鋼水塔
+// 兩片斜屋頂（有屋簷、會蓋到牆外）＋屋脊
+function tileRoof(w, d, rise, y, x0, p, over = .16) {
+  const hw = w / 2 + over, len = Math.hypot(hw, rise), a = Math.atan2(rise, hw), mat = BTEX.roof();
+  [-1, 1].forEach(sd => { const r = box(len, .07, d + over * 2, mat, x0 + sd * hw / 2, y + rise / 2 + .03, 0, p); r.rotation.z = -sd * a; });
+  box(.16, .1, d + over * 2 + .04, '#7d2c1e', x0, y + rise + .05, 0, p);
+}
 const BUILD = [
   () => { },
-  (g, c, i) => {                    // 1 平房：斜屋頂、煙囪、小樹、院子的競選看板
-    const f = FACADE.house(); faced(1.5, 1.1, 1.3, f, f, '#d7ccc8', .3, .55, 0, g);
-    gable(1.75, .8, 1.5, c, .3, 1.1, 0, g);
-    box(.22, .55, .22, '#8d6e63', .75, 1.6, -.2, g);
-    cyl(.07, .09, .6, '#795548', -.75, .3, .45, g, 6); ball(.32, '#66bb6a', -.75, .8, .45, g);
-    [-.95, -.15].forEach(px => box(.06, 1.1, .06, '#5d4037', px, .55, -.55, g));
-    const bd = campaignBoard(G.players[G.tiles[i].owner].char, .95, .6); bd.position.set(-.55, .95, -.52); g.add(bd);
+  (g, c, i) => {                    // 1 傳統紅磚平房：紅磚牆、紅瓦斜屋頂、木門綠窗框、門口水泥埕和盆栽
+    const br = BTEX.brick(); faced(1.9, 1.0, 1.3, br, br, '#8a4a3a', .3, .5, 0, g);
+    gable(1.9, .52, 1.3, br, .3, 1.0, 0, g);
+    tileRoof(1.9, 1.3, .52, 1.0, .3, g);
+    box(.42, .7, .05, '#efe6d4', .3, .35, .66, g); box(.34, .64, .05, '#7a4528', .3, .33, .68, g);   // 門框＋木門
+    const fu = textPlane('福', .2, .2, '#1d1633', '#e53935', 120); fu.position.set(.3, .78, .71); g.add(fu);
+    [-.32, .92].forEach(px => { box(.42, .38, .05, '#2f7d4f', px, .58, .66, g); box(.32, .28, .05, '#cfe9f5', px, .58, .68, g); box(.03, .28, .06, '#2f7d4f', px, .58, .69, g); });
+    box(2.3, .04, .62, '#d3cbb9', .3, .02, .96, g);   // 水泥埕
+    [[-.6, 1.05], [-.35, 1.12], [1.2, 1.05]].forEach(([px, pz], k) => { cyl(.09, .07, .14, '#b5523b', px, .1, pz, g, 8); ball(.12 + k * .02, '#4f9a3c', px, .25, pz, g); });
+    cyl(.025, .025, .9, '#8d6e63', -.85, .45, .95, g, 5); cyl(.025, .025, .9, '#8d6e63', -.85, .45, .3, g, 5); box(.01, .01, .65, '#dddddd', -.85, .85, .62, g);   // 曬衣竿
+    box(.08, .12, .1, '#5b8fd8', -.85, .76, .5, g); box(.08, .14, .1, '#f4c430', -.85, .75, .75, g);
+    const bd = campaignBoard(G.players[G.tiles[i].owner].char, .95, .6); bd.position.set(-.45, 1.0, -.72); g.add(bd);
+    [-.85, -.05].forEach(px => box(.05, 1.0, .05, '#5d4037', px, .5, -.74, g));
   },
-  (g, c) => {                       // 2 透天厝：鐵捲門、雨遮、頂樓水塔、直招牌
-    const f = FACADE.town(); faced(1.25, 2.8, 1.3, f, f, '#cfd8dc', .3, 1.4, 0, g);
-    const aw = box(1.35, .06, .45, c, .3, 1.02, .78, g); aw.rotation.x = .25;
-    [[.3, .62], [.3, -.62]].forEach(([px, pz]) => box(1.3, .18, .06, '#b0bec5', px, 2.88, pz, g));
-    [[-.32, 0], [.92, 0]].forEach(([px]) => box(.06, .18, 1.3, '#b0bec5', px, 2.88, 0, g));
-    cyl(.24, .24, .42, '#eceff1', .5, 3.15, -.25, g, 12); cyl(.25, .25, .06, '#1e88e5', .5, 3.39, -.25, g, 12);
-    box(.18, 1.2, .5, c, -.42, 1.9, .3, g);
-    // 頂樓加蓋：藍色鐵皮屋＋斜鐵皮屋頂
+  (g, c, i) => {                    // 2 台灣老公寓：5 層、白磁磚、每層鐵窗、頂樓水塔和鐵皮加蓋、一樓店面
+    const af = BTEX.aptF(), W = 1.8, D = 1.5, H = 4.1;
+    faced(W, H, D, af, af, '#d9d2c4', .3, H / 2, 0, g);
+    box(W + .04, .9, D + .04, '#e7e1d3', .3, .45, 0, g);   // 一樓
+    box(1.3, .62, .05, '#2d3640', .3, .34, D / 2 + .03, g);   // 店面開口
+    const aw = box(1.5, .06, .42, c, .3, .74, D / 2 + .2, g); aw.rotation.x = .3;
+    const sign = textPlane('雜貨', .9, .22, '#ffffff', c, 120); sign.position.set(.3, .84, D / 2 + .05); g.add(sign);
+    box(.16, 1.1, .45, c, .3 + W / 2 + .08, 1.6, .45, g);   // 直招牌
+    const bars = BTEX.bars();
+    for (let f = 0; f < 4; f++) {
+      const y = 1.32 + f * .78;
+      [-.13, .73].forEach(px => { box(.66, .46, .2, bars, px, y, D / 2 + .1, g); box(.7, .04, .24, '#c9c4b8', px, y - .25, D / 2 + .11, g); });
+      if (f % 2 === 0) box(.2, .2, .3, '#eef0f0', .3 + W / 2 + .1, y - .1, -.3, g);   // 側邊冷氣
+    }
+    // 頂樓：女兒牆、兩個不鏽鋼水塔、藍色鐵皮加蓋、天線、曬衣服
+    [D / 2, -D / 2].forEach(pz => box(W, .22, .06, '#e7e1d3', .3, H + .11, pz, g));
+    [-1, 1].forEach(sd => box(.06, .22, D, '#e7e1d3', .3 + sd * W / 2, H + .11, 0, g));
     const tin = facade('tin', 64, (x, w, h) => { x.fillStyle = '#5b9bd5'; x.fillRect(0, 0, w, h); x.fillStyle = '#3f7fbf'; for (let k = 0; k < w; k += 8) x.fillRect(k, 0, 3, h); x.fillStyle = '#cfe8ff'; x.fillRect(22, 18, 20, 14); });
-    faced(.66, .5, .78, tin, tin, '#3f7fbf', .02, 3.05, .18, g);
-    const tr = box(.8, .05, .92, '#2f6aa8', .02, 3.36, .18, g); tr.rotation.x = .14;
+    faced(.8, .5, .7, tin, tin, '#3f7fbf', -.15, H + .25, .25, g); const tr = box(.92, .05, .82, '#2f6aa8', -.15, H + .53, .25, g); tr.rotation.x = .12;
+    [.65, 1.0].forEach(px => { [-.12, .12].forEach(d => box(.04, .3, .04, '#8a9096', px + d, H + .15, -.35, g)); cyl(.17, .17, .42, steelMat(), px, H + .5, -.35, g, 14); cyl(.17, .14, .06, '#cfd6dc', px, H + .74, -.35, g, 14); });
+    cyl(.02, .02, .9, '#6d6d6d', .9, H + .55, .45, g, 5); box(.5, .03, .03, '#6d6d6d', .9, H + .85, .45, g);
+    box(.8, .01, .01, '#bbbbbb', .3, H + .45, -.6, g);
+    ['#ffd23f', '#ff8fb1', '#ffffff'].forEach((col, k) => box(.16, .2, .02, col, .05 + k * .22, H + .33, -.6, g));
   },
-  (g, c, i) => {                    // 3 公寓：Q 版公寓，會眨眼的笑臉、陽台曬衣服、屋頂有貓
-    const f = FACADE.qapt(); faced(1.9, 3.3, 1.5, f, f, '#f2c98e', .3, 1.65, 0, g);
-    gable(2.3, 1.05, 1.8, '#e0583a', .3, 3.3, 0, g);
-    box(2.3, .08, 1.8, '#c4472b', .3, 3.32, 0, g);
-    const rw = cyl(.16, .16, .04, '#ffffff', .3, 3.75, .91, g, 16); rw.rotation.x = Math.PI / 2;
-    const eyes = facePlane('apt', {}, 1.5, .94, .3, 2.5, .76, g);
-    // 一樓：門＋主人顏色的雨遮＋門牌
-    box(.55, .72, .05, '#cfeaf8', .3, .36, .77, g);
-    const aw = box(.8, .07, .32, c, .3, .8, .88, g); aw.rotation.x = .3;
-    const sign = textPlane('公寓', .5, .24, '#5d4037', '#fff3e0', 120); sign.position.set(.92, .55, .78); g.add(sign);
-    // 右邊兩層陽台＋曬衣服
-    [1.45, 2.45].forEach(y => {
-      box(.42, .06, 1.2, '#eeeeee', 1.46, y, 0, g); box(.04, .32, 1.2, '#ffffff', 1.66, y + .16, 0, g);
-      cyl(.012, .012, 1.1, '#9e9e9e', 1.5, y + .62, 0, g, 4).rotation.x = Math.PI / 2;
-      ['#ffd23f', '#ff8fb1', '#64b5f6'].forEach((col, k) => box(.03, .26, .2, col, 1.5, y + .48, -.35 + k * .35, g));
-      ball(.09, '#66bb6a', 1.55, y + .12, .45, g);
+  (g, c, i) => {                    // 3 現代透天厝：3 層白牆、石材直條、玻璃陽台、一樓鐵捲門＋機車
+    const W = 1.5, D = 1.45, H = 3.0, wall = M('#f4f4f1');
+    faced(W, H, D, wall, wall, '#e2e2de', .3, H / 2, 0, g);
+    const st = BTEX.stone(); faced(.42, H + .18, .12, st, st, '#b89f7b', .3 - W / 2 + .21, (H + .18) / 2, D / 2 + .06, g);
+    box(W + .1, .1, D + .1, '#d0d0cc', .3, H + .05, 0, g);   // 屋頂板
+    box(.95, .78, .05, BTEX.shutter(), .45, .39, D / 2 + .03, g); box(1.05, .06, .1, '#7a7f84', .45, .81, D / 2 + .05, g);
+    const glass = new THREE.MeshStandardMaterial({ color: '#bfe3f2', transparent: true, opacity: .45, roughness: .1, metalness: .1 });
+    [1.35, 2.3].forEach(y => {
+      box(.95, .06, .4, '#e6e6e2', .45, y, D / 2 + .2, g);   // 陽台板
+      box(.75, .62, .03, '#3b4d5c', .45, y + .36, D / 2 + .02, g);   // 落地窗
+      const gl = box(.95, .32, .02, glass, .45, y + .19, D / 2 + .39, g); gl.castShadow = false;
+      box(.95, .03, .04, '#9aa5ad', .45, y + .36, D / 2 + .39, g);
+      cyl(.07, .06, .12, '#6d4c41', .85, y + .09, D / 2 + .25, g, 8); ball(.11, '#4f9a3c', .85, y + .22, D / 2 + .25, g);
     });
-    // 屋頂的天線和貓
-    cyl(.02, .02, .8, '#6d6d6d', .3, 4.6, -.55, g, 5); [4.75, 4.9].forEach((y, k) => box(.5 - k * .15, .03, .03, '#6d6d6d', .3, y, -.55, g));
-    const cat = new THREE.Group(); cat.position.set(.3, 4.35, .35); g.add(cat);
-    const cb = ball(.17, '#f4a340', 0, 0, 0, cat); cb.scale.set(1.3, .8, .9); ball(.13, '#f4a340', .2, .1, 0, cat);
-    [-.06, .06].forEach(dz => cone(.05, .09, '#f4a340', .22, .23, dz, cat, 4));
-    const tail = cyl(.03, .03, .3, '#f4a340', -.25, .1, 0, cat, 5); tail.rotation.z = .9;
-    buildingAnims[i].push(t => { eyes.scale.y = (t * .7 + i) % 4 < .12 ? .15 : 1; tail.rotation.z = .9 + Math.sin(t * 4 + i) * .4; });
+    box(.6, .5, .6, '#ececea', -.1, H + .35, -.3, g); cyl(.14, .14, .34, steelMat(), .7, H + .27, -.35, g, 12);   // 樓梯間＋水塔
+    // 門口機車（主人顏色）和盆栽
+    const sc = new THREE.Group(); sc.position.set(1.15, 0, D / 2 + .45); sc.rotation.y = -.5; g.add(sc);
+    [-.2, .2].forEach(dx => { const w = cyl(.08, .08, .05, '#222222', dx, .08, 0, sc, 12); w.rotation.x = Math.PI / 2; });
+    box(.42, .12, .14, c, 0, .2, 0, sc); box(.18, .07, .13, '#2b2b2b', -.08, .3, 0, sc); box(.05, .25, .05, '#cccccc', .18, .32, 0, sc); box(.03, .03, .26, '#555555', .2, .45, 0, sc);
+    [-.25, .05].forEach(px => { box(.22, .14, .14, '#8d8d86', px, .07, D / 2 + .55, g); ball(.11, '#5aa548', px, .2, D / 2 + .55, g); });
+    const bd = campaignBoard(G.players[G.tiles[i].owner].char, .9, .55); bd.rotation.y = Math.PI / 2; bd.position.set(.3 + W / 2 + .02, 2.1, -.2); g.add(bd);
   },
-  (g, c, i) => {                    // 4 大樓：玻璃帷幕、雨庇、頂樓停機坪
-    const f = FACADE.glass(); faced(1.75, 5.4, 1.75, f, f, '#455a64', .3, 2.7, 0, g);
-    box(1.82, .45, 1.82, c, .3, 5.2, 0, g);
-    box(1.3, .08, .6, c, .3, .75, 1.05, g); [-.25, .85].forEach(px => box(.06, .75, .06, '#eceff1', px, .37, 1.3, g));
-    cyl(.72, .72, .06, '#37474f', .3, 5.47, 0, g, 24);
-    const h = textPlane('H', .8, .8, '#ffd23f', null, 300); h.rotation.x = -Math.PI / 2; h.position.set(.3, 5.51, 0); g.add(h);
-    const l = ball(.08, glow('#ff1744'), .9, 5.6, .55, g); buildingAnims[i].push(t => { l.visible = Math.sin(t * 5) > 0; });
-    const bb = campaignBoard(G.players[G.tiles[i].owner].char, 1.6, 1); bb.rotation.y = Math.PI / 2; bb.position.set(1.2, 3.7, 0); g.add(bb);
-    box(.08, 1.2, 1.75, '#37474f', 1.15, 3.7, 0, g);
-    const neon = glow(c, 1.2); box(.16, 2.2, .3, neon, -.66, 2.6, .78, g); box(.22, 2.3, .36, '#1d1633', -.7, 2.6, .76, g);
-    const nb = glow('#ffd23f', 1.2); box(.17, .3, .32, nb, -.66, 3.85, .78, g);
-    buildingAnims[i].push(t => { neon.emissiveIntensity = .5 + Math.abs(Math.sin(t * 3 + i)) * 1.1; nb.emissiveIntensity = (t * 2 + i) % 1 < .5 ? 1.4 : .2; });
+  (g, c, i) => {                    // 4 都會摩天住宅：玻璃帷幕、白色格柵框、亮燈大廳、頂樓通訊設備
+    const W = 1.6, H = 6.4, cm = BTEX.curtain();
+    const body = faced(W, H, W, cm, cm, '#4a5a68', .3, .8 + H / 2, 0, g);
+    const nm = nightMat(cm.map, .45); nm.roughness = .15; nm.metalness = .25; body.material = [nm, nm, M('#4a5a68'), M('#4a5a68'), nm, nm];
+    const white = '#eef1f4';
+    [-1, 1].forEach(sx => [-1, 1].forEach(sz => box(.14, H + .1, .14, white, .3 + sx * W / 2, .8 + H / 2, sz * W / 2, g)));   // 四角白框
+    for (let k = 1; k < 4; k++) [-1, 1].forEach(sz => box(W + .1, .1, .12, white, .3, .8 + k * H / 4, sz * (W / 2 + .02), g));
+    for (let k = 0; k < 5; k++) { const y = 1.3 + k * 1.15, o = k % 2 ? .35 : -.3; box(.42, .08, .1, white, .3 + o, y, W / 2 + .06, g); box(.08, .5, .1, white, .3 + o + (k % 2 ? .17 : -.17), y + .25, W / 2 + .06, g); }   // 立面錯落格柵
+    // 大廳：石材底座、暖色燈光的玻璃大門、雨庇、門口植栽
+    box(W + .3, .8, W + .3, '#cfd2d4', .3, .4, 0, g);
+    box(.95, .62, .04, glow('#ffd58a', .55), .3, .33, W / 2 + .16, g);
+    box(1.25, .07, .5, '#9aa2a8', .3, .74, W / 2 + .35, g);
+    [-.45, 1.05].forEach(px => { box(.36, .16, .22, '#7f8a8f', px, .08, W / 2 + .3, g); ball(.14, '#4a9a40', px, .24, W / 2 + .3, g); });
+    // 頂樓：機房、主人顏色腰帶、通訊天線、碟形天線、紅色閃燈
+    box(W - .2, .55, W - .2, '#596774', .3, .8 + H + .28, 0, g); box(W + .06, .16, W + .06, c, .3, .8 + H + .02, 0, g);
+    const top = .8 + H + .55;
+    [[-.1, -.2, 1.1], [.6, .25, .8], [.75, -.35, .6]].forEach(([px, pz, hh]) => { cyl(.03, .04, hh, '#d9dde0', px, top + hh / 2, pz, g, 6); box(.08, .2, .05, '#cfd4d8', px, top + hh * .7, pz + .04, g); });
+    const dish = new THREE.Mesh(new THREE.SphereGeometry(.18, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2.4), M('#eceff1')); dish.rotation.x = -1.1; dish.position.set(.05, top + .2, .35); dish.castShadow = true; g.add(dish);
+    const l = ball(.06, glow('#ff1744'), -.1, top + 1.18, -.2, g); buildingAnims[i].push(t => { l.visible = Math.sin(t * 5) > 0; });
+    const bb = campaignBoard(G.players[G.tiles[i].owner].char, 1.3, .8); bb.rotation.y = Math.PI / 2; bb.position.set(.3 + W / 2 + .12, 3.4, 0); g.add(bb);
   },
   (g, c, i) => {                    // 5 摩天樓（地標）：Q 版玻璃圓塔，大眼睛笑臉、揮手、戴主人顏色的帽子、直升機繞圈
     const H = 8, rt = .82, rb = 1.2;
@@ -7581,7 +7673,7 @@ $('#btn-practice').onclick = () => practice();
 Object.keys(ART).filter(k => /^(bld|deco)_/.test(k)).forEach(k => loadArt(k).then(a => {
   if (!a) return; artReady[k] = a;
   if (!/town|tower/.test(k)) swapHospital();
-  else if (G && G.tiles) G.tiles.forEach((st, i) => { if (st.owner >= 0 && !st.kind && ((k === 'bld_town' && st.level === 2) || (k === 'bld_tower' && st.level === 5))) rebuild(i, false); });
+  else if (G && G.tiles) G.tiles.forEach((st, i) => { if (st.owner >= 0 && !st.kind && k === 'bld_tower' && st.level === 5) rebuild(i, false); });
 }));
 
 /* ---------- PK 看板：對決時畫面上方左右兩邊各一人，中間 VS ---------- */
