@@ -1282,6 +1282,10 @@ canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); if (NET.m
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// 高光柔和收尾：0.8 以下的顏色原封不動（角色圖、文字、Q 版配色不變），更亮的部分慢慢收到白，太陽加強也不會整片過曝
+THREE.ShaderChunk.tonemapping_pars_fragment = THREE.ShaderChunk.tonemapping_pars_fragment.replace('vec3 CustomToneMapping( vec3 color ) { return color; }',
+  'vec3 CustomToneMapping( vec3 color ) { color *= toneMappingExposure; vec3 k = vec3( 0.8 ); return mix( color, k + 0.2 * ( 1.0 - exp( -( color - k ) / 0.2 ) ), step( k, color ) ); }');
+renderer.toneMapping = THREE.CustomToneMapping;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#8fd8ff');
 scene.fog = new THREE.Fog('#8fd8ff', 70, 140);
@@ -1953,7 +1957,7 @@ function buildScenery(m) {
 }
 
 /* ---------- 建立整個棋盤（開場和換地圖時呼叫） ---------- */
-let BOARD_SEED = 0, shoalTex = null, shoalMat = null, grassTex = null, boardNoise = null, woodTex = null;
+let BOARD_SEED = 0, shoalTex = null, shoalMat = null, grassTex = null, boardNoise = null, woodTex = null, cliffTex = null, foamTex = null;
 // 內圈空地點綴：在「棋盤裡面、離格子夠遠（不擋到地上的房子）、不壓到地標舞台和地區名」的地方種樹、花草，舞台旁邊放幾群造勢小人
 function decorateInner(shp, st, obst, m) {
   const inside = (x, z) => { let c = false; for (let i = 0, j = shp.length - 1; i < shp.length; j = i++) { const [xi, zi] = shp[i], [xj, zj] = shp[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; };
@@ -2099,17 +2103,53 @@ function buildBoard(id, seed = 0) {
   tileCanvases.length = tileTex.length = tileMeshes.length = hiMeshes.length = 0;
   // 陸地：沿棋盤外推的一整塊島，內圈鋪草地
   const toShape = pts => new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
-  const land = new THREE.Mesh(new THREE.ExtrudeGeometry(toShape(offsetPoly(shp, OUTER, BOARD.sgn)), { depth: 1.2, bevelEnabled: false }), M('#fff1d0'));
+  // 島的側面是一層層的斷面（上緣步道石邊、土、碎石、底下濕掉的岩層），像桌遊的實體地形板；頂面是步道色
+  if (!cliffTex) {
+    cliffTex = canvasTex(256, 128, (x, w, h) => {
+      const band = (y0, y1, c) => { x.fillStyle = c; x.fillRect(0, y0 * h, w, (y1 - y0) * h + 1); };
+      band(0, .1, '#e3d3b0'); band(.1, .14, '#a8936f');                         // 步道的石頭邊＋底下一條陰影線
+      band(.14, .5, '#c99a6b'); band(.5, .74, '#a8764d'); band(.74, 1, '#7d6656');   // 淺土、深土、岩層
+      for (let k = 0; k < 9; k++) { const y = .18 + Math.random() * .52; x.fillStyle = 'rgba(90,56,30,.18)'; x.fillRect(0, y * h, w, 1.5); }   // 土層之間的細紋
+      for (let k = 0; k < 70; k++) { const y = .2 + Math.random() * .76, r = 2 + Math.random() * 4.5; x.fillStyle = y > .74 ? 'rgba(160,150,140,.55)' : 'rgba(240,214,170,.45)'; x.beginPath(); x.ellipse(Math.random() * w, y * h, r * 1.4, r, 0, 0, 7); x.fill(); }   // 小石頭
+      for (let k = 0; k < 16; k++) { x.fillStyle = 'rgba(80,60,40,.35)'; x.fillRect(k * 16, 0, 1.5, .1 * h); }   // 石邊一塊一塊的接縫
+      const gr = x.createLinearGradient(0, .8 * h, 0, h); gr.addColorStop(0, 'rgba(30,40,60,0)'); gr.addColorStop(1, 'rgba(30,40,60,.45)'); x.fillStyle = gr; x.fillRect(0, .8 * h, w, .2 * h);   // 碰到海水的地方濕濕暗暗的
+    });
+    // 側面的 UV：橫向＝沿著海岸的距離，直向＝擠出深度（0 在底、1.2 在頂）→ 換算成貼圖的上到下
+    cliffTex.wrapS = THREE.RepeatWrapping; cliffTex.repeat.set(1 / 6, -1 / 1.2); cliffTex.offset.set(0, 1 / 1.2);
+  }
+  const land = new THREE.Mesh(new THREE.ExtrudeGeometry(toShape(offsetPoly(shp, OUTER, BOARD.sgn)), { depth: 1.2, bevelEnabled: false }),
+    [M('#efe2c4'), new THREE.MeshStandardMaterial({ map: cliffTex, roughness: .95 })]);
   land.rotation.x = -Math.PI / 2; land.position.y = -1.35; land.receiveShadow = true; BG.add(land);
-  // 海岸：島四周一圈淺藍綠色淺灘＋白色浪花
-  if (!shoalTex) shoalTex = canvasTex(128, 128, (x, w, h) => { const gr = x.createRadialGradient(64, 64, 4, 64, 64, 64); gr.addColorStop(0, 'rgba(120,236,224,.85)'); gr.addColorStop(.55, 'rgba(110,226,220,.45)'); gr.addColorStop(1, 'rgba(100,210,220,0)'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
-  if (!shoalMat) shoalMat = new THREE.MeshStandardMaterial({ map: shoalTex, transparent: true, depthWrite: false, roughness: .3, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-  const shoalGeo = new THREE.PlaneGeometry(17, 17);
-  BOARD.pos.forEach(([x, z], i) => { if (i % 2) return; const [ix, iz] = tileIn(i); const sh = new THREE.Mesh(shoalGeo, shoalMat); sh.rotation.x = -Math.PI / 2; sh.position.set(x - ix * (OUTER - .4), -1.26, z - iz * (OUTER - .4)); sh.renderOrder = 1; BG.add(sh); });
-  const foamM = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: .75, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
-  const fsh = toShape(offsetPoly(shp, OUTER + .7, BOARD.sgn)); fsh.holes.push(new THREE.Path(offsetPoly(shp, OUTER - .05, BOARD.sgn).map(([x, z]) => new THREE.Vector2(x, -z))));
-  const foam = new THREE.Mesh(new THREE.ShapeGeometry(fsh), foamM); foam.rotation.x = -Math.PI / 2; foam.position.y = -1.22; foam.renderOrder = 2; BG.add(foam);
-  boardAnims.push(t => { foamM.opacity = .45 + Math.sin(t * 1.6) * .3; });
+  // 海岸：沿著岸邊做成一條帶子（貼圖直向 v＝0 在岸邊、1 在外緣），淺灘和浪花都從岸邊往外慢慢變透明，不會有一圈硬邊
+  const coastBand = (d0, d1) => {
+    const a = offsetPoly(shp, d0, BOARD.sgn), b = offsetPoly(shp, d1, BOARD.sgn), n = a.length, pos = [], nrm = [], uv = [], idx = [];
+    for (let k = 0, s = 0; k <= n; k++) {
+      const i = k % n; if (k) s += Math.hypot(a[i][0] - a[k - 1][0], a[i][1] - a[k - 1][1]);
+      pos.push(a[i][0], 0, a[i][1], b[i][0], 0, b[i][1]); nrm.push(0, 1, 0, 0, 1, 0); uv.push(s / 6, 0, s / 6, 1);
+      if (k) { const j = k * 2; idx.push(j - 2, j - 1, j, j - 1, j + 1, j); }
+    }
+    const g = new THREE.BufferGeometry(); g.setIndex(idx);
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    return g;
+  };
+  if (!shoalTex) shoalTex = canvasTex(64, 128, (x, w, h) => {   // 貼圖下緣＝岸邊
+    const gr = x.createLinearGradient(0, h, 0, 0); gr.addColorStop(0, 'rgba(130,240,226,.9)'); gr.addColorStop(.35, 'rgba(110,226,220,.5)'); gr.addColorStop(1, 'rgba(100,210,220,0)'); x.fillStyle = gr; x.fillRect(0, 0, w, h);
+  });
+  if (!shoalMat) shoalMat = new THREE.MeshStandardMaterial({ map: shoalTex, transparent: true, depthWrite: false, roughness: .3, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  const shoal = new THREE.Mesh(coastBand(OUTER - .05, OUTER + 3), shoalMat); shoal.position.y = -1.26; shoal.renderOrder = 1; BG.add(shoal);
+  if (!foamTex) {
+    foamTex = canvasTex(256, 64, (x, w, h) => {   // 貼著岸邊的白浪：上緣是起伏的浪花線，往外漸淡，再點一些小泡泡
+      const gr = x.createLinearGradient(0, h, 0, 0); gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(.3, 'rgba(255,255,255,.7)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      x.fillStyle = gr; x.beginPath(); x.moveTo(0, h);
+      for (let X = 0; X <= w; X += 4) x.lineTo(X, h * (.35 + .12 * Math.sin(X / w * Math.PI * 6) + .06 * Math.sin(X / w * Math.PI * 17)));
+      x.lineTo(w, h); x.fill();
+      for (let k = 0; k < 40; k++) { x.fillStyle = `rgba(255,255,255,${.3 + Math.random() * .4})`; x.beginPath(); x.arc(Math.random() * w, h * (.1 + Math.random() * .3), 1 + Math.random() * 2, 0, 7); x.fill(); }
+    });
+    foamTex.wrapS = THREE.RepeatWrapping;
+  }
+  const foamM = new THREE.MeshBasicMaterial({ map: foamTex, transparent: true, opacity: .8, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+  const foam = new THREE.Mesh(coastBand(OUTER - .05, OUTER + 1.1), foamM); foam.position.y = -1.22; foam.renderOrder = 2; BG.add(foam);
+  boardAnims.push(t => { foamM.opacity = .6 + Math.sin(t * 1.6) * .25; foamTex.offset.x = t * .015; });
   // 內圈草地：有深淺斑點和小花的紋理
   if (!grassTex) {
     grassTex = canvasTex(256, 256, (x, w, h) => {
@@ -3109,15 +3149,28 @@ function setArtState(p, name, ms) {
   p.artW = ART_H * t.aspect; p.artState = name;
   if (ms) p.artT = setTimeout(() => setArtState(p, 'idle'), ms);
 }
+// 盲盒公仔的底座：角色色的圓台，上緣圓角、表面亮光漆，底部一圈白線
+function figureBase(color, H, R = .68) {
+  const g = new THREE.Group(); g.userData.noHit = true;
+  const prof = [[0, 0], [R + .02, 0], [R + .02, H * .25]];
+  for (let k = 0; k <= 6; k++) { const a = k / 6 * Math.PI / 2; prof.push([R - .07 + Math.cos(a) * .09, H - .09 + Math.sin(a) * .09]); }   // 圓角
+  prof.push([0, H]);
+  const body = new THREE.Mesh(new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 40),
+    new THREE.MeshPhysicalMaterial({ color, roughness: .45, metalness: 0, clearcoat: .4, clearcoatRoughness: .3, envMapIntensity: .6 }));
+  body.castShadow = body.receiveShadow = true; body.userData.noHit = true; g.add(body);
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(R + .025, R + .025, H * .14, 48, 1, true), M('#ffffff')); band.position.y = H * .14; band.userData.noHit = true; g.add(band);   // 底部一圈白線
+  return g;
+}
 function applyArt(p, art) {
   const tex = artTex(art);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, alphaTest: .35, depthWrite: true }));
   const w = ART_H * art.width / art.height;
   p.artW = w; p.artTex = { idle: { tex, aspect: art.width / art.height } }; loadStates(p);
-  const PED = .14;   // 底座厚度：底座放在格子頂面上，公仔站在底座頂面上
+  const PED = .2;   // 底座厚度：底座放在格子頂面上，公仔站在底座頂面上
   sp.center.set(.5, 0); sp.scale.set(w, ART_H, 1); sp.position.y = GROUND.tile + PED; sp.userData.noHit = true;
-  // 原本的方塊人藏起來，只留底座（換成角色色）和肩膀上的配件
-  p.mesh.children.forEach((c, k) => { if (k === 0) { c.material = M(p.char.color); c.position.y = GROUND.tile + PED / 2; } else if (!c.userData.keep) c.visible = false; });
+  // 原本的方塊人（連同舊的扁底座）藏起來，只留肩膀上的配件；換成盲盒公仔的亮面圓底座
+  p.mesh.children.forEach(c => { if (!c.userData.keep) c.visible = false; });
+  if (!p.base) { p.base = figureBase(p.char.color, PED); p.base.position.y = GROUND.tile; p.mesh.add(p.base); }
   p.mesh.add(sp); p.model = sp; p.sprite = sp;
   if (!p.blob) { p.blob = aoBlob(Math.max(1.4, w * .75), .4); p.blob.position.y = GROUND.tile + .01; p.mesh.add(p.blob); }
   // 待機時輕輕呼吸（上下伸縮一點點）
@@ -3638,9 +3691,10 @@ function setEnv(e, w) {
   cloudMat.emissiveIntensity = E.cloud; cloudMat.color.set(e === 3 ? '#8f9cc8' : e === 2 ? '#ffe2cf' : '#ffffff');
   isNight = e === 3; nightMats.forEach(m => { m.emissiveIntensity = isNight ? m.userData.nk : 0; });
   scene.fog.near = w === 3 ? 25 : 70; scene.fog.far = w === 3 ? 85 : 140;
-  hemi.color.set(E.hemi[0]); hemi.groundColor.set(E.hemi[1]); hemi.intensity = E.hemi[2] * .66;   // 有環境反射補亮，半球光打八折
+  hemi.color.set(E.hemi[0]); hemi.groundColor.set(E.hemi[1]); hemi.intensity = E.hemi[2] * .5;   // 有環境反射補亮，半球光只開一半：影子裡才夠暗
   scene.environment = e === 3 ? null : ENV_TEX;   // 夜晚不要白天攝影棚的反光
-  sun.color.set(E.sun[0]); sun.intensity = E.sun[1] * 1.3;   // 太陽強一點、半球光弱一點：陰影比較明顯（微縮模型的立體感）
+  sun.color.set(E.sun[0]); sun.intensity = E.sun[1] * 1.6;   // 太陽強、補光弱：陰影明顯（微縮模型的立體感）；亮部交給高光收尾，不會過曝
+  fill.intensity = e === 3 ? .28 : .18;
   sea.material.color.set(E.sea);
   // 夜晚：天上一片星星
   if (!starPts) {
